@@ -1,0 +1,60 @@
+.complaint-container {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 25px;
+  background-color: lightgreen;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(144, 238, 144, 0.4);
+  font-family: Arial, sans-serif;
+}
+
+h1 {
+  text-align: center;
+  color: darkgreen;
+  margin-bottom: 10px;
+}
+
+p {
+  text-align: center;
+  color: darkgrey;
+  margin-bottom: 20px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  margin-top: 15px;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+input,
+select,
+textarea {
+  padding: 10px;
+  border: 1px solid ;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  margin-top: 20px;
+  padding: 12px;
+  background-color: darkolivegreen;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: olive;
+}
