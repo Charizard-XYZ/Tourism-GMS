@@ -1,0 +1,267 @@
+import { Component, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { DepartmentService } from '../../core/services/department.service';
+import { AuthService } from '../../core/services/auth.service';
+import { ToastComponent } from '../../common/components/toast.component';
+import { RegisteredOfficer } from '../../core/models/user.model';
+
+@Component({
+  selector: 'app-officer-management',
+  standalone: true,
+  imports: [CommonModule, FormsModule, ToastComponent],
+  template: `
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      
+      <div class="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div>
+          <div class="inline-flex items-center space-x-2 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase mb-1">
+            <span>Directorate Admin Portal</span>
+          </div>
+          <h1 class="text-2xl font-extrabold text-slate-900">Nodal Officer Account Management</h1>
+          <p class="text-xs text-slate-500">Register and edit Nodal Officers with secure credentials. Only registered officers can log in under Officer Login.</p>
+        </div>
+
+        <button (click)="openRegisterModal()" class="px-5 py-2.5 bg-[#0F172A] text-white rounded-xl text-xs font-extrabold hover:bg-slate-800 shadow-lg flex items-center space-x-2">
+          <span>Register New Officer</span>
+        </button>
+      </div>
+
+      <!-- Officer Roster Table -->
+      <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-900 text-white uppercase text-[10px] font-bold">
+            <tr>
+              <th class="p-4">Officer Name</th>
+              <th class="p-4">Assigned Department</th>
+              <th class="p-4">Official Email (Login)</th>
+              <th class="p-4">Assigned Password</th>
+              <th class="p-4">Contact Phone</th>
+              <th class="p-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 font-medium">
+            <tr *ngFor="let off of authService.registeredOfficers()" class="hover:bg-slate-50">
+              <td class="p-4 font-bold text-slate-900">{{ off.name }}</td>
+              <td class="p-4 font-bold text-teal-800">{{ off.departmentName }}</td>
+              <td class="p-4 text-slate-600 font-mono">{{ off.email }}</td>
+              <td class="p-4 text-slate-500 font-mono bg-slate-50 rounded-lg px-2 text-[11px] max-w-[120px] truncate">
+                {{ off.password || '••••••••' }}
+              </td>
+              <td class="p-4 text-slate-500">{{ off.phone || '—' }}</td>
+              <td class="p-4 text-right space-x-2">
+                <button (click)="openEditModal(off)" class="px-3 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-lg text-xs font-bold transition">
+                  Edit
+                </button>
+                <button (click)="deleteOfficer(off.id, off.name)" class="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-xs font-bold transition">
+                  Revoke Access
+                </button>
+              </td>
+            </tr>
+
+            <tr *ngIf="authService.registeredOfficers().length === 0">
+              <td colspan="6" class="p-8 text-center text-slate-400 italic">
+                No Nodal Officers registered yet. Click "Register New Officer" above to authorize an officer.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Register / Edit Officer Modal -->
+      <div *ngIf="isModalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in">
+          <div class="flex justify-between items-center border-b pb-3">
+            <h3 class="font-bold text-lg text-slate-900">{{ editingOfficerId() ? 'Edit Nodal Officer' : 'Register Nodal Officer' }}</h3>
+            <button (click)="isModalOpen.set(false)" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+          </div>
+
+          <p class="text-xs text-slate-500">Configure login credentials and department assignment for this officer.</p>
+
+          <form (submit)="saveOfficer()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="space-y-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Full Name *</label>
+              <input type="text" [(ngModel)]="newOfficer.name" name="sec_off_full_title" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="e.g. Vikram Singh" class="w-full px-3 py-2 border rounded-xl text-xs" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Official Email (Login ID) *</label>
+              <input type="text" [(ngModel)]="newOfficer.email" name="sec_off_reg_addr" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="officer@tourism.gov.in" class="w-full px-3 py-2 border rounded-xl text-xs" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">{{ editingOfficerId() ? 'Update Password *' : 'Create Password *' }}</label>
+              <div class="relative">
+                <input 
+                  type="text" 
+                  [style.-webkit-text-security]="showPassword() ? 'none' : 'disc'" 
+                  [(ngModel)]="newOfficer.password" 
+                  name="reg_sec_pass" 
+                  required 
+                  autocomplete="one-time-code"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  data-lpignore="true"
+                  placeholder="••••••••" 
+                  class="w-full px-3 py-2 pr-10 border rounded-xl text-xs font-mono" 
+                />
+                <button 
+                  type="button" 
+                  (click)="showPassword.set(!showPassword())" 
+                  class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 focus:outline-none"
+                >
+                  {{ showPassword() ? 'Hide' : 'Show' }}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Confirm Password *</label>
+              <div class="relative">
+                <input 
+                  type="text" 
+                  [style.-webkit-text-security]="showConfirmPassword() ? 'none' : 'disc'" 
+                  [(ngModel)]="newOfficer.confirmPassword" 
+                  name="reg_confirm_sec_pass" 
+                  required 
+                  autocomplete="one-time-code"
+                  autocorrect="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  data-lpignore="true"
+                  placeholder="••••••••" 
+                  class="w-full px-3 py-2 pr-10 border rounded-xl text-xs font-mono" 
+                />
+                <button 
+                  type="button" 
+                  (click)="showConfirmPassword.set(!showConfirmPassword())" 
+                  class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 focus:outline-none"
+                >
+                  {{ showConfirmPassword() ? 'Hide' : 'Show' }}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Assign Department *</label>
+              <select [(ngModel)]="newOfficer.departmentId" name="departmentId" required class="w-full px-3 py-2 border rounded-xl text-xs">
+                <option *ngFor="let d of departmentService.departments()" [value]="d.id">{{ d.name }} ({{ d.code }})</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contact Phone Number</label>
+              <input type="text" [(ngModel)]="newOfficer.phone" name="phone" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="+91 9812345678" class="w-full px-3 py-2 border rounded-xl text-xs" />
+            </div>
+
+            <div class="flex space-x-2 pt-3 border-t">
+              <button type="button" (click)="isModalOpen.set(false)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
+              <button type="submit" [disabled]="!newOfficer.name.trim() || !newOfficer.email.trim() || !newOfficer.password.trim() || !newOfficer.confirmPassword.trim()" class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-extrabold hover:bg-slate-800 disabled:opacity-50">
+                {{ editingOfficerId() ? 'Update Officer' : 'Authorize & Save' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <app-toast [message]="toastMessage()" (dismiss)="toastMessage.set(null)"></app-toast>
+
+    </div>
+  `
+})
+export class OfficerManagementComponent {
+  departmentService = inject(DepartmentService);
+  authService = inject(AuthService);
+
+  isModalOpen = signal<boolean>(false);
+  editingOfficerId = signal<string | null>(null);
+  showPassword = signal<boolean>(false);
+  showConfirmPassword = signal<boolean>(false);
+  toastMessage = signal<string | null>(null);
+
+  newOfficer = {
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    departmentId: 'dept-01',
+    phone: ''
+  };
+
+  openRegisterModal() {
+    this.editingOfficerId.set(null);
+    this.newOfficer = { name: '', email: '', password: '', confirmPassword: '', departmentId: 'dept-01', phone: '' };
+    this.isModalOpen.set(true);
+  }
+
+  openEditModal(off: RegisteredOfficer) {
+    this.editingOfficerId.set(off.id);
+    this.newOfficer = {
+      name: off.name,
+      email: off.email,
+      password: off.password || '',
+      confirmPassword: off.password || '',
+      departmentId: off.departmentId || 'dept-01',
+      phone: off.phone || ''
+    };
+    this.isModalOpen.set(true);
+  }
+
+  saveOfficer() {
+    if (!this.newOfficer.name.trim() || !this.newOfficer.email.trim() || !this.newOfficer.password.trim() || !this.newOfficer.confirmPassword.trim()) return;
+
+    if (this.newOfficer.password !== this.newOfficer.confirmPassword) {
+      this.toastMessage.set('Passwords do not match. Please verify.');
+      return;
+    }
+
+    const dept = this.departmentService.departments().find(d => d.id === this.newOfficer.departmentId) || this.departmentService.departments()[0];
+    const deptName = dept ? dept.name : 'General Department';
+
+    if (this.editingOfficerId()) {
+      // Edit mode
+      this.authService.updateOfficerByAdmin(this.editingOfficerId()!, {
+        name: this.newOfficer.name.trim(),
+        email: this.newOfficer.email.trim(),
+        password: this.newOfficer.password.trim(),
+        departmentId: dept ? dept.id : 'dept-01',
+        departmentName: deptName,
+        phone: this.newOfficer.phone.trim() || '+91 9812345678'
+      });
+
+      this.toastMessage.set(`Officer details updated successfully for "${this.newOfficer.name}".`);
+    } else {
+      // Create mode
+      this.authService.registerOfficerByAdmin({
+        name: this.newOfficer.name.trim(),
+        email: this.newOfficer.email.trim(),
+        password: this.newOfficer.password.trim(),
+        designation: 'Nodal Officer',
+        departmentId: dept ? dept.id : 'dept-01',
+        departmentName: deptName,
+        phone: this.newOfficer.phone.trim() || '+91 9812345678'
+      });
+
+      if (dept) {
+        this.departmentService.addOfficerToDepartment(dept.id, {
+          name: this.newOfficer.name.trim(),
+          email: this.newOfficer.email.trim(),
+          designation: 'Nodal Officer',
+          phone: this.newOfficer.phone.trim() || '+91 9812345678'
+        });
+      }
+
+      this.toastMessage.set(`Officer "${this.newOfficer.name}" registered successfully! Access granted.`);
+    }
+
+    this.isModalOpen.set(false);
+    this.editingOfficerId.set(null);
+    this.newOfficer = { name: '', email: '', password: '', confirmPassword: '', departmentId: 'dept-01', phone: '' };
+  }
+
+  deleteOfficer(id: string, name: string) {
+    this.authService.removeOfficerByAdmin(id);
+    this.toastMessage.set(`Officer access revoked for "${name}".`);
+  }
+}

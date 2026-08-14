@@ -1,21 +1,198 @@
-<nav class="bg-blue-600 text-white shadow-md">
-    <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+<header class="bg-[#0F172A] text-white sticky top-0 z-40 shadow-lg border-b border-slate-800">
+  <!-- Main Navbar -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-20">
 
-      <!-- Logo -->
-      <h1 class="text-2xl font-bold">MyWebsite</h1>
+      <!-- Brand Logo -->
+      <a routerLink="/" class="flex items-center space-x-3 group shrink-0">
+        <img src="Web-Logo.jpg" alt="Tourism GMS Logo" class="w-12 h-12 rounded-xl object-cover shadow-md group-hover:scale-105 transition" />
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-extrabold text-lg sm:text-xl tracking-tight text-white group-hover:text-[#A0C8C3] transition">
+              Tourism GMS
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 font-normal hidden sm:block">Department of Tourism & Civil Aviation</p>
+        </div>
+      </a>
 
-      <!-- Navigation Links -->
-      <ul class="flex space-x-6">
-        <li><a href="#" class="hover:text-gray-200">Home</a></li>
-        <li><a href="#" class="hover:text-gray-200">About</a></li>
-        <li><a href="#" class="hover:text-gray-200">Services</a></li>
-        <li><a href="#" class="hover:text-gray-200">Contact</a></li>
-      </ul>
+      <!-- Desktop & Laptop Navigation Links -->
+      <nav class="hidden lg:flex items-center space-x-1 overflow-x-auto max-w-4xl">
+        <a 
+          routerLink="/" 
+          routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+          [routerLinkActiveOptions]="{exact: true}"
+          class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+        >
+          Home
+        </a>
 
-      <!-- Button -->
-      <button class="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
-        Login
-      </button>
+        <!-- Citizen Links -->
+        <ng-container *ngIf="authService.isCitizen()">
+          <a 
+            routerLink="/citizen/dashboard" 
+            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+          >
+            My Complaints
+          </a>
+          <a 
+            routerLink="/citizen/history" 
+            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+          >
+            History
+          </a>
+          <a 
+            routerLink="/citizen/submit" 
+            class="px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold bg-[#A0C8C3] text-slate-950 hover:bg-teal-300 transition shadow-sm flex items-center space-x-1 shrink-0"
+          >
+            <span>File Grievance</span>
+          </a>
+        </ng-container>
 
+        <!-- Officer Links -->
+        <ng-container *ngIf="authService.isOfficer()">
+          <a 
+            routerLink="/officer/dashboard" 
+            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+          >
+            Officer Queue
+          </a>
+          <a 
+            routerLink="/officer/grievances" 
+            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+          >
+            Assigned Cases
+          </a>
+        </ng-container>
+
+        <!-- Admin Links -->
+        <ng-container *ngIf="authService.isAdmin()">
+          <a 
+            routerLink="/admin/dashboard" 
+            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+          >
+            Admin Dashboard
+          </a>
+          <a 
+            routerLink="/admin/departments" 
+            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+          >
+            Departments
+          </a>
+          <a 
+            routerLink="/admin/officers" 
+            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+          >
+            Officers
+          </a>
+          <a 
+            routerLink="/admin/grievances" 
+            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+          >
+            Grievance Desk
+          </a>
+          <a 
+            routerLink="/admin/reports" 
+            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+          >
+            Reports
+          </a>
+        </ng-container>
+      </nav>
+
+      <!-- Right Utilities: Role Switcher & Profile -->
+      <div class="flex items-center space-x-3 shrink-0">
+
+        <!-- User Profile Dropdown (When Authenticated) -->
+        <div *ngIf="authService.isAuthenticated()" class="relative">
+          <button 
+            (click)="toggleProfile()"
+            class="flex items-center space-x-2 p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 transition border border-slate-700"
+          >
+            <div class="w-8 h-8 rounded-lg bg-[#A0C8C3] text-slate-950 font-bold flex items-center justify-center text-sm">
+              {{ authService.currentUser()?.displayName?.charAt(0) || 'U' }}
+            </div>
+            <div class="text-left hidden sm:block pr-1">
+              <p class="text-xs font-bold text-white truncate max-w-[120px]">{{ authService.currentUser()?.displayName }}</p>
+              <span [ngClass]="{
+                'bg-emerald-500/20 text-emerald-300': authService.isCitizen(),
+                'bg-amber-500/20 text-amber-300': authService.isOfficer(),
+                'bg-rose-500/20 text-rose-300': authService.isAdmin()
+              }" class="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded">
+                {{ authService.userRole() }}
+              </span>
+            </div>
+          </button>
+
+          <!-- User Profile Dropdown Card -->
+          <div *ngIf="isProfileOpen()" class="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl text-slate-900 z-50 border border-slate-100 p-3 animate-fade-in">
+            <div class="px-3 py-2 bg-slate-50 rounded-xl mb-2">
+              <p class="text-xs text-slate-500">Currently logged in as:</p>
+              <p class="font-bold text-sm text-slate-800 truncate">{{ authService.currentUser()?.displayName }}</p>
+              <p class="text-[11px] font-mono text-slate-500 truncate">{{ authService.currentUser()?.email }}</p>
+            </div>
+
+            <div class="border-t border-slate-100 mt-2 pt-2">
+              <button (click)="logout()" class="w-full text-center py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition font-medium">
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sign In / Login Button (When Logged Out) -->
+        <a 
+          *ngIf="!authService.isAuthenticated()"
+          routerLink="/auth/login"
+          class="px-4 py-2 rounded-xl text-xs font-extrabold bg-[#A0C8C3] text-slate-950 hover:bg-teal-300 transition shadow-md flex items-center space-x-1.5"
+        >
+          <span>Sign In / Login</span>
+        </a>
+
+        <!-- Mobile Menu Toggle Button -->
+        <button 
+          (click)="toggleMobileMenu()" 
+          class="lg:hidden p-2 text-slate-300 hover:text-white rounded-lg text-xl"
+        >
+          ☰
+        </button>
+      </div>
     </div>
-  </nav>
+  </div>
+
+  <!-- Mobile & Tablet Navigation Drawer -->
+  <div *ngIf="isMobileMenuOpen()" class="lg:hidden bg-slate-900 border-b border-slate-800 px-4 py-4 space-y-2 animate-fade-in">
+    <a routerLink="/" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-200 hover:bg-slate-800">Home</a>
+    
+    <!-- Citizen Links -->
+    <ng-container *ngIf="authService.isCitizen()">
+      <a routerLink="/citizen/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">My Complaints</a>
+      <a routerLink="/citizen/history" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">History</a>
+      <a routerLink="/citizen/submit" (click)="toggleMobileMenu()" class="block px-3 py-2.5 rounded-lg text-sm font-extrabold bg-[#A0C8C3] text-slate-950">File New Grievance</a>
+    </ng-container>
+
+    <!-- Officer Links -->
+    <ng-container *ngIf="authService.isOfficer()">
+      <a routerLink="/officer/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Officer Queue</a>
+      <a routerLink="/officer/grievances" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Assigned Cases</a>
+    </ng-container>
+
+    <!-- Admin Links -->
+    <ng-container *ngIf="authService.isAdmin()">
+      <a routerLink="/admin/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Admin Dashboard</a>
+      <a routerLink="/admin/departments" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Departments</a>
+      <a routerLink="/admin/officers" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Nodal Officers</a>
+      <a routerLink="/admin/grievances" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Master Grievance Desk</a>
+      <a routerLink="/admin/reports" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Reports</a>
+    </ng-container>
+  </div>
+</header>

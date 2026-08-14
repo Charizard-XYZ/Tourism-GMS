@@ -1,38 +1,81 @@
-<!-- Footer -->
-<footer class="bg-blue-600 text-white mt-10">
-  <div class="max-w-7xl mx-auto px-6 py-8">
+<footer class="bg-slate-950 text-white mt-16 border-t-4 border-[#A0C8C3]">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
 
-    <div class="flex flex-col md:flex-row justify-between items-center">
-
-      <!-- Logo / Brand -->
-      <div class="mb-4 md:mb-0">
-        <h2 class="text-2xl font-bold">MyWebsite</h2>
-        <p class="text-sm text-blue-100">
-          Building amazing web experiences.
+      <!-- Column 1: Department Info -->
+      <div class="space-y-3">
+        <div class="flex items-center space-x-3">
+          <img src="Web-Logo.jpg" alt="Tourism GMS Logo" class="w-10 h-10 rounded-lg object-cover shadow-sm" />
+          <h3 class="font-extrabold text-lg tracking-tight text-[#A0C8C3]">Tourism & Civil Aviation</h3>
+        </div>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          Official Grievance Management System (Tourism-GMS). Dedicated to providing transparent and efficient dispute resolution for tourists, hotel guests, and citizens.
         </p>
+        <div class="pt-2">
+          <span class="inline-block px-3 py-1 bg-slate-900 border border-slate-800 rounded-lg text-[11px] text-emerald-400 font-mono">
+            SSL 256-Bit Encrypted Portal
+          </span>
+        </div>
       </div>
 
-      <!-- Links -->
-      <ul class="flex space-x-6 mb-4 md:mb-0">
-        <li><a href="#" class="hover:text-gray-200">Home</a></li>
-        <li><a href="#" class="hover:text-gray-200">About</a></li>
-        <li><a href="#" class="hover:text-gray-200">Services</a></li>
-        <li><a href="#" class="hover:text-gray-200">Contact</a></li>
-      </ul>
+      <!-- Column 2: Emergency Helplines -->
+      <div>
+        <h4 class="font-bold text-sm text-slate-200 uppercase tracking-wider mb-4 border-b border-slate-800 pb-2">Emergency Helplines</h4>
+        <ul class="space-y-2 text-xs text-slate-300">
+          <li class="flex items-center space-x-2">
+            <span></span>
+            <span>Tourist Helpline: <strong>1800-180-8009</strong></span>
+          </li>
+          <li class="flex items-center space-x-2">
+            <span></span>
+            <span>Tourist Police Desk: <strong>112</strong></span>
+          </li>
+          <li class="flex items-center space-x-2">
+            <span></span>
+            <span>Aviation Helipad Control: <strong>0177-2625988</strong></span>
+          </li>
+          <li class="flex items-center space-x-2">
+            <span></span>
+            <span>Email: <strong>grievance-tourism&#64;hp.gov.in</strong></span>
+          </li>
+        </ul>
+      </div>
 
-      <!-- Social Icons -->
-      <div class="flex space-x-4">
-        <a href="#" class="hover:text-gray-200">Facebook</a>
-        <a href="#" class="hover:text-gray-200">Twitter</a>
-        <a href="#" class="hover:text-gray-200">LinkedIn</a>
+      <!-- Column 3: Quick Navigation -->
+      <div>
+        <h4 class="font-bold text-sm text-slate-200 uppercase tracking-wider mb-4 border-b border-slate-800 pb-2">Portal Services</h4>
+        <ul class="space-y-2 text-xs text-slate-400">
+          <li><a routerLink="/citizen/submit" class="hover:text-[#A0C8C3] transition">File Tourist Grievance</a></li>
+          <li><a routerLink="/citizen/dashboard" class="hover:text-[#A0C8C3] transition">Track Grievance Status</a></li>
+          <li><a routerLink="/auth/login" class="hover:text-[#A0C8C3] transition">Officer / Department Login</a></li>
+          <li><a routerLink="/admin/dashboard" class="hover:text-[#A0C8C3] transition">Directorate Admin Portal</a></li>
+          <li><a href="#" class="hover:text-[#A0C8C3] transition">Resolution Timelines & Guidelines</a></li>
+        </ul>
+      </div>
+
+      <!-- Column 4: Accessibility & Compliance -->
+      <div>
+        <h4 class="font-bold text-sm text-slate-200 uppercase tracking-wider mb-4 border-b border-slate-800 pb-2">Compliance</h4>
+        <p class="text-xs text-slate-400 leading-relaxed mb-3">
+          This portal strictly adheres to World Wide Web Consortium (W3C) Web Content Accessibility Guidelines (WCAG) 2.1 AA specifications.
+        </p>
+        <div class="flex space-x-2 text-[10px]">
+          <span class="px-2 py-1 bg-slate-900 border border-slate-800 rounded text-slate-300">WCAG 2.1 AA</span>
+          <span class="px-2 py-1 bg-slate-900 border border-slate-800 rounded text-slate-300">GIGW Compliant</span>
+        </div>
       </div>
 
     </div>
 
-    <!-- Bottom -->
-    <div class="border-t border-blue-500 mt-6 pt-4 text-center text-sm text-blue-100">
-      © 2026 MyWebsite. All rights reserved.
+    <!-- Bottom Bar -->
+    <div class="border-t border-slate-900 mt-10 pt-6 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500">
+      <p>© 2026 Department of Tourism & Civil Aviation, Govt. of Himachal Pradesh. All rights reserved.</p>
+      <div class="flex space-x-4 mt-3 sm:mt-0">
+        <a href="#" class="hover:underline">Privacy Policy</a>
+        <a href="#" class="hover:underline">Terms of Service</a>
+        <a href="#" class="hover:underline">Hyperlinking Policy</a>
+        <a href="#" class="hover:underline">Disclaimer</a>
+      </div>
     </div>
-
   </div>
 </footer>

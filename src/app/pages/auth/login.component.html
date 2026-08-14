@@ -1,0 +1,156 @@
+<div class="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
+  <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-3xl shadow-xl border border-slate-200">
+    
+    <!-- Header -->
+    <div class="text-center">
+      <img src="Web-Logo.jpg" alt="Tourism GMS Logo" class="w-16 h-16 rounded-2xl object-cover mx-auto shadow-md mb-4" />
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+        Tourism GMS Portal
+      </h2>
+      <p class="mt-2 text-xs text-slate-500">
+        Department of Tourism & Civil Aviation Secure Login
+      </p>
+    </div>
+
+    <!-- Role Selection Tabs -->
+    <div class="grid grid-cols-3 gap-1 p-1.5 bg-slate-100 rounded-xl text-xs font-bold">
+      <button 
+        (click)="setRole('citizen')" 
+        [class]="selectedRole() === 'citizen' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+        class="py-2.5 rounded-lg transition"
+      >
+        Tourist
+      </button>
+
+      <button 
+        (click)="setRole('officer')" 
+        [class]="selectedRole() === 'officer' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+        class="py-2.5 rounded-lg transition"
+      >
+        Officer
+      </button>
+
+      <button 
+        (click)="setRole('admin')" 
+        [class]="selectedRole() === 'admin' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
+        class="py-2.5 rounded-lg transition"
+      >
+        Admin
+      </button>
+    </div>
+
+
+    <!-- Login Form -->
+    <form (submit)="onLogin()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="mt-6 space-y-5">
+      <div>
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email Address</label>
+        <input 
+          type="text" 
+          [(ngModel)]="email" 
+          name="usr_id_text_comm"
+          required
+          autocomplete="one-time-code"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          data-lpignore="true"
+          placeholder="user@example.com"
+          class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3] focus:outline-none"
+        />
+      </div>
+
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <label class="block text-xs font-bold text-slate-700 uppercase">Password</label>
+          <button type="button" (click)="isForgotPasswordOpen.set(true)" class="text-xs text-teal-700 hover:underline font-semibold">Forgot password?</button>
+        </div>
+        <div class="relative">
+          <input 
+            type="text" 
+            [style.-webkit-text-security]="showPassword() ? 'none' : 'disc'"
+            [(ngModel)]="password" 
+            name="sec_pass_code"
+            required
+            autocomplete="one-time-code"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            data-lpignore="true"
+            placeholder="••••••••"
+            class="w-full px-4 py-3 pr-10 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3] focus:outline-none font-mono"
+          />
+          <button 
+            type="button" 
+            (click)="showPassword.set(!showPassword())"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm p-1 focus:outline-none"
+            [title]="showPassword() ? 'Hide Password' : 'Show Password'"
+          >
+            {{ showPassword() ? 'Hide' : 'Show' }}
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="errorMessage()" class="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl font-medium">
+        {{ errorMessage() }}
+      </div>
+
+      <button 
+        type="submit" 
+        [disabled]="isLoading()"
+        class="w-full bg-[#0F172A] text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg flex items-center justify-center space-x-2"
+      >
+        <span *ngIf="isLoading()">Authenticating...</span>
+        <span *ngIf="!isLoading()">Sign In as {{ selectedRole() | titlecase }}</span>
+      </button>
+    </form>
+
+    <!-- Footer Register Prompt (Tourist / Citizen Only) -->
+    <div *ngIf="selectedRole() === 'citizen'" class="text-center pt-4 border-t border-slate-100 text-xs text-slate-500">
+      Don't have a tourist account? 
+      <a routerLink="/auth/register" class="text-teal-700 font-bold hover:underline">Register New Account</a>
+    </div>
+
+  </div>
+</div>
+
+<!-- Forgot Password Modal -->
+<div *ngIf="isForgotPasswordOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+  <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-100 relative">
+    <button 
+      (click)="isForgotPasswordOpen.set(false)"
+      class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100"
+    >
+      ✕
+    </button>
+
+    <div>
+      <h3 class="font-extrabold text-lg text-slate-900">Reset Password</h3>
+      <p class="text-xs text-slate-500 mt-1">Enter your registered email address to receive a secure password reset link.</p>
+    </div>
+    
+    <div>
+      <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email Address</label>
+      <input 
+        type="text" 
+        [(ngModel)]="resetEmail" 
+        name="sec_reset_id_comm"
+        autocomplete="one-time-code"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        data-lpignore="true"
+        placeholder="user@example.com"
+        class="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3] focus:outline-none"
+      />
+    </div>
+
+    <div *ngIf="resetSuccess()" class="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-bold">
+      {{ resetSuccess() }}
+    </div>
+
+    <div class="flex space-x-2 pt-2">
+      <button (click)="isForgotPasswordOpen.set(false)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200">Cancel</button>
+      <button (click)="sendPasswordReset()" [disabled]="!resetEmail.trim()" class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50">Send Reset Link</button>
+    </div>
+  </div>
+</div>
