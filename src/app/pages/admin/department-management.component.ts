@@ -19,8 +19,8 @@ import { ToastComponent } from '../../common/components/toast.component';
           <div class="inline-flex items-center space-x-2 px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-xs font-bold uppercase mb-1">
             <span>Directorate Admin Panel</span>
           </div>
-          <h1 class="text-2xl font-extrabold text-slate-900">Department Directory & Officer Roster</h1>
-          <p class="text-xs text-slate-500">Configure Directorate Departments and assign Nodal Officers from the registered officer roster</p>
+          <h1 class="text-2xl font-extrabold text-slate-900">Department Directory & Officers</h1>
+          <p class="text-xs text-slate-500">Configure Directorate Departments and assign Officers from the registered officers</p>
         </div>
 
         <button (click)="openCreateModal()" class="px-5 py-2.5 bg-[#0F172A] text-white rounded-xl text-xs font-extrabold hover:bg-slate-800 shadow-lg flex items-center space-x-2">
@@ -82,7 +82,7 @@ import { ToastComponent } from '../../common/components/toast.component';
             </div>
 
             <div *ngIf="!dept.assignedOfficers || dept.assignedOfficers.length === 0" class="text-xs text-slate-400 italic p-2 bg-slate-50 rounded-xl">
-              No Nodal Officers assigned yet.
+              No Officers assigned yet.
             </div>
           </div>
 
@@ -110,12 +110,12 @@ import { ToastComponent } from '../../common/components/toast.component';
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Department Name *</label>
-                <input type="text" [(ngModel)]="deptForm.name" name="sec_dept_ident" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="e.g. Tourist Security Wing" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
+                <input type="text" [(ngModel)]="deptForm.name" name="sec_dept_ident" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter Department name" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
               </div>
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Department Code *</label>
-                <input type="text" [(ngModel)]="deptForm.code" name="code" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="e.g. TS-CELL" class="w-full px-4 py-2.5 border rounded-xl text-xs font-mono" />
+                <input type="text" [(ngModel)]="deptForm.code" name="code" required autocomplete="one-time-code" autocorrect="off" autocapitalize="on" spellcheck="false" data-lpignore="true" placeholder="e.g. TS-CELL" class="w-full px-4 py-2.5 border rounded-xl text-xs font-mono" />
               </div>
             </div>
 
@@ -127,19 +127,19 @@ import { ToastComponent } from '../../common/components/toast.component';
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contact Phone *</label>
-                <input type="text" [(ngModel)]="deptForm.contactPhone" name="contactPhone" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="+91 177 2654325" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
+                <input type="text" [(ngModel)]="deptForm.contactPhone" name="contactPhone" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter Department contact number" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
               </div>
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Official Email *</label>
-                <input type="text" [(ngModel)]="deptForm.contactEmail" name="sec_dept_comm_addr" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="dept@tourism.gov.in" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
+                <input type="text" [(ngModel)]="deptForm.contactEmail" name="sec_dept_comm_addr" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="example@gmail.com" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
               </div>
             </div>
 
             <!-- Multiple Assigned Officers (Select Registered Officers Only) -->
             <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
               <div class="flex justify-between items-center">
-                <span class="text-xs font-extrabold text-slate-800 uppercase">Assigned Nodal Officers (Roster)</span>
+                <span class="text-xs font-extrabold text-slate-800 uppercase">Assigned Officers</span>
                 <span class="text-[10px] text-slate-500">Total: {{ deptForm.assignedOfficers.length }}</span>
               </div>
 
@@ -158,7 +158,7 @@ import { ToastComponent } from '../../common/components/toast.component';
 
               <!-- Select Registered Officer Dropdown -->
               <div class="pt-2 border-t border-slate-200 space-y-2">
-                <p class="text-[11px] font-bold text-teal-800 uppercase">+ Assign Registered Nodal Officer:</p>
+                <p class="text-[11px] font-bold text-teal-800 uppercase">+ Assign Registered Officer:</p>
                 
                 <div *ngIf="authService.registeredOfficers().length > 0" class="space-y-2">
                   <select [(ngModel)]="selectedOfficerIdForForm" name="selectedOfficerId" class="w-full px-3 py-2 border rounded-xl text-xs bg-white font-bold">
@@ -302,8 +302,8 @@ export class DepartmentManagementComponent {
       id: registered.id,
       name: registered.name,
       email: registered.email,
-      designation: registered.designation || 'Nodal Officer',
-      phone: registered.phone || '+91 177 2654321'
+      designation: registered.designation || 'Officer',
+      phone: registered.phone || '+91 #########'
     });
 
     this.selectedOfficerIdForForm = '';
@@ -328,8 +328,8 @@ export class DepartmentManagementComponent {
     this.departmentService.addOfficerToDepartment(this.selectedDeptForAddOfficer.id, {
       name: registered.name,
       email: registered.email,
-      designation: registered.designation || 'Nodal Officer',
-      phone: registered.phone || '+91 177 2654321'
+      designation: registered.designation || 'Officer',
+      phone: registered.phone || '+91 ##########'
     });
 
     this.toastMessage.set(`Assigned officer "${registered.name}" to ${this.selectedDeptForAddOfficer.name}`);

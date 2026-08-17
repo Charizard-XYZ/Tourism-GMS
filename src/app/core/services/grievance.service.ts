@@ -28,7 +28,13 @@ export class GrievanceService {
     if (user.role === 'admin') {
       return list;
     } else if (user.role === 'officer') {
-      return list.filter(g => g.assignedOfficerId === user.uid || g.departmentId === user.departmentId);
+      return list.filter(g =>
+        !!g.assignedOfficerId && (
+          g.assignedOfficerId === user.uid ||
+          g.assignedOfficerName === user.displayName ||
+          g.assignedOfficerId === user.email
+        )
+      );
     } else {
       // Citizen
       return list.filter(g => g.citizenId === user.uid || g.citizenEmail === user.email);

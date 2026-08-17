@@ -72,7 +72,7 @@ import { ToastComponent } from '../../common/components/toast.component';
 
             <!-- Post Note Form -->
             <div class="pt-3 border-t space-y-2">
-              <textarea [(ngModel)]="noteText" rows="2" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Write internal officer note or public update..." class="w-full px-4 py-2 border rounded-xl text-xs"></textarea>
+              <textarea [(ngModel)]="noteText" rows="2" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Write a message" class="w-full px-4 py-2 border rounded-xl text-xs"></textarea>
               <div class="flex justify-between items-center">
                 <label class="flex items-center space-x-2 text-xs text-slate-600 font-semibold cursor-pointer">
                   <input type="checkbox" [(ngModel)]="isInternalOnly" class="rounded text-amber-500" />

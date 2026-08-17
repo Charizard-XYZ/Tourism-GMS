@@ -10,14 +10,14 @@ export class AuthService {
   readonly userRole = computed(() => this.currentUser()?.role || 'citizen');
   readonly isAuthenticated = computed(() => !!this.currentUser());
 
-  // Roster of Nodal Officers registered by Directorate Admin
+  // List of Officers registered by Directorate Admin
   readonly registeredOfficers = signal<RegisteredOfficer[]>([
   ]);
 
   constructor() {}
 
   /**
-   * Register a new Nodal Officer with Password (Admin Only)
+   * Register a new Officer with Password (Admin Only)
    */
   registerOfficerByAdmin(officer: Omit<RegisteredOfficer, 'id' | 'createdAt'>): RegisteredOfficer {
     const newOfficer: RegisteredOfficer = {
@@ -32,7 +32,7 @@ export class AuthService {
   }
 
   /**
-   * Edit/Update Nodal Officer (Admin Only)
+   * Edit/Update Officer (Admin Only)
    */
   updateOfficerByAdmin(id: string, updatedData: Partial<RegisteredOfficer>): void {
     this.registeredOfficers.update(list =>
@@ -41,7 +41,7 @@ export class AuthService {
   }
 
   /**
-   * Remove a Nodal Officer (Admin Only)
+   * Remove a Officer (Admin Only)
    */
   removeOfficerByAdmin(id: string): void {
     this.registeredOfficers.update(list => list.filter(o => o.id !== id));
@@ -88,8 +88,8 @@ export class AuthService {
         // Admin & Citizen accounts
         const user: User = {
           uid: `${role.slice(0, 3)}-${Date.now().toString().slice(-4)}`,
-          email: 'yoho@gmail.com',
-          displayName: role === 'admin' ? 'Abhishek (Admin)' : email.split('@')[0],
+          email,
+          displayName: role === 'admin' ? 'Admin (Admin)' : email.split('@')[0],
           role,
           createdAt: new Date().toISOString(),
           isActive: true

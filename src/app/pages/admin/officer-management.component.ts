@@ -18,8 +18,8 @@ import { RegisteredOfficer } from '../../core/models/user.model';
           <div class="inline-flex items-center space-x-2 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase mb-1">
             <span>Directorate Admin Portal</span>
           </div>
-          <h1 class="text-2xl font-extrabold text-slate-900">Nodal Officer Account Management</h1>
-          <p class="text-xs text-slate-500">Register and edit Nodal Officers with secure credentials. Only registered officers can log in under Officer Login.</p>
+          <h1 class="text-2xl font-extrabold text-slate-900"> Officer Account Management</h1>
+          <p class="text-xs text-slate-500">Register and edit Officers with secure credentials. Only registered officers can log in under Officer Login.</p>
         </div>
 
         <button (click)="openRegisterModal()" class="px-5 py-2.5 bg-[#0F172A] text-white rounded-xl text-xs font-extrabold hover:bg-slate-800 shadow-lg flex items-center space-x-2">
@@ -27,7 +27,7 @@ import { RegisteredOfficer } from '../../core/models/user.model';
         </button>
       </div>
 
-      <!-- Officer Roster Table -->
+      <!-- Officer list Table -->
       <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
         <table class="w-full text-left text-xs">
           <thead class="bg-slate-900 text-white uppercase text-[10px] font-bold">
@@ -61,7 +61,7 @@ import { RegisteredOfficer } from '../../core/models/user.model';
 
             <tr *ngIf="authService.registeredOfficers().length === 0">
               <td colspan="6" class="p-8 text-center text-slate-400 italic">
-                No Nodal Officers registered yet. Click "Register New Officer" above to authorize an officer.
+                No Officers registered yet. Click "Register New Officer" above to authorize an officer.
               </td>
             </tr>
           </tbody>
@@ -72,7 +72,7 @@ import { RegisteredOfficer } from '../../core/models/user.model';
       <div *ngIf="isModalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
         <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in">
           <div class="flex justify-between items-center border-b pb-3">
-            <h3 class="font-bold text-lg text-slate-900">{{ editingOfficerId() ? 'Edit Nodal Officer' : 'Register Nodal Officer' }}</h3>
+            <h3 class="font-bold text-lg text-slate-900">{{ editingOfficerId() ? 'Edit Officer' : 'Register Officer' }}</h3>
             <button (click)="isModalOpen.set(false)" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
           </div>
 
@@ -81,12 +81,12 @@ import { RegisteredOfficer } from '../../core/models/user.model';
           <form (submit)="saveOfficer()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="space-y-3">
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Full Name *</label>
-              <input type="text" [(ngModel)]="newOfficer.name" name="sec_off_full_title" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="e.g. Vikram Singh" class="w-full px-3 py-2 border rounded-xl text-xs" />
+              <input type="text" [(ngModel)]="newOfficer.name" name="sec_off_full_title" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter officer name" class="w-full px-3 py-2 border rounded-xl text-xs" />
             </div>
 
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Official Email (Login ID) *</label>
-              <input type="text" [(ngModel)]="newOfficer.email" name="sec_off_reg_addr" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="officer@tourism.gov.in" class="w-full px-3 py-2 border rounded-xl text-xs" />
+              <input type="text" [(ngModel)]="newOfficer.email" name="sec_off_reg_addr" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="example@gmail.com" class="w-full px-3 py-2 border rounded-xl text-xs" />
             </div>
 
             <div>
@@ -152,7 +152,7 @@ import { RegisteredOfficer } from '../../core/models/user.model';
 
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contact Phone Number</label>
-              <input type="text" [(ngModel)]="newOfficer.phone" name="phone" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="+91 9812345678" class="w-full px-3 py-2 border rounded-xl text-xs" />
+              <input type="text" [(ngModel)]="newOfficer.phone" name="phone" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter contact number" class="w-full px-3 py-2 border rounded-xl text-xs" />
             </div>
 
             <div class="flex space-x-2 pt-3 border-t">
@@ -217,7 +217,7 @@ export class OfficerManagementComponent {
     }
 
     const dept = this.departmentService.departments().find(d => d.id === this.newOfficer.departmentId) || this.departmentService.departments()[0];
-    const deptName = dept ? dept.name : 'General Department';
+    const deptName = dept ? dept.name : '--SELECT--';
 
     if (this.editingOfficerId()) {
       // Edit mode
@@ -227,7 +227,7 @@ export class OfficerManagementComponent {
         password: this.newOfficer.password.trim(),
         departmentId: dept ? dept.id : 'dept-01',
         departmentName: deptName,
-        phone: this.newOfficer.phone.trim() || '+91 9812345678'
+        phone: this.newOfficer.phone.trim() || '+91 #########'
       });
 
       this.toastMessage.set(`Officer details updated successfully for "${this.newOfficer.name}".`);
@@ -237,18 +237,18 @@ export class OfficerManagementComponent {
         name: this.newOfficer.name.trim(),
         email: this.newOfficer.email.trim(),
         password: this.newOfficer.password.trim(),
-        designation: 'Nodal Officer',
+        designation: ' Officer',
         departmentId: dept ? dept.id : 'dept-01',
         departmentName: deptName,
-        phone: this.newOfficer.phone.trim() || '+91 9812345678'
+        phone: this.newOfficer.phone.trim() || '+91 ##########'
       });
 
       if (dept) {
         this.departmentService.addOfficerToDepartment(dept.id, {
           name: this.newOfficer.name.trim(),
           email: this.newOfficer.email.trim(),
-          designation: 'Nodal Officer',
-          phone: this.newOfficer.phone.trim() || '+91 9812345678'
+          designation: ' Officer',
+          phone: this.newOfficer.phone.trim() || '+91 ##########'
         });
       }
 

@@ -21,17 +21,17 @@ import { AuthService } from '../../core/services/auth.service';
         <form (submit)="onRegister()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="space-y-4">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Full Name *</label>
-            <input type="text" [(ngModel)]="name" name="usr_ident_title" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Rahul Sharma" class="w-full px-4 py-2.5 border rounded-xl text-sm" />
+            <input type="text" [(ngModel)]="name" name="usr_ident_title" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter your name" class="w-full px-4 py-2.5 border rounded-xl text-sm" />
           </div>
 
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email Address *</label>
-            <input type="text" [(ngModel)]="email" name="reg_usr_comm_id" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="rahul.sharma@example.com" class="w-full px-4 py-2.5 border rounded-xl text-sm" />
+            <input type="text" [(ngModel)]="email" name="reg_usr_comm_id" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="example@gmail.com" class="w-full px-4 py-2.5 border rounded-xl text-sm" />
           </div>
 
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Mobile Phone Number *</label>
-            <input type="text" [(ngModel)]="phone" name="usr_mobile_num" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="+91 9876543210" class="w-full px-4 py-2.5 border rounded-xl text-sm" />
+            <input type="text" [(ngModel)]="phone" name="usr_mobile_num" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter your phone number" class="w-full px-4 py-2.5 border rounded-xl text-sm" />
           </div>
 
           <div>

@@ -17,7 +17,6 @@ import { DepartmentManagementComponent } from './pages/admin/department-manageme
 import { OfficerManagementComponent } from './pages/admin/officer-management.component';
 import { GrievanceAssignmentComponent } from './pages/admin/grievance-assignment.component';
 import { ReportsAnalyticsComponent } from './pages/admin/reports-analytics.component';
-import { AuditLogsComponent } from './pages/admin/audit-logs.component';
 import { SystemSettingsComponent } from './pages/admin/system-settings.component';
 
 import { adminGuard, officerGuard, citizenGuard } from './core/guards/role.guard';
@@ -44,7 +43,6 @@ export const routes: Routes = [
   { path: 'admin/officers', component: OfficerManagementComponent, canActivate: [adminGuard] },
   { path: 'admin/grievances', component: GrievanceAssignmentComponent, canActivate: [adminGuard] },
   { path: 'admin/reports', component: ReportsAnalyticsComponent, canActivate: [adminGuard] },
-  { path: 'admin/audit-logs', component: AuditLogsComponent, canActivate: [adminGuard] },
   { path: 'admin/settings', component: SystemSettingsComponent, canActivate: [adminGuard] },
 
   { path: '**', redirectTo: '' }

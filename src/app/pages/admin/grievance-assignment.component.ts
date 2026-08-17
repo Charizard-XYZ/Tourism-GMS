@@ -72,7 +72,7 @@ import { Grievance } from '../../core/models/complaint.model';
       <div *ngIf="selectedGrievance" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
         <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in">
           <div class="flex justify-between items-center border-b pb-3">
-            <h3 class="font-bold text-base text-slate-900">Assign Nodal Officer</h3>
+            <h3 class="font-bold text-base text-slate-900">Assign Officer</h3>
             <button (click)="selectedGrievance = null" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
           </div>
 
@@ -88,7 +88,7 @@ import { Grievance } from '../../core/models/complaint.model';
 
           <!-- Officer Selection Dropdown -->
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Select Nodal Officer *</label>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Select Officer *</label>
             <select [(ngModel)]="targetOfficerId" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold bg-white">
               <option value="">Select an officer to assign...</option>
               <option *ngFor="let off of getOfficersForTargetDept()" [value]="off.id">
@@ -97,7 +97,7 @@ import { Grievance } from '../../core/models/complaint.model';
             </select>
 
             <div *ngIf="getOfficersForTargetDept().length === 0" class="mt-2 text-xs text-rose-600 italic p-2 bg-rose-50 rounded-xl">
-              No nodal officers assigned to this department yet. Please register or assign officers to department first.
+              No officers assigned to this department yet. Please register or assign officers to department first.
             </div>
           </div>
 
@@ -158,7 +158,7 @@ import { Grievance } from '../../core/models/complaint.model';
               autocapitalize="off"
               spellcheck="false"
               data-lpignore="true"
-              placeholder="Write an administrative directive or message..." 
+              placeholder="Write a message..." 
               class="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]"
             ></textarea>
 
@@ -254,7 +254,7 @@ export class GrievanceAssignmentComponent {
 
     const officers = this.getOfficersForTargetDept();
     const officer = officers.find(o => o.id === this.targetOfficerId) || officers[0];
-    const officerName = officer ? officer.name : 'Nodal Officer';
+    const officerName = officer ? officer.name : 'Officer';
 
     this.grievanceService.assignGrievance(
       this.selectedGrievance.id,

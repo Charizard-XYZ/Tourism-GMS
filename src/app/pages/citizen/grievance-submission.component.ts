@@ -26,7 +26,7 @@ import { ToastComponent } from '../../common/components/toast.component';
             Lodge Tourist Grievance
           </h1>
           <p class="text-xs sm:text-sm text-slate-500 mt-1">
-            Fill out the details below. Your grievance will be immediately assigned to a Nodal Officer under official guidelines.
+            Fill out the details below. Your grievance will be immediately assigned to a Officer under official guidelines.
           </p>
         </div>
 
@@ -40,15 +40,14 @@ import { ToastComponent } from '../../common/components/toast.component';
                 {{ d.name }} ({{ d.code }})
               </option>
               <option *ngIf="activeDepartments().length === 0" value="General Tourism">
-                General Tourism & Civil Aviation
+                --SELECT--
               </option>
             </select>
-            <p class="text-[11px] text-slate-400 mt-1">Categories are synchronized directly with active Directorate Departments created by Admin.</p>
           </div>
 
           <!-- Title -->
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Grievance Title / Short Summary *</label>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Grievance Title *</label>
             <input 
               type="text" 
               [(ngModel)]="title" 
@@ -59,7 +58,7 @@ import { ToastComponent } from '../../common/components/toast.component';
               autocapitalize="off"
               spellcheck="false"
               data-lpignore="true"
-              placeholder="e.g. Airport Taxi Driver Refused Meter Fare at Kullu"
+              placeholder="Enter Grievance title"
               class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3]"
             />
           </div>
@@ -77,64 +76,27 @@ import { ToastComponent } from '../../common/components/toast.component';
               autocapitalize="off"
               spellcheck="false"
               data-lpignore="true"
-              placeholder="Provide exact dates, vehicle registration numbers, resort names, receipts, or officer names involved..."
+              placeholder="Provide exact details (e.g. date,time,name and everything about your grievance)"
               class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3]"
             ></textarea>
           </div>
 
           <!-- Location -->
-          <div class="grid sm:grid-cols-2 gap-6">
-            <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Exact Location / Address *</label>
-              <input 
-                type="text" 
-                [(ngModel)]="location" 
-                name="location" 
-                required 
-                autocomplete="off"
-                autocorrect="off"
-                autocapitalize="off"
-                spellcheck="false"
-                data-lpignore="true"
-                placeholder="e.g. Taxi Stand #4, Bhuntar Airport, Kullu"
-                class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3]"
-              />
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Tourist Destination Zone</label>
-              <input 
-                type="text" 
-                [(ngModel)]="touristLocationName" 
-                name="grv_dest_zone" 
-                autocomplete="one-time-code"
-                autocorrect="off"
-                autocapitalize="off"
-                spellcheck="false"
-                data-lpignore="true"
-                placeholder="e.g. Manali Valley Region"
-                class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3]"
-              />
-            </div>
-          </div>
-
-          <!-- File Upload Simulator -->
-          <div class="border-2 border-dashed border-slate-300 p-6 rounded-2xl text-center space-y-2 bg-slate-50">
-            <p class="text-xs font-bold text-slate-700">Attach Supporting Photo / Bill / Evidence</p>
-            <p class="text-[11px] text-slate-400">Supported formats: JPG, PNG, PDF up to 10MB</p>
-            <button 
-              type="button" 
-              (click)="simulateFileUpload()"
-              class="mt-2 px-4 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 shadow-xs"
-            >
-              + Add Sample Evidence Receipt
-            </button>
-
-            <div *ngIf="attachedFiles.length > 0" class="pt-2 space-y-1">
-              <div *ngFor="let f of attachedFiles" class="inline-flex items-center space-x-2 bg-teal-50 border border-teal-200 px-3 py-1.5 rounded-lg text-xs text-teal-900">
-                <span>{{ f.name }} ({{ f.size }})</span>
-              </div>
-            </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Exact Location / Address *</label>
+            <input 
+              type="text" 
+              [(ngModel)]="location" 
+              name="location" 
+              required 
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              data-lpignore="true"
+              placeholder="Enter location"
+              class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3]"
+            />
           </div>
 
           <!-- Submit Action Button -->
@@ -174,9 +136,7 @@ export class GrievanceSubmissionComponent {
   title = '';
   description = '';
   location = '';
-  touristLocationName = '';
 
-  attachedFiles: any[] = [];
   isSubmitting = signal<boolean>(false);
   toastMessage = signal<string | null>(null);
 
@@ -191,15 +151,6 @@ export class GrievanceSubmissionComponent {
     } else {
       this.category = 'General Tourism';
     }
-  }
-
-  simulateFileUpload() {
-    this.attachedFiles.push({
-      name: `Proof_Receipt_${Date.now().toString().slice(-4)}.jpg`,
-      url: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600',
-      size: '1.4 MB',
-      type: 'image/jpeg'
-    });
   }
 
   onSubmit() {
@@ -219,12 +170,12 @@ export class GrievanceSubmissionComponent {
       departmentId: matchedDept?.id || 'dept-001',
       departmentName: matchedDept?.name || selectedCategory,
       location: this.location,
-      touristLocationName: this.touristLocationName || 'Central Region',
+      touristLocationName: 'Central Region',
       citizenId: user.uid,
       citizenName: user.displayName,
       citizenEmail: user.email,
       citizenPhone: user.phoneNumber,
-      attachments: this.attachedFiles
+      attachments: []
     });
 
     this.isSubmitting.set(false);

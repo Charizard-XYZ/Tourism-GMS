@@ -16,7 +16,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
       <div class="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div class="space-y-2">
           <div class="inline-flex items-center space-x-2 px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full text-xs font-bold uppercase">
-            <span>Nodal Officer Portal</span>
+            <span>Officer Portal</span>
           </div>
           <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
             Officer Desk: {{ authService.currentUser()?.displayName }}
@@ -27,7 +27,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
         </div>
 
         <a routerLink="/officer/grievances" class="bg-amber-400 text-slate-950 px-6 py-3.5 rounded-2xl font-extrabold text-sm hover:bg-amber-300 transition shadow-lg shrink-0">
-          📋 Review Workqueue →
+          Review Workqueue →
         </a>
       </div>
 

@@ -22,7 +22,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
             Welcome, {{ authService.currentUser()?.displayName }}
           </h1>
           <p class="text-sm text-slate-300">
-            Track your tourism grievances, review nodal officer updates, and rate completed resolutions.
+            Track your tourism grievances, review officer updates, and rate completed resolutions.
           </p>
         </div>
 
@@ -30,7 +30,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
           routerLink="/citizen/submit" 
           class="bg-[#A0C8C3] text-slate-950 px-6 py-3.5 rounded-2xl font-extrabold text-sm hover:bg-teal-300 transition shadow-lg shrink-0 flex items-center space-x-2"
         >
-          <span>➕ File New Grievance</span>
+          <span>File New Grievance</span>
         </a>
       </div>
 

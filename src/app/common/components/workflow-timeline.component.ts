@@ -60,7 +60,7 @@ export class WorkflowTimelineComponent {
   readonly steps: TimelineStep[] = [
     { key: 'submitted', label: 'Submitted', description: 'Grievance Registered', icon: '' },
     { key: 'under_review', label: 'Under Review', description: 'Verified by Admin', icon: '' },
-    { key: 'assigned', label: 'Assigned', description: 'Nodal Officer Allocated', icon: '' },
+    { key: 'assigned', label: 'Assigned', description: 'Officer Allocated', icon: '' },
     { key: 'in_progress', label: 'In Progress', description: 'Investigation & Action', icon: '' },
     { key: 'resolved', label: 'Resolved', description: 'Resolution Uploaded', icon: '' },
     { key: 'closed', label: 'Closed', description: 'Feedback & Archived', icon: '' }

@@ -37,7 +37,7 @@ import { ToastComponent } from '../../common/components/toast.component';
           
           <label class="flex items-center space-x-3 text-xs text-slate-700 cursor-pointer">
             <input type="checkbox" [(ngModel)]="autoEscalateSla" class="rounded text-rose-600" />
-            <span>Automatically escalate to Directorate Admin if Nodal Officer does not update status within 24h.</span>
+            <span>Automatically escalate to Directorate Admin if Officer does not update status within 24h.</span>
           </label>
 
         </div>

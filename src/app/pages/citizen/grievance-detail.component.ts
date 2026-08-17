@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
+import { DepartmentService } from '../../core/services/department.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Grievance } from '../../core/models/complaint.model';
 import { WorkflowTimelineComponent } from '../../common/components/workflow-timeline.component';
@@ -135,7 +136,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
                 autocapitalize="off"
                 spellcheck="false"
                 data-lpignore="true"
-                placeholder="Write a message or official directive..."
+                placeholder="Write a message..."
                 class="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]"
               ></textarea>
 
@@ -166,12 +167,12 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
             <div *ngIf="grievance.departmentName" class="space-y-3">
               <div>
                 <p class="text-lg font-extrabold">{{ grievance.departmentName }}</p>
-                <p class="text-xs text-slate-400">Nodal Officer: <strong class="text-white">{{ grievance.assignedOfficerName }}</strong></p>
+                <p class="text-xs text-slate-400">Officer: <strong class="text-white">{{ grievance.assignedOfficerName }}</strong></p>
               </div>
 
               <div class="p-3 bg-slate-800/60 rounded-xl text-xs space-y-1 border border-slate-700">
                 <p class="text-slate-400">Official Helpline:</p>
-                <p class="font-mono text-emerald-400 font-bold">+91 177 2654321</p>
+                <p class="font-mono text-emerald-400 font-bold">{{ departmentHelpline }}</p>
               </div>
             </div>
 
@@ -240,9 +241,18 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
 export class GrievanceDetailComponent implements OnInit {
   route = inject(ActivatedRoute);
   grievanceService = inject(GrievanceService);
+  departmentService = inject(DepartmentService);
   authService = inject(AuthService);
 
   grievance?: Grievance;
+
+  get departmentHelpline(): string {
+    if (!this.grievance) return '+91 177 2654325';
+    const dept = this.departmentService.departments().find(
+      d => d.id === this.grievance?.departmentId || d.name === this.grievance?.departmentName || d.name === this.grievance?.category
+    );
+    return dept?.contactPhone || '+91 177 2654325';
+  }
   newCommentText = '';
   isInternalComment = false;
   

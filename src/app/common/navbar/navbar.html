@@ -76,7 +76,7 @@
             routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
             class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
           >
-            Admin Dashboard
+            Dashboard
           </a>
           <a 
             routerLink="/admin/departments" 
@@ -177,7 +177,7 @@
     <ng-container *ngIf="authService.isCitizen()">
       <a routerLink="/citizen/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">My Complaints</a>
       <a routerLink="/citizen/history" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">History</a>
-      <a routerLink="/citizen/submit" (click)="toggleMobileMenu()" class="block px-3 py-2.5 rounded-lg text-sm font-extrabold bg-[#A0C8C3] text-slate-950">File New Grievance</a>
+      <a routerLink="/citizen/submit" (click)="toggleMobileMenu()" class="block px-3 py-2.5 rounded-lg text-sm font-extrabold bg-[#A0C8C3] text-slate-950">File Grievance</a>
     </ng-container>
 
     <!-- Officer Links -->
@@ -188,10 +188,10 @@
 
     <!-- Admin Links -->
     <ng-container *ngIf="authService.isAdmin()">
-      <a routerLink="/admin/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Admin Dashboard</a>
+      <a routerLink="/admin/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Dashboard</a>
       <a routerLink="/admin/departments" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Departments</a>
-      <a routerLink="/admin/officers" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Nodal Officers</a>
-      <a routerLink="/admin/grievances" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Master Grievance Desk</a>
+      <a routerLink="/admin/officers" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Officers</a>
+      <a routerLink="/admin/grievances" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Grievance Desk</a>
       <a routerLink="/admin/reports" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Reports</a>
     </ng-container>
   </div>

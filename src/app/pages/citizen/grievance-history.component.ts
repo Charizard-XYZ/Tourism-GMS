@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
+import { DepartmentService } from '../../core/services/department.service';
 import { StatusBadgeComponent } from '../../common/components/status-badge.component';
 
 @Component({
@@ -18,7 +19,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
           <p class="text-xs text-slate-500">Searchable repository of all your lodged complaints and statuses</p>
         </div>
         <a routerLink="/citizen/submit" class="px-5 py-2.5 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800">
-          ➕ File Grievance
+          File Grievance
         </a>
       </div>
 
@@ -46,12 +47,10 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
         </select>
 
         <select [(ngModel)]="categoryFilter" class="px-4 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]">
-          <option value="ALL">All Categories</option>
-          <option value="Transport & Licensing">Transport & Taxi</option>
-          <option value="Hotel & Hospitality">Hotel & Hospitality</option>
-          <option value="Aviation & Airport">Aviation & Airport</option>
-          <option value="Sanitation & Hygiene">Sanitation</option>
-          <option value="Tourist Safety & Security">Safety & Security</option>
+          <option value="ALL">All Department Categories</option>
+          <option *ngFor="let d of departmentService.departments()" [value]="d.name">
+            {{ d.name }} ({{ d.code }})
+          </option>
         </select>
       </div>
 
@@ -101,6 +100,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
 })
 export class GrievanceHistoryComponent {
   grievanceService = inject(GrievanceService);
+  departmentService = inject(DepartmentService);
 
   searchKeyword = '';
   statusFilter = 'ALL';
