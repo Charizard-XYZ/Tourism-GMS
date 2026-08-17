@@ -15,7 +15,7 @@ import { ReportsService } from '../../core/services/reports.service';
           <div class="inline-flex items-center space-x-2 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold uppercase mb-1">
             <span>Directorate Admin Panel</span>
           </div>
-          <h1 class="text-2xl font-extrabold text-slate-900">Departmental SLA & Grievance Report</h1>
+          <h1 class="text-2xl font-extrabold text-slate-900">Departmental Grievance Report</h1>
           <p class="text-xs text-slate-500">Live operational compliance performance matrix across all registered Directorate Departments</p>
         </div>
       </div>
