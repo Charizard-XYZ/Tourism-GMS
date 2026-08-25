@@ -62,7 +62,7 @@ import { ReportsService } from '../../core/services/reports.service';
       <!-- Quick Action Desk Directives Grid -->
       <div class="grid lg:grid-cols-12 gap-8">
         
-        <!-- Unassigned Master Queue (8 Cols) -->
+        <!-- Unassigned Master Queue (12 Cols) -->
         <div class="lg:col-span-12 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
           <div class="flex justify-between items-center border-b pb-3">
             <div>

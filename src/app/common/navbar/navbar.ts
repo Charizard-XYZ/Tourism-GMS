@@ -29,6 +29,6 @@ export class Navbar {
   logout() {
     this.authService.logout();
     this.isProfileOpen.set(false);
-    this.router.navigate(['/home']);
+    this.router.navigate(['/']);
   }
 }

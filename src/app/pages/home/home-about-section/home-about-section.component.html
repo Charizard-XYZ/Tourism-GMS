@@ -15,7 +15,7 @@
     </div>
 
     <!-- Dynamic Cards Grid (Admin Created Departments) -->
-    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+    <div *ngIf="activeDepartments().length > 0" class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
       
       <div *ngFor="let dept of activeDepartments()" class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 hover:shadow-md transition space-y-4 flex flex-col justify-between">
         <div class="space-y-3">
@@ -40,6 +40,11 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="activeDepartments().length === 0" class="bg-white p-10 rounded-3xl border border-slate-200 text-center max-w-lg mx-auto shadow-xs">
+      <p class="text-xs text-slate-500 font-medium">No active operational departments configured yet.</p>
     </div>
 
   </div>

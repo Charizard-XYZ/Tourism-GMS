@@ -27,11 +27,34 @@ import { RegisteredOfficer } from '../../core/models/user.model';
         </button>
       </div>
 
+      <!-- Search & Department Filter Bar -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs grid sm:grid-cols-2 gap-4">
+        <input 
+          type="text" 
+          [(ngModel)]="searchKeyword" 
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          data-lpignore="true"
+          placeholder="Search by Officer ID (e.g. OFF-...), Name, or Email..." 
+          class="px-4 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]"
+        />
+
+        <select [(ngModel)]="departmentFilter" class="px-4 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]">
+          <option value="ALL">All Departments</option>
+          <option *ngFor="let d of departmentService.departments()" [value]="d.id">
+            {{ d.name }} ({{ d.code }})
+          </option>
+        </select>
+      </div>
+
       <!-- Officer list Table -->
       <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
         <table class="w-full text-left text-xs">
           <thead class="bg-slate-900 text-white uppercase text-[10px] font-bold">
             <tr>
+              <th class="p-4">Officer ID</th>
               <th class="p-4">Officer Name</th>
               <th class="p-4">Assigned Department</th>
               <th class="p-4">Official Email (Login)</th>
@@ -41,9 +64,13 @@ import { RegisteredOfficer } from '../../core/models/user.model';
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 font-medium">
-            <tr *ngFor="let off of authService.registeredOfficers()" class="hover:bg-slate-50">
+            <tr *ngFor="let off of filteredOfficers()" class="hover:bg-slate-50">
+              <td class="p-4 font-bold text-amber-700">{{ off.id }}</td>
               <td class="p-4 font-bold text-slate-900">{{ off.name }}</td>
-              <td class="p-4 font-bold text-teal-800">{{ off.departmentName }}</td>
+              <td class="p-4 font-bold">
+                <span *ngIf="getOfficerDepartmentName(off) !== 'Unassigned'" class="text-teal-800">{{ getOfficerDepartmentName(off) }}</span>
+                <span *ngIf="getOfficerDepartmentName(off) === 'Unassigned'" class="text-rose-600 italic">Unassigned</span>
+              </td>
               <td class="p-4 text-slate-600 font-mono">{{ off.email }}</td>
               <td class="p-4 text-slate-500 font-mono bg-slate-50 rounded-lg px-2 text-[11px] max-w-[120px] truncate">
                 {{ off.password || '••••••••' }}
@@ -59,9 +86,9 @@ import { RegisteredOfficer } from '../../core/models/user.model';
               </td>
             </tr>
 
-            <tr *ngIf="authService.registeredOfficers().length === 0">
-              <td colspan="6" class="p-8 text-center text-slate-400 italic">
-                No Officers registered yet. Click "Register New Officer" above to authorize an officer.
+            <tr *ngIf="filteredOfficers().length === 0">
+              <td colspan="7" class="p-8 text-center text-slate-400 italic">
+                No Officers found matching the search criteria.
               </td>
             </tr>
           </tbody>
@@ -180,29 +207,63 @@ export class OfficerManagementComponent {
   showConfirmPassword = signal<boolean>(false);
   toastMessage = signal<string | null>(null);
 
+  searchKeyword = '';
+  departmentFilter = 'ALL';
+
+  filteredOfficers(): RegisteredOfficer[] {
+    return this.authService.registeredOfficers().filter(off => {
+      const keyword = this.searchKeyword.toLowerCase().trim();
+      const matchesSearch = !keyword ||
+        off.id.toLowerCase().includes(keyword) ||
+        off.name.toLowerCase().includes(keyword) ||
+        off.email.toLowerCase().includes(keyword);
+
+      const matchesDept = this.departmentFilter === 'ALL' || off.departmentId === this.departmentFilter || off.departmentName === this.departmentFilter;
+
+      return matchesSearch && matchesDept;
+    });
+  }
+
+  getOfficerDepartmentName(off: RegisteredOfficer): string {
+    if (!off.departmentId || off.departmentName === 'Unassigned') return 'Unassigned';
+    const dept = this.departmentService.departments().find(d => d.id === off.departmentId || d.name === off.departmentName);
+    if (!dept) return 'Unassigned';
+
+    if (dept.assignedOfficers && dept.assignedOfficers.length > 0) {
+      const isAssigned = dept.assignedOfficers.some(o => o.id === off.id || o.email.toLowerCase() === off.email.toLowerCase());
+      if (!isAssigned) {
+        return 'Unassigned';
+      }
+    }
+
+    return dept.name;
+  }
+
   newOfficer = {
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
-    departmentId: 'dept-01',
+    departmentId: '',
     phone: ''
   };
 
   openRegisterModal() {
     this.editingOfficerId.set(null);
-    this.newOfficer = { name: '', email: '', password: '', confirmPassword: '', departmentId: 'dept-01', phone: '' };
+    const defaultDept = this.departmentService.departments()[0]?.id || '';
+    this.newOfficer = { name: '', email: '', password: '', confirmPassword: '', departmentId: defaultDept, phone: '' };
     this.isModalOpen.set(true);
   }
 
   openEditModal(off: RegisteredOfficer) {
     this.editingOfficerId.set(off.id);
+    const defaultDept = this.departmentService.departments()[0]?.id || '';
     this.newOfficer = {
       name: off.name,
       email: off.email,
       password: off.password || '',
       confirmPassword: off.password || '',
-      departmentId: off.departmentId || 'dept-01',
+      departmentId: off.departmentId || defaultDept,
       phone: off.phone || ''
     };
     this.isModalOpen.set(true);
@@ -217,47 +278,52 @@ export class OfficerManagementComponent {
     }
 
     const dept = this.departmentService.departments().find(d => d.id === this.newOfficer.departmentId) || this.departmentService.departments()[0];
-    const deptName = dept ? dept.name : '--SELECT--';
+    const deptName = dept ? dept.name : 'Unassigned Department';
 
-    if (this.editingOfficerId()) {
-      // Edit mode
-      this.authService.updateOfficerByAdmin(this.editingOfficerId()!, {
-        name: this.newOfficer.name.trim(),
-        email: this.newOfficer.email.trim(),
-        password: this.newOfficer.password.trim(),
-        departmentId: dept ? dept.id : 'dept-01',
-        departmentName: deptName,
-        phone: this.newOfficer.phone.trim() || '+91 #########'
-      });
-
-      this.toastMessage.set(`Officer details updated successfully for "${this.newOfficer.name}".`);
-    } else {
-      // Create mode
-      this.authService.registerOfficerByAdmin({
-        name: this.newOfficer.name.trim(),
-        email: this.newOfficer.email.trim(),
-        password: this.newOfficer.password.trim(),
-        designation: ' Officer',
-        departmentId: dept ? dept.id : 'dept-01',
-        departmentName: deptName,
-        phone: this.newOfficer.phone.trim() || '+91 ##########'
-      });
-
-      if (dept) {
-        this.departmentService.addOfficerToDepartment(dept.id, {
+    try {
+      if (this.editingOfficerId()) {
+        // Edit mode
+        this.authService.updateOfficerByAdmin(this.editingOfficerId()!, {
           name: this.newOfficer.name.trim(),
           email: this.newOfficer.email.trim(),
-          designation: ' Officer',
-          phone: this.newOfficer.phone.trim() || '+91 ##########'
+          password: this.newOfficer.password.trim(),
+          departmentId: dept ? dept.id : '',
+          departmentName: deptName,
+          phone: this.newOfficer.phone.trim()
         });
+
+        this.toastMessage.set(`Officer details updated successfully for "${this.newOfficer.name}".`);
+      } else {
+        // Create mode
+        this.authService.registerOfficerByAdmin({
+          name: this.newOfficer.name.trim(),
+          email: this.newOfficer.email.trim(),
+          password: this.newOfficer.password.trim(),
+          designation: 'Nodal Officer',
+          departmentId: dept ? dept.id : '',
+          departmentName: deptName,
+          phone: this.newOfficer.phone.trim()
+        });
+
+        if (dept) {
+          this.departmentService.addOfficerToDepartment(dept.id, {
+            name: this.newOfficer.name.trim(),
+            email: this.newOfficer.email.trim(),
+            designation: 'Nodal Officer',
+            phone: this.newOfficer.phone.trim()
+          });
+        }
+
+        this.toastMessage.set(`Officer "${this.newOfficer.name}" registered successfully! Access granted.`);
       }
 
-      this.toastMessage.set(`Officer "${this.newOfficer.name}" registered successfully! Access granted.`);
+      this.isModalOpen.set(false);
+      this.editingOfficerId.set(null);
+      const defaultDept = this.departmentService.departments()[0]?.id || '';
+      this.newOfficer = { name: '', email: '', password: '', confirmPassword: '', departmentId: defaultDept, phone: '' };
+    } catch (err: any) {
+      this.toastMessage.set(err.message || 'Action failed.');
     }
-
-    this.isModalOpen.set(false);
-    this.editingOfficerId.set(null);
-    this.newOfficer = { name: '', email: '', password: '', confirmPassword: '', departmentId: 'dept-01', phone: '' };
   }
 
   deleteOfficer(id: string, name: string) {

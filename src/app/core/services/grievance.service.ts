@@ -4,6 +4,7 @@ import { GrievanceComment } from '../models/comment.model';
 import { Feedback } from '../models/feedback.model';
 import { AuthService } from './auth.service';
 import { AuditLogService } from './audit-log.service';
+import { FirebaseService } from './firebase.service';
 
 @Injectable({
   providedIn: 'root'
@@ -11,6 +12,7 @@ import { AuditLogService } from './audit-log.service';
 export class GrievanceService {
   private authService = inject(AuthService);
   private auditLogService = inject(AuditLogService);
+  private firebaseService = inject(FirebaseService);
 
   private initialGrievances: Grievance[] = [];
   private initialComments: GrievanceComment[] = [];
@@ -18,6 +20,17 @@ export class GrievanceService {
   readonly grievances = signal<Grievance[]>(this.initialGrievances);
   readonly comments = signal<GrievanceComment[]>(this.initialComments);
   readonly feedbacks = signal<Feedback[]>([]);
+
+  constructor() {
+    this.syncFromBackend();
+  }
+
+  async syncFromBackend() {
+    const remote = await this.firebaseService.fetchApi<Grievance[]>('/grievances');
+    if (remote && Array.isArray(remote)) {
+      this.grievances.set(remote);
+    }
+  }
 
   // Computed Role Filtered Grievances
   readonly roleGrievances = computed(() => {
@@ -74,6 +87,12 @@ export class GrievanceService {
 
     this.grievances.update(list => [newGrievance, ...list]);
 
+    // Push to Firebase REST API
+    this.firebaseService.fetchApi<Grievance>('/grievances', {
+      method: 'POST',
+      body: JSON.stringify(newGrievance)
+    });
+
     // Send Activity Log
     this.auditLogService.log(
       data.citizenId,
@@ -118,6 +137,18 @@ export class GrievanceService {
             );
           }
 
+          // Sync to Firebase API
+          this.firebaseService.fetchApi<Grievance>(`/grievances/${g.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              departmentId,
+              departmentName,
+              assignedOfficerId: officerId,
+              assignedOfficerName: officerName,
+              status: 'assigned'
+            })
+          });
+
           return updated;
         }
         return g;
@@ -154,6 +185,17 @@ export class GrievanceService {
             );
           }
 
+          // Sync to Firebase API
+          this.firebaseService.fetchApi<Grievance>(`/grievances/${g.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              status: newStatus,
+              resolutionDetails: updated.resolutionDetails,
+              resolutionAttachments: updated.resolutionAttachments,
+              resolvedAt: updated.resolvedAt
+            })
+          });
+
           return updated;
         }
         return g;
@@ -180,6 +222,12 @@ export class GrievanceService {
     };
 
     this.comments.update(list => [...list, newComment]);
+
+    // Push to Firebase API
+    this.firebaseService.fetchApi<GrievanceComment>('/comments', {
+      method: 'POST',
+      body: JSON.stringify(newComment)
+    });
 
     this.auditLogService.log(
       user.uid,

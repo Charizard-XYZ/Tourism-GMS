@@ -137,8 +137,13 @@ export class RegisterComponent {
     }
 
     this.isLoading.set(true);
-    await this.authService.register(this.name, this.email, this.phone);
-    this.isLoading.set(false);
-    this.router.navigate(['/citizen/home']);
+    try {
+      await this.authService.register(this.name, this.email, this.phone, this.password);
+      this.isLoading.set(false);
+      this.router.navigate(['/citizen/home']);
+    } catch (err: any) {
+      this.isLoading.set(false);
+      this.errorMessage.set(err.message || 'Registration failed.');
+    }
   }
 }

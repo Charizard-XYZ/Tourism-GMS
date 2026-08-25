@@ -22,7 +22,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
             Officer Desk: {{ authService.currentUser()?.displayName }}
           </h1>
           <p class="text-sm text-slate-300">
-            Department: <strong class="text-white">{{ authService.currentUser()?.departmentName || 'Transport & Licensing' }}</strong>
+            Department: <strong class="text-white">{{ authService.currentUser()?.departmentName || 'Unassigned' }}</strong>
           </p>
         </div>
 
@@ -53,7 +53,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
 
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
           <p class="text-xs font-bold text-sky-600 uppercase">Resolution Rate</p>
-          <p class="text-3xl font-extrabold text-sky-600">96.8%</p>
+          <p class="text-3xl font-extrabold text-sky-600">{{ resolutionRate() }}%</p>
           <p class="text-[11px] text-slate-400">On-time resolution rate</p>
         </div>
       </div>
@@ -110,5 +110,10 @@ export class OfficerDashboardComponent {
 
   resolvedCount(): number {
     return this.grievanceService.roleGrievances().filter(g => g.status === 'resolved' || g.status === 'closed').length;
+  }
+
+  resolutionRate(): number {
+    const total = this.assignedCount();
+    return total > 0 ? Math.round((this.resolvedCount() / total) * 100) : 100;
   }
 }

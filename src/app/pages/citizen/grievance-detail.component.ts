@@ -247,11 +247,11 @@ export class GrievanceDetailComponent implements OnInit {
   grievance?: Grievance;
 
   get departmentHelpline(): string {
-    if (!this.grievance) return '+91 177 2654325';
+    if (!this.grievance) return '—';
     const dept = this.departmentService.departments().find(
       d => d.id === this.grievance?.departmentId || d.name === this.grievance?.departmentName || d.name === this.grievance?.category
     );
-    return dept?.contactPhone || '+91 177 2654325';
+    return dept?.contactPhone || '—';
   }
   newCommentText = '';
   isInternalComment = false;

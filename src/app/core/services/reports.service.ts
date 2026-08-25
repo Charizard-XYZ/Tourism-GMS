@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { GrievanceService } from './grievance.service';
 import { DepartmentService } from './department.service';
+import { AuthService } from './auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -8,6 +9,7 @@ import { DepartmentService } from './department.service';
 export class ReportsService {
   private grievanceService = inject(GrievanceService);
   private departmentService = inject(DepartmentService);
+  private authService = inject(AuthService);
 
   getOverallMetrics() {
     const list = this.grievanceService.grievances();
@@ -26,9 +28,8 @@ export class ReportsService {
       resolved,
       escalated,
       totalDepartments: depts.length,
-      totalOfficers: 93,
-      resolutionRate: totalComplaints > 0 ? Math.round((resolved / totalComplaints) * 100) : 0,
-      avgResolutionDays: 1.8
+      totalOfficers: this.authService.registeredOfficers().length,
+      resolutionRate: totalComplaints > 0 ? Math.round((resolved / totalComplaints) * 100) : 0
     };
   }
 
@@ -50,44 +51,5 @@ export class ReportsService {
         slaCompliance: deptGrievances.length > 0 ? Math.round((resolved / deptGrievances.length) * 100) : 100
       };
     });
-  }
-
-  exportToCsv(filename: string, rows: object[]): void {
-    if (!rows || !rows.length) return;
-    const separator = ',';
-    const keys = Object.keys(rows[0]);
-    const csvContent =
-      keys.join(separator) +
-      '\n' +
-      rows
-        .map((row: any) => {
-          return keys
-            .map(k => {
-              let cell = row[k] === null || row[k] === undefined ? '' : row[k];
-              cell = cell.toString().replace(/"/g, '""');
-              if (cell.search(/("|,|\n)/g) >= 0) {
-                cell = `"${cell}"`;
-              }
-              return cell;
-            })
-            .join(separator);
-        })
-        .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `${filename}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  }
-
-  printReport(reportTitle: string): void {
-    window.print();
   }
 }

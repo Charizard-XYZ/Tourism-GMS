@@ -2,6 +2,7 @@ import { Injectable, signal, inject } from '@angular/core';
 import { Department, DepartmentOfficer } from '../models/department.model';
 import { AuditLogService } from './audit-log.service';
 import { AuthService } from './auth.service';
+import { FirebaseService } from './firebase.service';
 
 @Injectable({
   providedIn: 'root'
@@ -9,12 +10,22 @@ import { AuthService } from './auth.service';
 export class DepartmentService {
   private auditLogService = inject(AuditLogService);
   private authService = inject(AuthService);
+  private firebaseService = inject(FirebaseService);
 
-  private initialDepartments: Department[] = [
-    
-  ];
+  private initialDepartments: Department[] = [];
 
   readonly departments = signal<Department[]>(this.initialDepartments);
+
+  constructor() {
+    this.syncFromBackend();
+  }
+
+  async syncFromBackend() {
+    const remote = await this.firebaseService.fetchApi<Department[]>('/departments');
+    if (remote && Array.isArray(remote)) {
+      this.departments.set(remote);
+    }
+  }
 
   /**
    * Only Administrator can create departments
@@ -97,6 +108,9 @@ export class DepartmentService {
       throw new Error('Unauthorized: Only Administrators can modify department officers.');
     }
 
+    const dept = this.departments().find(d => d.id === departmentId);
+    const deptName = dept ? dept.name : 'Unassigned';
+
     const newOfficer: DepartmentOfficer = {
       ...officer,
       id: `off-${Date.now().toString().slice(-4)}`
@@ -116,6 +130,9 @@ export class DepartmentService {
         return d;
       })
     );
+
+    // Link officer in AuthService registeredOfficers roster
+    this.authService.linkOfficerToDepartment(officer.email, departmentId, deptName);
 
     const currentUser = this.authService.currentUser();
     if (currentUser) {
@@ -139,11 +156,14 @@ export class DepartmentService {
       throw new Error('Unauthorized: Only Administrators can remove department officers.');
     }
 
+    const dept = this.departments().find(d => d.id === departmentId);
+    const targetOfficer = dept?.assignedOfficers?.find(o => o.id === officerId);
+
     this.departments.update(list =>
       list.map(d => {
         if (d.id === departmentId) {
           const currentOfficers = d.assignedOfficers || [];
-          const updatedOfficers = currentOfficers.filter(o => o.id !== officerId);
+          const updatedOfficers = currentOfficers.filter(o => o.id !== officerId && o.email !== targetOfficer?.email);
           return {
             ...d,
             assignedOfficers: updatedOfficers,
@@ -153,6 +173,12 @@ export class DepartmentService {
         return d;
       })
     );
+
+    // Unlink officer in AuthService registeredOfficers roster
+    this.authService.unlinkOfficerFromDepartment(officerId);
+    if (targetOfficer?.email) {
+      this.authService.unlinkOfficerFromDepartment(targetOfficer.email);
+    }
 
     const currentUser = this.authService.currentUser();
     if (currentUser) {
@@ -179,6 +205,9 @@ export class DepartmentService {
     const dept = this.departments().find(d => d.id === id);
 
     this.departments.update(list => list.filter(d => d.id !== id));
+
+    // Clear department assignment for all registered officers belonging to deleted department
+    this.authService.clearDepartmentFromOfficers(id);
 
     const currentUser = this.authService.currentUser();
     if (currentUser && dept) {

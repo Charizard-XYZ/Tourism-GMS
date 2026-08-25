@@ -1,11 +1,4 @@
-export type GrievanceCategory = 
-  | 'Transport & Licensing'
-  | 'Hotel & Hospitality'
-  | 'Aviation & Airport'
-  | 'Sanitation & Hygiene'
-  | 'Tourist Safety & Security'
-  | 'Pricing & Billing'
-  | 'Other';
+export type GrievanceCategory = string;
 
 export type GrievanceStatus = 
   | 'submitted'
