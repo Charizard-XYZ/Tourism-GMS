@@ -40,7 +40,7 @@ export class AuthService {
     const newOfficer: RegisteredOfficer = {
       ...officer,
       email: cleanEmail,
-      password: officer.password || 'password123',
+      password: officer.password,
       id: `OFF-${Math.floor(100000 + Math.random() * 900000)}`,
       createdAt: new Date().toISOString()
     };
@@ -74,10 +74,28 @@ export class AuthService {
   }
 
   /**
-   * Remove a Officer (Admin Only)
+   * Remove / Delete Officer Permanently (Admin Only)
    */
   removeOfficerByAdmin(id: string): void {
     this.registeredOfficers.update(list => list.filter(o => o.id !== id));
+  }
+
+  /**
+   * Revoke Officer Access (Admin Only)
+   */
+  revokeOfficerAccess(id: string): void {
+    this.registeredOfficers.update(list =>
+      list.map(o => o.id === id ? { ...o, isRevoked: true, departmentId: '', departmentName: 'Unassigned' } : o)
+    );
+  }
+
+  /**
+   * Restore Officer Access (Admin Only)
+   */
+  restoreOfficerAccess(id: string): void {
+    this.registeredOfficers.update(list =>
+      list.map(o => o.id === id ? { ...o, isRevoked: false } : o)
+    );
   }
 
   /**
@@ -178,6 +196,11 @@ export class AuthService {
             return;
           }
 
+          if (registered.isRevoked) {
+            reject(new Error(`Access Denied: Officer credentials for "${email}" have been revoked by Directorate Administrator.`));
+            return;
+          }
+
           // Verify Password
           if (password && registered.password && registered.password !== password) {
             reject(new Error(`Invalid password for Officer account "${email}". Please verify credentials.`));
@@ -202,9 +225,9 @@ export class AuthService {
         }
 
         if (role === 'admin') {
-          const validAdminEmails = ['ab@gmail.com', 'admin.tourism@hp.gov.in', 'admin@tourism.hp.gov.in'];
+          const validAdminEmails = ['ab@gmail.com'];
           const isEmailValid = validAdminEmails.includes(cleanEmail);
-          const isPasswordValid = password === 'admin' || password === 'admin123';
+          const isPasswordValid = password === 'admin';
 
           if (!isEmailValid || !isPasswordValid) {
             reject(new Error('Access Denied: Invalid email or password.'));
@@ -214,7 +237,7 @@ export class AuthService {
           const user: User = {
             uid: 'ADM-1001',
             email: cleanEmail,
-            displayName: cleanEmail === 'ab@gmail.com' ? 'Abhishek Kumar' : 'Suresh Kumar (Director General)',
+            displayName: cleanEmail === 'ab@gmail.com' ? 'Abhishek Kumar' : '',
             role: 'admin',
             createdAt: new Date().toISOString(),
             isActive: true
@@ -275,7 +298,7 @@ export class AuthService {
           id: `cit-${Date.now().toString().slice(-4)}`,
           name,
           email: cleanEmail,
-          password: password || 'password123',
+          password: password,
           phone,
           createdAt: new Date().toISOString()
         };

@@ -156,14 +156,14 @@ import { ToastComponent } from '../../common/components/toast.component';
                 </div>
               </div>
 
-              <!-- Select Registered Officer Dropdown -->
+              <!-- Select Registered Officer Dropdown (Unassigned Officers Only) -->
               <div class="pt-2 border-t border-slate-200 space-y-2">
-                <p class="text-[11px] font-bold text-teal-800 uppercase">+ Assign Registered Officer:</p>
+                <p class="text-[11px] font-bold text-teal-800 uppercase">+ Assign Registered Unassigned Officer:</p>
                 
-                <div *ngIf="authService.registeredOfficers().length > 0" class="space-y-2">
+                <div *ngIf="getUnassignedRegisteredOfficers().length > 0" class="space-y-2">
                   <select [(ngModel)]="selectedOfficerIdForForm" name="selectedOfficerId" class="w-full px-3 py-2 border rounded-xl text-xs bg-white font-bold">
-                    <option value="">Select a registered officer...</option>
-                    <option *ngFor="let off of authService.registeredOfficers()" [value]="off.id">
+                    <option value="">Select an unassigned registered officer...</option>
+                    <option *ngFor="let off of getUnassignedRegisteredOfficers()" [value]="off.id">
                       {{ off.name }} ({{ off.email }})
                     </option>
                   </select>
@@ -178,8 +178,8 @@ import { ToastComponent } from '../../common/components/toast.component';
                   </button>
                 </div>
 
-                <div *ngIf="authService.registeredOfficers().length === 0" class="text-xs text-rose-600 italic p-2 bg-rose-50 rounded-xl">
-                  No registered officers found. Please register officers first under Officer Management.
+                <div *ngIf="getUnassignedRegisteredOfficers().length === 0" class="text-xs text-amber-800 italic p-2 bg-amber-50 border border-amber-200 rounded-xl">
+                  No unassigned officers available. All registered officers are already assigned to operational departments.
                 </div>
               </div>
             </div>
@@ -194,7 +194,7 @@ import { ToastComponent } from '../../common/components/toast.component';
         </div>
       </div>
 
-      <!-- Quick Add Officer Modal (Select from Registered Officers) -->
+      <!-- Quick Add Officer Modal (Select from Unassigned Registered Officers) -->
       <div *ngIf="isQuickAddOfficerModalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
         <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in relative">
           <div class="flex justify-between items-center border-b pb-3">
@@ -202,22 +202,22 @@ import { ToastComponent } from '../../common/components/toast.component';
             <button (click)="isQuickAddOfficerModalOpen.set(false)" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
           </div>
 
-          <p class="text-xs text-slate-500">Select a registered officer to assign to this department.</p>
+          <p class="text-xs text-slate-500">Select an unassigned registered officer to assign exclusively to this department.</p>
 
-          <div *ngIf="authService.registeredOfficers().length > 0" class="space-y-3 text-xs">
+          <div *ngIf="getUnassignedRegisteredOfficers().length > 0" class="space-y-3 text-xs">
             <div>
-              <label class="block font-bold text-slate-700 uppercase mb-1">Select Registered Officer *</label>
+              <label class="block font-bold text-slate-700 uppercase mb-1">Select Unassigned Registered Officer *</label>
               <select [(ngModel)]="quickSelectedOfficerId" class="w-full px-3 py-2 border rounded-xl font-bold text-xs bg-white">
-                <option value="">Select a registered officer...</option>
-                <option *ngFor="let off of authService.registeredOfficers()" [value]="off.id">
+                <option value="">Select an unassigned officer...</option>
+                <option *ngFor="let off of getUnassignedRegisteredOfficers()" [value]="off.id">
                   {{ off.name }} ({{ off.email }})
                 </option>
               </select>
             </div>
           </div>
 
-          <div *ngIf="authService.registeredOfficers().length === 0" class="text-xs text-rose-600 italic p-3 bg-rose-50 rounded-xl">
-            No registered officers found. Please register officers first under Officer Management.
+          <div *ngIf="getUnassignedRegisteredOfficers().length === 0" class="text-xs text-amber-800 italic p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            No unassigned officers available. All registered officers are currently assigned to operational departments.
           </div>
 
           <div class="flex space-x-2 pt-2 border-t">
@@ -256,6 +256,23 @@ export class DepartmentManagementComponent {
     assignedOfficers: [] as any[]
   };
 
+  getUnassignedRegisteredOfficers() {
+    const depts = this.departmentService.departments();
+    const currentFormOfficerIds = this.deptForm.assignedOfficers.map(o => o.id);
+    const currentFormOfficerEmails = this.deptForm.assignedOfficers.map(o => o.email.toLowerCase());
+
+    return this.authService.registeredOfficers().filter(off => {
+      if (currentFormOfficerIds.includes(off.id) || currentFormOfficerEmails.includes(off.email.toLowerCase())) {
+        return false;
+      }
+      const isAssignedToOtherDept = depts.some(d => 
+        d.id !== this.editingDeptId && d.assignedOfficers?.some(o => o.id === off.id || o.email.toLowerCase() === off.email.toLowerCase())
+      );
+      const isUnassignedState = !off.departmentId || off.departmentId === '' || off.departmentName === 'Unassigned';
+      return isUnassignedState && !isAssignedToOtherDept;
+    });
+  }
+
   openCreateModal() {
     this.editingDeptId = null;
     this.selectedOfficerIdForForm = '';
@@ -292,10 +309,19 @@ export class DepartmentManagementComponent {
     const registered = this.authService.registeredOfficers().find(o => o.id === this.selectedOfficerIdForForm);
     if (!registered) return;
 
-    // Avoid duplicates
-    if (this.deptForm.assignedOfficers.some(o => o.id === registered.id || o.email === registered.email)) {
-      this.toastMessage.set(`Officer "${registered.name}" is already added to this list.`);
+    // Check if already in current form list
+    if (this.deptForm.assignedOfficers.some(o => o.id === registered.id || o.email.toLowerCase() === registered.email.toLowerCase())) {
+      this.toastMessage.set(`Officer "${registered.name}" is already in this department list.`);
       return;
+    }
+
+    // Check if officer is assigned to another department
+    const existingDept = this.departmentService.departments().find(d => 
+      d.id !== this.editingDeptId && d.assignedOfficers?.some(o => o.id === registered.id || o.email.toLowerCase() === registered.email.toLowerCase())
+    );
+
+    if (existingDept) {
+      this.toastMessage.set(`Note: Officer "${registered.name}" will be reassigned from "${existingDept.name}" (one officer can only belong to one department).`);
     }
 
     this.deptForm.assignedOfficers.push({
@@ -303,7 +329,7 @@ export class DepartmentManagementComponent {
       name: registered.name,
       email: registered.email,
       designation: registered.designation || 'Officer',
-      phone: registered.phone || '+91 #########'
+      phone: registered.phone
     });
 
     this.selectedOfficerIdForForm = '';
@@ -325,14 +351,23 @@ export class DepartmentManagementComponent {
     const registered = this.authService.registeredOfficers().find(o => o.id === this.quickSelectedOfficerId);
     if (!registered) return;
 
+    const existingDept = this.departmentService.departments().find(d => 
+      d.id !== this.selectedDeptForAddOfficer!.id && d.assignedOfficers?.some(o => o.id === registered.id || o.email.toLowerCase() === registered.email.toLowerCase())
+    );
+
     this.departmentService.addOfficerToDepartment(this.selectedDeptForAddOfficer.id, {
       name: registered.name,
       email: registered.email,
       designation: registered.designation || 'Officer',
-      phone: registered.phone || '+91 ##########'
+      phone: registered.phone
     });
 
-    this.toastMessage.set(`Assigned officer "${registered.name}" to ${this.selectedDeptForAddOfficer.name}`);
+    if (existingDept) {
+      this.toastMessage.set(`Reassigned officer "${registered.name}" exclusively to ${this.selectedDeptForAddOfficer.name} (removed from ${existingDept.name}).`);
+    } else {
+      this.toastMessage.set(`Assigned officer "${registered.name}" to ${this.selectedDeptForAddOfficer.name}`);
+    }
+
     this.isQuickAddOfficerModalOpen.set(false);
     this.quickSelectedOfficerId = '';
   }

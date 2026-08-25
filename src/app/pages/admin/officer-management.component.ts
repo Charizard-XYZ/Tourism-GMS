@@ -22,9 +22,16 @@ import { RegisteredOfficer } from '../../core/models/user.model';
           <p class="text-xs text-slate-500">Register and edit Officers with secure credentials. Only registered officers can log in under Officer Login.</p>
         </div>
 
-        <button (click)="openRegisterModal()" class="px-5 py-2.5 bg-[#0F172A] text-white rounded-xl text-xs font-extrabold hover:bg-slate-800 shadow-lg flex items-center space-x-2">
-          <span>Register New Officer</span>
-        </button>
+        <div class="flex items-center space-x-3">
+          <button (click)="isRevokedModalOpen.set(true)" class="px-4 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-extrabold hover:bg-rose-700 shadow-md flex items-center space-x-2 transition">
+            <span>Revoked Officers</span>
+            <span class="px-2 py-0.5 bg-white/20 text-white text-[11px] font-bold rounded-full">{{ getRevokedOfficersCount() }}</span>
+          </button>
+
+          <button (click)="openRegisterModal()" class="px-5 py-2.5 bg-[#0F172A] text-white rounded-xl text-xs font-extrabold hover:bg-slate-800 shadow-md flex items-center space-x-2 transition">
+            <span>Register New Officer</span>
+          </button>
+        </div>
       </div>
 
       <!-- Search & Department Filter Bar -->
@@ -80,7 +87,7 @@ import { RegisteredOfficer } from '../../core/models/user.model';
                 <button (click)="openEditModal(off)" class="px-3 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-lg text-xs font-bold transition">
                   Edit
                 </button>
-                <button (click)="deleteOfficer(off.id, off.name)" class="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-xs font-bold transition">
+                <button (click)="revokeOfficer(off.id, off.name)" class="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-xs font-bold transition">
                   Revoke Access
                 </button>
               </td>
@@ -88,7 +95,7 @@ import { RegisteredOfficer } from '../../core/models/user.model';
 
             <tr *ngIf="filteredOfficers().length === 0">
               <td colspan="7" class="p-8 text-center text-slate-400 italic">
-                No Officers found matching the search criteria.
+                No active Officers found matching the search criteria.
               </td>
             </tr>
           </tbody>
@@ -150,7 +157,7 @@ import { RegisteredOfficer } from '../../core/models/user.model';
                   type="text" 
                   [style.-webkit-text-security]="showConfirmPassword() ? 'none' : 'disc'" 
                   [(ngModel)]="newOfficer.confirmPassword" 
-                  name="reg_confirm_sec_pass" 
+                  name="reg_sec_pass_confirm" 
                   required 
                   autocomplete="one-time-code"
                   autocorrect="off"
@@ -171,24 +178,86 @@ import { RegisteredOfficer } from '../../core/models/user.model';
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Assign Department *</label>
-              <select [(ngModel)]="newOfficer.departmentId" name="departmentId" required class="w-full px-3 py-2 border rounded-xl text-xs">
-                <option *ngFor="let d of departmentService.departments()" [value]="d.id">{{ d.name }} ({{ d.code }})</option>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Assign Target Department</label>
+              <select [(ngModel)]="newOfficer.departmentId" name="sec_dept_assign_val" class="w-full px-3 py-2 border rounded-xl text-xs bg-white font-bold">
+                <option value="">Leave Unassigned for now</option>
+                <option *ngFor="let d of departmentService.departments()" [value]="d.id">
+                  {{ d.name }} ({{ d.code }})
+                </option>
               </select>
             </div>
 
             <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contact Phone Number</label>
-              <input type="text" [(ngModel)]="newOfficer.phone" name="phone" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter contact number" class="w-full px-3 py-2 border rounded-xl text-xs" />
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contact Phone</label>
+              <input type="text" [(ngModel)]="newOfficer.phone" name="sec_off_ph_val" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="+91 98160 XXXXX" class="w-full px-3 py-2 border rounded-xl text-xs" />
             </div>
 
-            <div class="flex space-x-2 pt-3 border-t">
-              <button type="button" (click)="isModalOpen.set(false)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
-              <button type="submit" [disabled]="!newOfficer.name.trim() || !newOfficer.email.trim() || !newOfficer.password.trim() || !newOfficer.confirmPassword.trim()" class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-extrabold hover:bg-slate-800 disabled:opacity-50">
-                {{ editingOfficerId() ? 'Update Officer' : 'Authorize & Save' }}
+            <div class="flex space-x-3 pt-4 border-t">
+              <button type="button" (click)="isModalOpen.set(false)" class="flex-1 bg-slate-100 py-3 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
+              <button type="submit" class="flex-1 bg-[#0F172A] text-white py-3 rounded-xl text-xs font-extrabold hover:bg-slate-800">
+                {{ editingOfficerId() ? 'Update Credentials' : 'Register Officer' }}
               </button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- Revoked Officers Roster Modal -->
+      <div *ngIf="isRevokedModalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div class="bg-white rounded-3xl max-w-3xl w-full p-6 space-y-4 shadow-2xl animate-fade-in relative max-h-[85vh] overflow-y-auto">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <span class="px-2.5 py-0.5 bg-rose-100 text-rose-800 font-extrabold uppercase text-[10px] rounded-full">Access Revoked Roster</span>
+              <h3 class="font-extrabold text-lg text-slate-900 mt-1">Revoked Officers Roster</h3>
+            </div>
+            <button (click)="isRevokedModalOpen.set(false)" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+          </div>
+
+          <p class="text-xs text-slate-500">List of officers whose credentials have been revoked by Admin. Revoked officers cannot log in. You can restore access or permanently remove officer records.</p>
+
+          <div class="overflow-x-auto border border-slate-200 rounded-2xl">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-900 text-white uppercase text-[10px] font-bold">
+                <tr>
+                  <th class="p-3">Officer ID</th>
+                  <th class="p-3">Name</th>
+                  <th class="p-3">Email</th>
+                  <th class="p-3">Phone</th>
+                  <th class="p-3">Status</th>
+                  <th class="p-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 font-medium">
+                <tr *ngFor="let off of getRevokedOfficers()" class="hover:bg-slate-50">
+                  <td class="p-3 font-bold text-rose-700 font-mono">{{ off.id }}</td>
+                  <td class="p-3 font-bold text-slate-900">{{ off.name }}</td>
+                  <td class="p-3 text-slate-600 font-mono">{{ off.email }}</td>
+                  <td class="p-3 text-slate-500">{{ off.phone || '—' }}</td>
+                  <td class="p-3">
+                    <span class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-extrabold uppercase rounded-md">Access Revoked</span>
+                  </td>
+                  <td class="p-3 text-right space-x-2">
+                    <button (click)="unrevokeOfficer(off.id, off.name)" class="px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-xs font-bold transition">
+                      Unrevoke Officer
+                    </button>
+                    <button (click)="deleteOfficerPermanently(off.id, off.name)" class="px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg text-xs font-bold transition">
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+
+                <tr *ngIf="getRevokedOfficers().length === 0">
+                  <td colspan="6" class="p-8 text-center text-slate-400 italic text-xs">
+                    No revoked officers found in system roster.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pt-2 text-right">
+            <button (click)="isRevokedModalOpen.set(false)" class="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800">Close</button>
+          </div>
         </div>
       </div>
 
@@ -202,6 +271,7 @@ export class OfficerManagementComponent {
   authService = inject(AuthService);
 
   isModalOpen = signal<boolean>(false);
+  isRevokedModalOpen = signal<boolean>(false);
   editingOfficerId = signal<string | null>(null);
   showPassword = signal<boolean>(false);
   showConfirmPassword = signal<boolean>(false);
@@ -212,6 +282,7 @@ export class OfficerManagementComponent {
 
   filteredOfficers(): RegisteredOfficer[] {
     return this.authService.registeredOfficers().filter(off => {
+      if (off.isRevoked) return false;
       const keyword = this.searchKeyword.toLowerCase().trim();
       const matchesSearch = !keyword ||
         off.id.toLowerCase().includes(keyword) ||
@@ -222,6 +293,14 @@ export class OfficerManagementComponent {
 
       return matchesSearch && matchesDept;
     });
+  }
+
+  getRevokedOfficers(): RegisteredOfficer[] {
+    return this.authService.registeredOfficers().filter(off => off.isRevoked === true);
+  }
+
+  getRevokedOfficersCount(): number {
+    return this.getRevokedOfficers().length;
   }
 
   getOfficerDepartmentName(off: RegisteredOfficer): string {
@@ -292,6 +371,15 @@ export class OfficerManagementComponent {
           phone: this.newOfficer.phone.trim()
         });
 
+        if (dept) {
+          this.departmentService.addOfficerToDepartment(dept.id, {
+            name: this.newOfficer.name.trim(),
+            email: this.newOfficer.email.trim(),
+            designation: 'Nodal Officer',
+            phone: this.newOfficer.phone.trim()
+          });
+        }
+
         this.toastMessage.set(`Officer details updated successfully for "${this.newOfficer.name}".`);
       } else {
         // Create mode
@@ -326,8 +414,23 @@ export class OfficerManagementComponent {
     }
   }
 
-  deleteOfficer(id: string, name: string) {
+  revokeOfficer(id: string, name: string) {
+    const registered = this.authService.registeredOfficers().find(o => o.id === id);
+    this.authService.revokeOfficerAccess(id);
+    this.departmentService.removeOfficerFromAllDepartments(id);
+    if (registered?.email) {
+      this.departmentService.removeOfficerFromAllDepartments(registered.email);
+    }
+    this.toastMessage.set(`Officer access revoked for "${name}". Removed from department and credentials disabled.`);
+  }
+
+  unrevokeOfficer(id: string, name: string) {
+    this.authService.restoreOfficerAccess(id);
+    this.toastMessage.set(`Officer "${name}" unrevoked successfully! Credentials re-enabled.`);
+  }
+
+  deleteOfficerPermanently(id: string, name: string) {
     this.authService.removeOfficerByAdmin(id);
-    this.toastMessage.set(`Officer access revoked for "${name}".`);
+    this.toastMessage.set(`Officer account permanently deleted for "${name}".`);
   }
 }

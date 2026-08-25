@@ -110,12 +110,28 @@ export class DepartmentService {
 
     const dept = this.departments().find(d => d.id === departmentId);
     const deptName = dept ? dept.name : 'Unassigned';
+    const cleanEmail = officer.email.toLowerCase().trim();
 
     const newOfficer: DepartmentOfficer = {
       ...officer,
+      email: cleanEmail,
       id: `off-${Date.now().toString().slice(-4)}`
     };
 
+    // Remove officer from ALL departments first to guarantee strict 1-department-per-officer assignment
+    this.departments.update(list =>
+      list.map(d => {
+        const currentOfficers = d.assignedOfficers || [];
+        const filteredOfficers = currentOfficers.filter(o => o.email.toLowerCase().trim() !== cleanEmail);
+        return {
+          ...d,
+          assignedOfficers: filteredOfficers,
+          officerCount: filteredOfficers.length
+        };
+      })
+    );
+
+    // Add officer exclusively to the single target department
     this.departments.update(list =>
       list.map(d => {
         if (d.id === departmentId) {
@@ -132,7 +148,7 @@ export class DepartmentService {
     );
 
     // Link officer in AuthService registeredOfficers roster
-    this.authService.linkOfficerToDepartment(officer.email, departmentId, deptName);
+    this.authService.linkOfficerToDepartment(cleanEmail, departmentId, deptName);
 
     const currentUser = this.authService.currentUser();
     if (currentUser) {
@@ -143,9 +159,29 @@ export class DepartmentService {
         'ADD_OFFICER',
         'Departments',
         departmentId,
-        `Added officer ${newOfficer.name} (${newOfficer.email}) to department ${departmentId}`
+        `Assigned officer ${newOfficer.name} (${cleanEmail}) exclusively to department ${deptName}`
       );
     }
+  }
+
+  /**
+   * Remove officer from ALL departments (e.g. when officer is revoked)
+   */
+  removeOfficerFromAllDepartments(officerIdOrEmail: string): void {
+    const cleanStr = officerIdOrEmail.toLowerCase().trim();
+    this.departments.update(list =>
+      list.map(d => {
+        const currentOfficers = d.assignedOfficers || [];
+        const updatedOfficers = currentOfficers.filter(o => 
+          o.id.toLowerCase().trim() !== cleanStr && o.email.toLowerCase().trim() !== cleanStr
+        );
+        return {
+          ...d,
+          assignedOfficers: updatedOfficers,
+          officerCount: updatedOfficers.length
+        };
+      })
+    );
   }
 
   /**

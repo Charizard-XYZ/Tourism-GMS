@@ -23,4 +23,5 @@ export interface RegisteredOfficer {
   departmentName: string;
   phone?: string;
   createdAt: string;
+  isRevoked?: boolean;
 }
