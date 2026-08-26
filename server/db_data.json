@@ -1,80 +1,9 @@
 {
   "departments": [],
   "officers": [
-    {
-      "id": "OFF-314475",
-      "name": "Amar",
-      "email": "amar@gmail.com",
-      "password": "124578",
-      "designation": "Nodal Officer",
-      "departmentId": "",
-      "departmentName": "Unassigned Department",
-      "phone": "3265982154",
-      "createdAt": "2026-08-25T19:27:05.949Z"
-    }
   ],
   "grievances": [],
   "comments": [],
   "auditLogs": [
-    {
-      "id": "log-6505",
-      "timestamp": "2026-08-25T19:30:56.505Z",
-      "userId": "ADM-1001",
-      "userName": "Abhishek Kumar",
-      "userRole": "admin",
-      "action": "ADD_OFFICER",
-      "targetCollection": "Departments",
-      "targetId": "dept-7988",
-      "details": "Added officer Amar (amar@gmail.com) to department dept-7988",
-      "ipAddress": "127.0.0.1"
-    },
-    {
-      "id": "log-4895",
-      "timestamp": "2026-08-25T19:30:44.895Z",
-      "userId": "ADM-1001",
-      "userName": "Abhishek Kumar",
-      "userRole": "admin",
-      "action": "REMOVE_OFFICER",
-      "targetCollection": "Departments",
-      "targetId": "dept-7988",
-      "details": "Removed officer ID OFF-314475 from department dept-7988",
-      "ipAddress": "127.0.0.1"
-    },
-    {
-      "id": "log-6394",
-      "timestamp": "2026-08-25T19:30:36.394Z",
-      "userId": "ADM-1001",
-      "userName": "Abhishek Kumar",
-      "userRole": "admin",
-      "action": "ADD_OFFICER",
-      "targetCollection": "Departments",
-      "targetId": "dept-0899",
-      "details": "Added officer Amar (amar@gmail.com) to department dept-0899",
-      "ipAddress": "127.0.0.1"
-    },
-    {
-      "id": "log-0899",
-      "timestamp": "2026-08-25T19:29:40.899Z",
-      "userId": "ADM-1001",
-      "userName": "Abhishek Kumar",
-      "userRole": "admin",
-      "action": "CREATE_DEPARTMENT",
-      "targetCollection": "Departments",
-      "targetId": "dept-0899",
-      "details": "Created department: Hotel (TS-HT) with 0 officers",
-      "ipAddress": "127.0.0.1"
-    },
-    {
-      "id": "log-7988",
-      "timestamp": "2026-08-25T19:28:27.988Z",
-      "userId": "ADM-1001",
-      "userName": "Abhishek Kumar",
-      "userRole": "admin",
-      "action": "CREATE_DEPARTMENT",
-      "targetCollection": "Departments",
-      "targetId": "dept-7988",
-      "details": "Created department: Travel (TS-TR) with 1 officers",
-      "ipAddress": "127.0.0.1"
-    }
   ]
 }
