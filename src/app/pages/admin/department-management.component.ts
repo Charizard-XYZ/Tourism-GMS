@@ -111,28 +111,36 @@ import { ToastComponent } from '../../common/components/toast.component';
               <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Department Name *</label>
                 <input type="text" [(ngModel)]="deptForm.name" name="sec_dept_ident" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter Department name" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
+                <p *ngIf="hasSubmitted() && !deptForm.name.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+                <p *ngIf="hasSubmitted() && deptForm.name.trim() && isNameNumericInvalid(deptForm.name)" class="text-[11px] text-rose-600 font-bold mt-1">Names can not be in number</p>
               </div>
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Department Code *</label>
                 <input type="text" [(ngModel)]="deptForm.code" name="code" required autocomplete="one-time-code" autocorrect="off" autocapitalize="on" spellcheck="false" data-lpignore="true" placeholder="e.g. TS-CELL" class="w-full px-4 py-2.5 border rounded-xl text-xs font-mono" />
+                <p *ngIf="hasSubmitted() && !deptForm.code.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
               </div>
             </div>
 
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Description *</label>
               <textarea [(ngModel)]="deptForm.description" name="description" rows="2" required autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Operational responsibilities..." class="w-full px-4 py-2.5 border rounded-xl text-xs"></textarea>
+              <p *ngIf="hasSubmitted() && !deptForm.description.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contact Phone *</label>
-                <input type="text" [(ngModel)]="deptForm.contactPhone" name="contactPhone" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter Department contact number" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
+                <input type="text" [ngModel]="deptForm.contactPhone" (ngModelChange)="onDeptPhoneChange($event)" name="contactPhone" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="e.g. +91 9816012345 or 9816012345" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
+                <p *ngIf="hasSubmitted() && !deptForm.contactPhone.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+                <p *ngIf="hasSubmitted() && deptForm.contactPhone.trim() && isPhoneTextInvalid(deptForm.contactPhone)" class="text-[11px] text-rose-600 font-bold mt-1">Enter phone number</p>
               </div>
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Official Email *</label>
                 <input type="text" [(ngModel)]="deptForm.contactEmail" name="sec_dept_comm_addr" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="example@gmail.com" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
+                <p *ngIf="hasSubmitted() && !deptForm.contactEmail.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+                <p *ngIf="hasSubmitted() && deptForm.contactEmail.trim() && !isEmailValid(deptForm.contactEmail)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format. Must be in format: username@domain.com</p>
               </div>
             </div>
 
@@ -238,6 +246,7 @@ export class DepartmentManagementComponent {
 
   isModalOpen = signal<boolean>(false);
   isQuickAddOfficerModalOpen = signal<boolean>(false);
+  hasSubmitted = signal<boolean>(false);
   toastMessage = signal<string | null>(null);
 
   editingDeptId: string | null = null;
@@ -276,6 +285,7 @@ export class DepartmentManagementComponent {
   openCreateModal() {
     this.editingDeptId = null;
     this.selectedOfficerIdForForm = '';
+    this.hasSubmitted.set(false);
     this.deptForm = {
       name: '',
       code: '',
@@ -291,6 +301,7 @@ export class DepartmentManagementComponent {
   openEditModal(dept: Department) {
     this.editingDeptId = dept.id;
     this.selectedOfficerIdForForm = '';
+    this.hasSubmitted.set(false);
     this.deptForm = {
       name: dept.name,
       code: dept.code,
@@ -381,7 +392,47 @@ export class DepartmentManagementComponent {
     }
   }
 
+  onDeptPhoneChange(val: string) {
+    this.deptForm.contactPhone = val;
+  }
+
+  isNameNumericInvalid(val: string): boolean {
+    if (!val.trim()) return false;
+    return /\d/.test(val);
+  }
+
+  isEmailValid(val: string): boolean {
+    return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(val.trim());
+  }
+
+  isPhoneTextInvalid(val: string): boolean {
+    if (!val.trim()) return false;
+    const clean = val.replace(/[\s+-]/g, '');
+    return !/^\d+$/.test(clean) || clean.length !== 10;
+  }
+
   saveDepartment() {
+    this.hasSubmitted.set(true);
+    if (!this.deptForm.name.trim() || !this.deptForm.code.trim() || !this.deptForm.description.trim() || !this.deptForm.contactPhone.trim() || !this.deptForm.contactEmail.trim()) {
+      this.toastMessage.set('Please fill out all required fields.');
+      return;
+    }
+
+    if (this.isNameNumericInvalid(this.deptForm.name)) {
+      this.toastMessage.set('Names can not be in number');
+      return;
+    }
+
+    if (!this.isEmailValid(this.deptForm.contactEmail)) {
+      this.toastMessage.set('Invalid official email format. Please enter a valid email address (e.g. dept@hp.gov.in).');
+      return;
+    }
+
+    if (this.isPhoneTextInvalid(this.deptForm.contactPhone)) {
+      this.toastMessage.set('Enter phone number');
+      return;
+    }
+
     try {
       if (this.editingDeptId) {
         this.departmentService.updateDepartment(this.editingDeptId, this.deptForm);

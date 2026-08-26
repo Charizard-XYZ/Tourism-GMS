@@ -61,6 +61,7 @@ import { ToastComponent } from '../../common/components/toast.component';
               placeholder="Enter Grievance title"
               class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3]"
             />
+            <p *ngIf="hasSubmitted && !title.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please enter a grievance title.</p>
           </div>
 
           <!-- Description -->
@@ -76,9 +77,10 @@ import { ToastComponent } from '../../common/components/toast.component';
               autocapitalize="off"
               spellcheck="false"
               data-lpignore="true"
-              placeholder="Provide exact details (e.g. date,time,name and everything about your grievance)"
+              placeholder="Provide exact details (e.g. date, time, name and everything about your grievance)"
               class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3]"
             ></textarea>
+            <p *ngIf="hasSubmitted && !description.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please provide a detailed description of your grievance.</p>
           </div>
 
           <!-- Location -->
@@ -97,6 +99,7 @@ import { ToastComponent } from '../../common/components/toast.component';
               placeholder="Enter location"
               class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3]"
             />
+            <p *ngIf="hasSubmitted && !location.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please enter the exact location or address.</p>
           </div>
 
           <!-- Submit Action Button -->
@@ -136,6 +139,7 @@ export class GrievanceSubmissionComponent {
   title = '';
   description = '';
   location = '';
+  hasSubmitted = false;
 
   isSubmitting = signal<boolean>(false);
   toastMessage = signal<string | null>(null);
@@ -154,7 +158,11 @@ export class GrievanceSubmissionComponent {
   }
 
   onSubmit() {
-    if (!this.title || !this.description || !this.location) return;
+    this.hasSubmitted = true;
+    if (!this.title.trim() || !this.description.trim() || !this.location.trim()) {
+      this.toastMessage.set('Please fill out all required fields.');
+      return;
+    }
 
     this.isSubmitting.set(true);
     const user = this.authService.currentUser();

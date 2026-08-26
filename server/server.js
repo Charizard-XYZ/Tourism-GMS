@@ -13,9 +13,118 @@ app.use(express.json());
 const DATA_FILE = path.join(__dirname, 'db_data.json');
 
 let dbData = {
-  departments: [],
-  officers: [],
-  grievances: [],
+  departments: [
+    {
+      id: 'dept-01',
+      name: 'Transport & Mobility Cell',
+      code: 'TS-CELL',
+      description: 'Taxi fare regulation, permit compliance, prepaid booth oversight, and driver conduct.',
+      contactPhone: '+91 177 2654321',
+      contactEmail: 'transport.gms@hp.gov.in',
+      isActive: true,
+      officerCount: 1,
+      activeComplaintsCount: 1,
+      assignedOfficers: [
+        {
+          id: 'OFF-847291',
+          name: 'Ramesh Chand',
+          email: 'ramesh.chand@hp.gov.in',
+          designation: 'Senior Transport Inspector',
+          phone: '+91 98160 12345'
+        }
+      ],
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'dept-02',
+      name: 'Hospitality & Hotel Standards',
+      code: 'HT-STD',
+      description: 'Hotel tariff transparency, hygiene compliance, booking refunds, and hospitality dispute redressal.',
+      contactPhone: '+91 177 2654322',
+      contactEmail: 'hospitality.gms@hp.gov.in',
+      isActive: true,
+      officerCount: 1,
+      activeComplaintsCount: 1,
+      assignedOfficers: [
+        {
+          id: 'OFF-912834',
+          name: 'Sunil Kumar',
+          email: 'sunil.kumar@hp.gov.in',
+          designation: 'Hospitality Nodal Inspector',
+          phone: '+91 98160 67890'
+        }
+      ],
+      createdAt: new Date().toISOString()
+    }
+  ],
+  officers: [
+    {
+      id: 'OFF-847291',
+      name: 'Ramesh Chand',
+      email: 'ramesh.chand@hp.gov.in',
+      password: 'password123',
+      departmentId: 'dept-01',
+      departmentName: 'Transport & Mobility Cell',
+      designation: 'Senior Transport Inspector',
+      phone: '+91 98160 12345',
+      isRevoked: false,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'OFF-912834',
+      name: 'Sunil Kumar',
+      email: 'sunil.kumar@hp.gov.in',
+      password: 'password123',
+      departmentId: 'dept-02',
+      departmentName: 'Hospitality & Hotel Standards',
+      designation: 'Hospitality Nodal Inspector',
+      phone: '+91 98160 67890',
+      isRevoked: false,
+      createdAt: new Date().toISOString()
+    }
+  ],
+  grievances: [
+    {
+      id: 'g-1001',
+      trackingCode: 'GMS-2026-8492',
+      title: 'Overcharging prepaid taxi fare at Ridge Shimla',
+      description: 'Taxi operator demanded double rate beyond approved Directorate prepaid fare chart.',
+      category: 'Transport & Mobility Cell',
+      departmentId: 'dept-01',
+      departmentName: 'Transport & Mobility Cell',
+      assignedOfficerId: 'OFF-847291',
+      assignedOfficerName: 'Ramesh Chand',
+      status: 'in_progress',
+      isEscalated: false,
+      citizenId: 'cit-001',
+      citizenName: 'Amit Kapoor',
+      citizenEmail: 'amit.kapoor@gmail.com',
+      citizenPhone: '+91 98765 43210',
+      location: 'Shimla Ridge Prepaid Stand',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 'g-1002',
+      trackingCode: 'GMS-2026-9184',
+      title: 'Sanitation & Tariff Dispute at Mall Road Hotel',
+      description: 'Hotel management refused room refund and levied undisclosed surcharge upon checkout.',
+      category: 'Hospitality & Hotel Standards',
+      departmentId: 'dept-02',
+      departmentName: 'Hospitality & Hotel Standards',
+      assignedOfficerId: 'OFF-912834',
+      assignedOfficerName: 'Sunil Kumar',
+      status: 'assigned',
+      isEscalated: false,
+      citizenId: 'cit-002',
+      citizenName: 'Neha Sharma',
+      citizenEmail: 'neha.sharma@gmail.com',
+      citizenPhone: '+91 98160 54321',
+      location: 'Mall Road Manali',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ],
   comments: [],
   auditLogs: []
 };
@@ -121,15 +230,56 @@ app.get('/api/grievances', (req, res) => {
 // POST /api/grievances
 app.post('/api/grievances', (req, res) => {
   const randomCode = Math.floor(1000 + Math.random() * 9000);
+  const body = req.body;
+
+  const targetDeptId = body.departmentId;
+  const targetDeptName = body.departmentName;
+
+  // Find active non-revoked officers assigned to this target department
+  const activeOfficers = (dbData.officers || []).filter(o => !o.isRevoked);
+  const deptOfficers = activeOfficers.filter(o => 
+    (targetDeptId && o.departmentId === targetDeptId) || 
+    (targetDeptName && o.departmentName && o.departmentName.toLowerCase() === targetDeptName.toLowerCase())
+  );
+
+  let assignedOfficerId = body.assignedOfficerId || '';
+  let assignedOfficerName = body.assignedOfficerName || '';
+  let initialStatus = body.status || 'submitted';
+
+  if (!assignedOfficerId && deptOfficers.length > 0) {
+    const existingGrievances = dbData.grievances || [];
+    
+    // Count active complaints for each officer
+    const officersWithCounts = deptOfficers.map(off => {
+      const count = existingGrievances.filter(g => 
+        g.assignedOfficerId === off.id || 
+        g.assignedOfficerId === off.email || 
+        g.assignedOfficerName === off.name
+      ).length;
+      return { officer: off, count };
+    });
+
+    const minCount = Math.min(...officersWithCounts.map(o => o.count));
+    const leastLoaded = officersWithCounts.filter(o => o.count === minCount);
+    const selectedObj = leastLoaded[Math.floor(Math.random() * leastLoaded.length)];
+
+    assignedOfficerId = selectedObj.officer.id;
+    assignedOfficerName = selectedObj.officer.name;
+    initialStatus = 'assigned';
+  }
+
   const newGrievance = {
     id: `g-${Date.now().toString().slice(-4)}`,
     trackingCode: `GMS-2026-${randomCode}`,
-    status: 'submitted',
     isEscalated: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    ...req.body
+    ...body,
+    assignedOfficerId,
+    assignedOfficerName,
+    status: initialStatus
   };
+
   dbData.grievances.unshift(newGrievance);
   saveData();
   res.status(201).json(newGrievance);

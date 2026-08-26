@@ -12,18 +12,82 @@ export class DepartmentService {
   private authService = inject(AuthService);
   private firebaseService = inject(FirebaseService);
 
-  private initialDepartments: Department[] = [];
+  private initialDepartments: Department[] = [
+    {
+      id: 'dept-01',
+      name: 'Transport & Mobility Cell',
+      code: 'TS-CELL',
+      description: 'Taxi fare regulation, permit compliance, prepaid booth oversight, and driver conduct.',
+      contactPhone: '+91 177 2654321',
+      contactEmail: 'transport.gms@hp.gov.in',
+      isActive: true,
+      officerCount: 1,
+      activeComplaintsCount: 1,
+      assignedOfficers: [
+        {
+          id: 'OFF-847291',
+          name: 'Ramesh Chand',
+          email: 'ramesh.chand@hp.gov.in',
+          designation: 'Senior Transport Inspector',
+          phone: '+91 98160 12345'
+        }
+      ],
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'dept-02',
+      name: 'Hospitality & Hotel Standards',
+      code: 'HT-STD',
+      description: 'Hotel tariff transparency, hygiene compliance, booking refunds, and hospitality dispute redressal.',
+      contactPhone: '+91 177 2654322',
+      contactEmail: 'hospitality.gms@hp.gov.in',
+      isActive: true,
+      officerCount: 1,
+      activeComplaintsCount: 1,
+      assignedOfficers: [
+        {
+          id: 'OFF-912834',
+          name: 'Sunil Kumar',
+          email: 'sunil.kumar@hp.gov.in',
+          designation: 'Hospitality Nodal Inspector',
+          phone: '+91 98160 67890'
+        }
+      ],
+      createdAt: new Date().toISOString()
+    }
+  ];
 
   readonly departments = signal<Department[]>(this.initialDepartments);
 
   constructor() {
+    this.restoreFromStorage();
     this.syncFromBackend();
+  }
+
+  private restoreFromStorage(): void {
+    try {
+      const savedDepts = localStorage.getItem('gms_departments');
+      if (savedDepts) {
+        this.departments.set(JSON.parse(savedDepts));
+      }
+    } catch (err) {
+      console.warn('Failed to restore departments from localStorage:', err);
+    }
+  }
+
+  private saveToStorage(): void {
+    try {
+      localStorage.setItem('gms_departments', JSON.stringify(this.departments()));
+    } catch (err) {
+      console.warn('Failed to save departments to localStorage:', err);
+    }
   }
 
   async syncFromBackend() {
     const remote = await this.firebaseService.fetchApi<Department[]>('/departments');
     if (remote && Array.isArray(remote)) {
       this.departments.set(remote);
+      this.saveToStorage();
     }
   }
 

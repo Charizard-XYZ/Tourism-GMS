@@ -116,11 +116,15 @@ import { RegisteredOfficer } from '../../core/models/user.model';
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Full Name *</label>
               <input type="text" [(ngModel)]="newOfficer.name" name="sec_off_full_title" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter officer name" class="w-full px-3 py-2 border rounded-xl text-xs" />
+              <p *ngIf="hasSubmitted() && !newOfficer.name.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+              <p *ngIf="hasSubmitted() && newOfficer.name.trim() && isNameNumericInvalid(newOfficer.name)" class="text-[11px] text-rose-600 font-bold mt-1">Names can not be in number</p>
             </div>
 
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Official Email (Login ID) *</label>
               <input type="text" [(ngModel)]="newOfficer.email" name="sec_off_reg_addr" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="example@gmail.com" class="w-full px-3 py-2 border rounded-xl text-xs" />
+              <p *ngIf="hasSubmitted() && !newOfficer.email.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+              <p *ngIf="hasSubmitted() && newOfficer.email.trim() && !isEmailValid(newOfficer.email)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format. Must be in format: username@domain.com</p>
             </div>
 
             <div>
@@ -143,11 +147,12 @@ import { RegisteredOfficer } from '../../core/models/user.model';
                 <button 
                   type="button" 
                   (click)="showPassword.set(!showPassword())" 
-                  class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 focus:outline-none"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 focus:outline-none"
                 >
                   {{ showPassword() ? 'Hide' : 'Show' }}
                 </button>
               </div>
+              <p *ngIf="hasSubmitted() && !newOfficer.password.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
             </div>
 
             <div>
@@ -157,7 +162,7 @@ import { RegisteredOfficer } from '../../core/models/user.model';
                   type="text" 
                   [style.-webkit-text-security]="showConfirmPassword() ? 'none' : 'disc'" 
                   [(ngModel)]="newOfficer.confirmPassword" 
-                  name="reg_sec_pass_confirm" 
+                  name="reg_confirm_sec_pass" 
                   required 
                   autocomplete="one-time-code"
                   autocorrect="off"
@@ -170,11 +175,18 @@ import { RegisteredOfficer } from '../../core/models/user.model';
                 <button 
                   type="button" 
                   (click)="showConfirmPassword.set(!showConfirmPassword())" 
-                  class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 focus:outline-none"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 focus:outline-none"
                 >
                   {{ showConfirmPassword() ? 'Hide' : 'Show' }}
                 </button>
               </div>
+              <p *ngIf="hasSubmitted() && !newOfficer.confirmPassword.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+              <p *ngIf="hasSubmitted() && newOfficer.password.trim() && newOfficer.confirmPassword.trim() && newOfficer.password !== newOfficer.confirmPassword" class="text-[11px] text-rose-600 font-bold mt-1">Passwords do not match.</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Designation / Role Title</label>
+              <input type="text" [(ngModel)]="newOfficer.designation" name="sec_off_desig_title" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="e.g. Senior Nodal Officer" class="w-full px-3 py-2 border rounded-xl text-xs" />
             </div>
 
             <div>
@@ -189,7 +201,8 @@ import { RegisteredOfficer } from '../../core/models/user.model';
 
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contact Phone</label>
-              <input type="text" [(ngModel)]="newOfficer.phone" name="sec_off_ph_val" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="+91 98160 XXXXX" class="w-full px-3 py-2 border rounded-xl text-xs" />
+              <input type="text" [ngModel]="newOfficer.phone" (ngModelChange)="onOfficerPhoneChange($event)" name="sec_off_ph_val" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="e.g. +91 9816012345 or 9816012345" class="w-full px-3 py-2 border rounded-xl text-xs" />
+              <p *ngIf="hasSubmitted() && newOfficer.phone.trim() && isPhoneTextInvalid(newOfficer.phone)" class="text-[11px] text-rose-600 font-bold mt-1">Enter phone number</p>
             </div>
 
             <div class="flex space-x-3 pt-4 border-t">
@@ -275,6 +288,7 @@ export class OfficerManagementComponent {
   editingOfficerId = signal<string | null>(null);
   showPassword = signal<boolean>(false);
   showConfirmPassword = signal<boolean>(false);
+  hasSubmitted = signal<boolean>(false);
   toastMessage = signal<string | null>(null);
 
   searchKeyword = '';
@@ -324,18 +338,21 @@ export class OfficerManagementComponent {
     password: '',
     confirmPassword: '',
     departmentId: '',
-    phone: ''
+    phone: '',
+    designation: ''
   };
 
   openRegisterModal() {
     this.editingOfficerId.set(null);
+    this.hasSubmitted.set(false);
     const defaultDept = this.departmentService.departments()[0]?.id || '';
-    this.newOfficer = { name: '', email: '', password: '', confirmPassword: '', departmentId: defaultDept, phone: '' };
+    this.newOfficer = { name: '', email: '', password: '', confirmPassword: '', departmentId: defaultDept, phone: '', designation: '' };
     this.isModalOpen.set(true);
   }
 
   openEditModal(off: RegisteredOfficer) {
     this.editingOfficerId.set(off.id);
+    this.hasSubmitted.set(false);
     const defaultDept = this.departmentService.departments()[0]?.id || '';
     this.newOfficer = {
       name: off.name,
@@ -343,13 +360,52 @@ export class OfficerManagementComponent {
       password: off.password || '',
       confirmPassword: off.password || '',
       departmentId: off.departmentId || defaultDept,
-      phone: off.phone || ''
+      phone: off.phone || '',
+      designation: off.designation || ''
     };
     this.isModalOpen.set(true);
   }
 
+  onOfficerPhoneChange(val: string) {
+    this.newOfficer.phone = val;
+  }
+
+  isNameNumericInvalid(val: string): boolean {
+    if (!val.trim()) return false;
+    return /\d/.test(val);
+  }
+
+  isEmailValid(val: string): boolean {
+    return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(val.trim());
+  }
+
+  isPhoneTextInvalid(val: string): boolean {
+    if (!val.trim()) return false;
+    const clean = val.replace(/[\s+-]/g, '');
+    return !/^\d+$/.test(clean) || clean.length !== 10;
+  }
+
   saveOfficer() {
-    if (!this.newOfficer.name.trim() || !this.newOfficer.email.trim() || !this.newOfficer.password.trim() || !this.newOfficer.confirmPassword.trim()) return;
+    this.hasSubmitted.set(true);
+    if (!this.newOfficer.name.trim() || !this.newOfficer.email.trim() || !this.newOfficer.password.trim() || !this.newOfficer.confirmPassword.trim()) {
+      this.toastMessage.set('Please fill out all required fields.');
+      return;
+    }
+
+    if (this.isNameNumericInvalid(this.newOfficer.name)) {
+      this.toastMessage.set('Names can not be in number');
+      return;
+    }
+
+    if (!this.isEmailValid(this.newOfficer.email)) {
+      this.toastMessage.set('Invalid email format. Please enter a valid officer email address (e.g. officer@hp.gov.in).');
+      return;
+    }
+
+    if (this.newOfficer.phone.trim() && this.isPhoneTextInvalid(this.newOfficer.phone)) {
+      this.toastMessage.set('Enter phone number');
+      return;
+    }
 
     if (this.newOfficer.password !== this.newOfficer.confirmPassword) {
       this.toastMessage.set('Passwords do not match. Please verify.');
@@ -408,7 +464,7 @@ export class OfficerManagementComponent {
       this.isModalOpen.set(false);
       this.editingOfficerId.set(null);
       const defaultDept = this.departmentService.departments()[0]?.id || '';
-      this.newOfficer = { name: '', email: '', password: '', confirmPassword: '', departmentId: defaultDept, phone: '' };
+      this.newOfficer = { name: '', email: '', password: '', confirmPassword: '', departmentId: defaultDept, phone: '', designation: '' };
     } catch (err: any) {
       this.toastMessage.set(err.message || 'Action failed.');
     }

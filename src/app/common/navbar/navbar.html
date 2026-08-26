@@ -4,7 +4,7 @@
     <div class="flex items-center justify-between h-20">
 
       <!-- Brand Logo -->
-      <a routerLink="/" class="flex items-center space-x-3 group shrink-0">
+      <a [routerLink]="getHomeRoute()" class="flex items-center space-x-3 group shrink-0">
         <img src="Web-Logo.jpg" alt="Tourism GMS Logo" class="w-12 h-12 rounded-xl object-cover shadow-md group-hover:scale-105 transition" />
         <div>
           <div class="flex items-center space-x-2">
@@ -19,7 +19,8 @@
       <!-- Desktop & Laptop Navigation Links -->
       <nav class="hidden lg:flex items-center space-x-1 overflow-x-auto max-w-4xl">
         <a 
-          routerLink="/" 
+          *ngIf="authService.isAuthenticated()"
+          [routerLink]="getHomeRoute()" 
           routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
           [routerLinkActiveOptions]="{exact: true}"
           class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
@@ -141,7 +142,11 @@
               <p class="text-[11px] font-mono text-slate-500 truncate">{{ authService.currentUser()?.email }}</p>
             </div>
 
-            <div class="border-t border-slate-100 mt-2 pt-2">
+            <div class="border-t border-slate-100 mt-2 pt-2 space-y-1">
+              <button *ngIf="authService.isCitizen()" (click)="openEditProfileModal()" class="w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 rounded-xl transition font-extrabold flex items-center justify-between">
+                <span>Edit Profile</span>
+                <span class="text-teal-700 font-mono">→</span>
+              </button>
               <button (click)="logout()" class="w-full text-center py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition font-medium">
                 Logout
               </button>
@@ -171,7 +176,7 @@
 
   <!-- Mobile & Tablet Navigation Drawer -->
   <div *ngIf="isMobileMenuOpen()" class="lg:hidden bg-slate-900 border-b border-slate-800 px-4 py-4 space-y-2 animate-fade-in">
-    <a routerLink="/" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-200 hover:bg-slate-800">Home</a>
+    <a *ngIf="authService.isAuthenticated()" [routerLink]="getHomeRoute()" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-200 hover:bg-slate-800">Home</a>
     
     <!-- Citizen Links -->
     <ng-container *ngIf="authService.isCitizen()">
@@ -196,3 +201,80 @@
     </ng-container>
   </div>
 </header>
+
+<!-- Edit Profile Modal -->
+<div *ngIf="authService.isCitizen() && isEditProfileOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+  <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in text-slate-900">
+    <div class="flex justify-between items-center border-b pb-3">
+      <h3 class="font-extrabold text-base text-slate-900">Edit Profile Details</h3>
+      <button (click)="isEditProfileOpen.set(false)" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+    </div>
+
+    <form (submit)="saveProfile()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="space-y-4">
+      <div>
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Full Name *</label>
+        <input 
+          type="text" 
+          [(ngModel)]="editForm.name" 
+          name="prof_full_name" 
+          required 
+          autocomplete="one-time-code"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          data-lpignore="true"
+          placeholder="Enter full name" 
+          class="w-full px-4 py-2.5 border rounded-xl text-xs font-bold" 
+        />
+        <p *ngIf="hasSubmitted() && !editForm.name.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+        <p *ngIf="hasSubmitted() && editForm.name.trim() && isNameNumericInvalid(editForm.name)" class="text-[11px] text-rose-600 font-bold mt-1">Names can not be in number</p>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email Address *</label>
+        <input 
+          type="text" 
+          [(ngModel)]="editForm.email" 
+          name="prof_email_addr" 
+          required 
+          autocomplete="one-time-code"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          data-lpignore="true"
+          placeholder="example@gmail.com" 
+          class="w-full px-4 py-2.5 border rounded-xl text-xs" 
+        />
+        <p *ngIf="hasSubmitted() && !editForm.email.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+        <p *ngIf="hasSubmitted() && editForm.email.trim() && !isEmailValid(editForm.email)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format. Must be in format: username@domain.com</p>
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contact Mobile Number *</label>
+        <input 
+          type="text" 
+          [ngModel]="editForm.phone" 
+          (ngModelChange)="onPhoneChange($event)" 
+          name="prof_phone_num" 
+          required 
+          autocomplete="one-time-code"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          data-lpignore="true"
+          placeholder="e.g. +91 9816012345 or 9816012345" 
+          class="w-full px-4 py-2.5 border rounded-xl text-xs font-mono" 
+        />
+        <p *ngIf="hasSubmitted() && !editForm.phone.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+        <p *ngIf="hasSubmitted() && editForm.phone.trim() && isPhoneTextInvalid(editForm.phone)" class="text-[11px] text-rose-600 font-bold mt-1">Enter phone number</p>
+      </div>
+
+      <div class="flex space-x-2 pt-3 border-t">
+        <button type="button" (click)="isEditProfileOpen.set(false)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
+        <button type="submit" class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 transition">Save Profile</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<app-toast [message]="toastMessage()" (dismiss)="toastMessage.set(null)"></app-toast>

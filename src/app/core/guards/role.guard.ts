@@ -4,9 +4,11 @@ import { AuthService } from '../services/auth.service';
 import { UserRole } from '../models/user.model';
 
 export const roleGuard = (allowedRoles: UserRole[]): CanActivateFn => {
-  return () => {
+  return async () => {
     const authService = inject(AuthService);
     const router = inject(Router);
+
+    await authService.ensureInitialized();
 
     if (!authService.isAuthenticated()) {
       router.navigate(['/auth/login']);
@@ -14,7 +16,7 @@ export const roleGuard = (allowedRoles: UserRole[]): CanActivateFn => {
     }
 
     const role = authService.userRole();
-    if (allowedRoles.includes(role)) {
+    if (role && allowedRoles.includes(role)) {
       return true;
     }
 
@@ -27,3 +29,16 @@ export const roleGuard = (allowedRoles: UserRole[]): CanActivateFn => {
 export const adminGuard: CanActivateFn = roleGuard(['admin']);
 export const officerGuard: CanActivateFn = roleGuard(['officer', 'admin']);
 export const citizenGuard: CanActivateFn = roleGuard(['citizen', 'admin']);
+
+export const guestGuard: CanActivateFn = async () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  await authService.ensureInitialized();
+
+  if (authService.isAuthenticated()) {
+    router.navigate(['/home/hero-section'], { replaceUrl: true });
+    return false;
+  }
+  return true;
+};

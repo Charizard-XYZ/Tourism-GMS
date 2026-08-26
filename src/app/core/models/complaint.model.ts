@@ -38,7 +38,7 @@ export interface Grievance {
   assignedOfficerId?: string;
   assignedOfficerName?: string;
 
-  attachments: GrievanceAttachment[];
+  attachments?: GrievanceAttachment[];
 
   resolutionDetails?: string;
   resolutionAttachments?: GrievanceAttachment[];

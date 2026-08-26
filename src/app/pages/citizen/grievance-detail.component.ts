@@ -63,7 +63,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
             </div>
 
             <!-- Evidence Attachments -->
-            <div *ngIf="grievance.attachments.length > 0" class="pt-2">
+            <div *ngIf="grievance.attachments && grievance.attachments.length > 0" class="pt-2">
               <p class="text-xs font-bold text-slate-500 uppercase mb-2">Submitted Evidence Files:</p>
               <div class="flex flex-wrap gap-2">
                 <a *ngFor="let att of grievance.attachments" [href]="att.url" target="_blank" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-xs text-slate-700 flex items-center space-x-1.5">
@@ -181,13 +181,31 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
             </div>
           </div>
 
-          <!-- Action Box: Reopen Complaint -->
+          <!-- Action Box: Reopen & Feedback Buttons (Side-by-Side) -->
           <div *ngIf="grievance.status === 'resolved' || grievance.status === 'closed'" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-            <h4 class="font-bold text-xs text-slate-700 uppercase">Need Further Escalation?</h4>
-            <p class="text-xs text-slate-500">If the resolution provided was unsatisfactory, you may reopen this complaint for Admin escalation.</p>
-            <button (click)="isReopenModalOpen = true" class="w-full py-2.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs hover:bg-rose-100">
-              Reopen Complaint
-            </button>
+            <h4 class="font-bold text-xs text-slate-700 uppercase">Resolution Feedback & Escalation Actions</h4>
+            <p class="text-xs text-slate-500">Provide your resolution feedback rating or reopen this ticket if the resolution requires further action.</p>
+            
+            <div class="grid grid-cols-2 gap-3 pt-1">
+              <button (click)="isReopenModalOpen = true" class="w-full py-2.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs hover:bg-rose-100 transition">
+                Reopen Complaint
+              </button>
+
+              <button (click)="isFeedbackModalOpen = true" class="w-full py-2.5 bg-emerald-700 text-white rounded-xl font-bold text-xs hover:bg-emerald-800 transition flex items-center justify-center space-x-1 shadow-xs">
+                <span>Give Feedback ★</span>
+              </button>
+            </div>
+
+            <!-- Display Recorded Feedback & Rating if already submitted -->
+            <div *ngIf="grievance.rating" class="mt-3 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs space-y-1.5">
+              <div class="flex justify-between items-center">
+                <span class="font-bold text-emerald-900 uppercase text-[10px]">Your Submitted Rating:</span>
+                <span class="text-amber-500 font-extrabold text-sm">
+                  {{ '★'.repeat(grievance.rating) }}{{ '☆'.repeat(5 - grievance.rating) }} ({{ grievance.rating }}/5)
+                </span>
+              </div>
+              <p *ngIf="grievance.feedbackComments" class="text-slate-700 italic text-xs">"{{ grievance.feedbackComments }}"</p>
+            </div>
           </div>
 
         </div>
@@ -224,7 +242,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
       <div *ngIf="isReopenModalOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4">
           <h3 class="font-bold text-lg text-rose-700">Reopen Grievance Ticket</h3>
-          <p class="text-xs text-slate-500">State your reason for reopening. This will immediately trigger an urgent Admin review alert.</p>
+          <p class="text-xs text-slate-500">State your reason for reopening. This will immediately trigger an urgent officer escalation alert.</p>
 
           <textarea [(ngModel)]="reopenReason" rows="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Explain why the resolution was incomplete..." class="w-full px-4 py-2 border rounded-xl text-xs"></textarea>
 

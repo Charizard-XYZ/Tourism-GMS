@@ -1,6 +1,13 @@
 <div class="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
-  <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-3xl shadow-xl border border-slate-200">
+  <div class="max-w-md w-full space-y-6 bg-white p-8 rounded-3xl shadow-xl border border-slate-200">
     
+    <!-- Back to Home -->
+    <div>
+      <a routerLink="/" class="inline-flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-teal-700 transition">
+        <span>← Back to Home</span>
+      </a>
+    </div>
+
     <!-- Header -->
     <div class="text-center">
       <img src="Web-Logo.jpg" alt="Tourism GMS Logo" class="w-16 h-16 rounded-2xl object-cover mx-auto shadow-md mb-4" />
@@ -55,6 +62,8 @@
           placeholder="example@gmail.com"
           class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3] focus:outline-none"
         />
+        <p *ngIf="hasSubmitted() && !email.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+        <p *ngIf="hasSubmitted() && email.trim() && !isEmailValid(email)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format. Must be in format: username@domain.com</p>
       </div>
 
       <div>
@@ -86,6 +95,7 @@
             {{ showPassword() ? 'Hide' : 'Show' }}
           </button>
         </div>
+        <p *ngIf="hasSubmitted() && !password.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
       </div>
 
       <div *ngIf="errorMessage()" class="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl font-medium">
@@ -152,3 +162,5 @@
     </div>
   </div>
 </div>
+
+<app-toast [message]="toastMessage()" (dismiss)="toastMessage.set(null)"></app-toast>

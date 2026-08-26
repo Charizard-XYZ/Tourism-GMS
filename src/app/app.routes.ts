@@ -19,12 +19,13 @@ import { GrievanceAssignmentComponent } from './pages/admin/grievance-assignment
 import { ReportsAnalyticsComponent } from './pages/admin/reports-analytics.component';
 import { SystemSettingsComponent } from './pages/admin/system-settings.component';
 
-import { adminGuard, officerGuard, citizenGuard } from './core/guards/role.guard';
+import { adminGuard, officerGuard, citizenGuard, guestGuard } from './core/guards/role.guard';
 
 export const routes: Routes = [
   { path: '', component: HeroSectionComponent },
-  { path: 'auth/login', component: LoginComponent },
-  { path: 'auth/register', component: RegisterComponent },
+  { path: 'home/hero-section', component: HeroSectionComponent },
+  { path: 'auth/login', component: LoginComponent, canActivate: [guestGuard] },
+  { path: 'auth/register', component: RegisterComponent, canActivate: [guestGuard] },
 
   // Citizen Portal Routes
   { path: 'citizen/dashboard', component: CitizenDashboardComponent, canActivate: [citizenGuard] },

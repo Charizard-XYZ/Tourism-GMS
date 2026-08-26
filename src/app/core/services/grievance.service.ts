@@ -14,7 +14,50 @@ export class GrievanceService {
   private auditLogService = inject(AuditLogService);
   private firebaseService = inject(FirebaseService);
 
-  private initialGrievances: Grievance[] = [];
+  private initialGrievances: Grievance[] = [
+    {
+      id: 'g-1001',
+      trackingCode: 'GMS-2026-8492',
+      title: 'Overcharging prepaid taxi fare at Ridge Shimla',
+      description: 'Taxi operator demanded double rate beyond approved Directorate prepaid fare chart.',
+      category: 'Transport & Mobility Cell',
+      departmentId: 'dept-01',
+      departmentName: 'Transport & Mobility Cell',
+      assignedOfficerId: 'OFF-847291',
+      assignedOfficerName: 'Ramesh Chand',
+      status: 'in_progress',
+      isEscalated: false,
+      citizenId: 'cit-001',
+      citizenName: 'Amit Kapoor',
+      citizenEmail: 'amit.kapoor@gmail.com',
+      citizenPhone: '+91 98765 43210',
+      location: 'Shimla Ridge Prepaid Stand',
+      attachments: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      id: 'g-1002',
+      trackingCode: 'GMS-2026-9184',
+      title: 'Sanitation & Tariff Dispute at Mall Road Hotel',
+      description: 'Hotel management refused room refund and levied undisclosed surcharge upon checkout.',
+      category: 'Hospitality & Hotel Standards',
+      departmentId: 'dept-02',
+      departmentName: 'Hospitality & Hotel Standards',
+      assignedOfficerId: 'OFF-912834',
+      assignedOfficerName: 'Sunil Kumar',
+      status: 'assigned',
+      isEscalated: false,
+      citizenId: 'cit-002',
+      citizenName: 'Neha Sharma',
+      citizenEmail: 'neha.sharma@gmail.com',
+      citizenPhone: '+91 98160 54321',
+      location: 'Mall Road Manali',
+      attachments: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ];
   private initialComments: GrievanceComment[] = [];
 
   readonly grievances = signal<Grievance[]>(this.initialGrievances);
@@ -22,13 +65,44 @@ export class GrievanceService {
   readonly feedbacks = signal<Feedback[]>([]);
 
   constructor() {
+    this.restoreFromStorage();
     this.syncFromBackend();
+  }
+
+  private restoreFromStorage(): void {
+    try {
+      const savedGrievances = localStorage.getItem('gms_grievances');
+      if (savedGrievances) {
+        this.grievances.set(JSON.parse(savedGrievances));
+      }
+      const savedComments = localStorage.getItem('gms_comments');
+      if (savedComments) {
+        this.comments.set(JSON.parse(savedComments));
+      }
+      const savedFeedbacks = localStorage.getItem('gms_feedbacks');
+      if (savedFeedbacks) {
+        this.feedbacks.set(JSON.parse(savedFeedbacks));
+      }
+    } catch (err) {
+      console.warn('Failed to restore grievances from localStorage:', err);
+    }
+  }
+
+  private saveToStorage(): void {
+    try {
+      localStorage.setItem('gms_grievances', JSON.stringify(this.grievances()));
+      localStorage.setItem('gms_comments', JSON.stringify(this.comments()));
+      localStorage.setItem('gms_feedbacks', JSON.stringify(this.feedbacks()));
+    } catch (err) {
+      console.warn('Failed to save grievances to localStorage:', err);
+    }
   }
 
   async syncFromBackend() {
     const remote = await this.firebaseService.fetchApi<Grievance[]>('/grievances');
     if (remote && Array.isArray(remote)) {
       this.grievances.set(remote);
+      this.saveToStorage();
     }
   }
 
@@ -69,23 +143,70 @@ export class GrievanceService {
   }
 
   /**
-   * Submit a new grievance (Citizen)
+   * Submit a new grievance (Citizen) with automated load-balancing officer assignment
    */
   submitGrievance(data: Omit<Grievance, 'id' | 'trackingCode' | 'status' | 'createdAt' | 'updatedAt' | 'isEscalated'>): Grievance {
     const randomCode = Math.floor(1000 + Math.random() * 9000);
     const trackingCode = `GMS-2026-${randomCode}`;
 
+    const targetDeptId = data.departmentId;
+    const targetDeptName = data.departmentName;
+
+    // Find active non-revoked officers assigned to this target department
+    const allOfficers = this.authService.registeredOfficers().filter(o => !o.isRevoked);
+    const deptOfficers = allOfficers.filter(o => 
+      (targetDeptId && o.departmentId === targetDeptId) || 
+      (targetDeptName && o.departmentName?.toLowerCase() === targetDeptName.toLowerCase())
+    );
+
+    let assignedOfficerId = data.assignedOfficerId || '';
+    let assignedOfficerName = data.assignedOfficerName || '';
+    let initialStatus: GrievanceStatus = 'submitted';
+
+    if (deptOfficers.length > 0) {
+      const existingGrievances = this.grievances();
+      
+      // Calculate active complaint count for each candidate officer in target department
+      const officersWithCounts = deptOfficers.map(off => {
+        const count = existingGrievances.filter(g => 
+          g.assignedOfficerId === off.id || 
+          g.assignedOfficerId === off.email ||
+          g.assignedOfficerName === off.name
+        ).length;
+        return { officer: off, count };
+      });
+
+      // Find the minimum grievance count
+      const minCount = Math.min(...officersWithCounts.map(o => o.count));
+
+      // Filter all officers who share the minimum count
+      const leastLoaded = officersWithCounts.filter(o => o.count === minCount);
+
+      // Pick randomly if 2 or more officers have equal minimum complaints
+      const selectedObj = leastLoaded[Math.floor(Math.random() * leastLoaded.length)];
+      const assignedOfficer = selectedObj.officer;
+
+      assignedOfficerId = assignedOfficer.id;
+      assignedOfficerName = assignedOfficer.name;
+      initialStatus = 'assigned';
+    }
+
     const newGrievance: Grievance = {
       ...data,
       id: `g-${Date.now().toString().slice(-4)}`,
       trackingCode,
-      status: 'submitted',
+      departmentId: targetDeptId,
+      departmentName: targetDeptName,
+      assignedOfficerId,
+      assignedOfficerName,
+      status: initialStatus,
       isEscalated: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
     this.grievances.update(list => [newGrievance, ...list]);
+    this.saveToStorage();
 
     // Push to Firebase REST API
     this.firebaseService.fetchApi<Grievance>('/grievances', {
@@ -101,7 +222,7 @@ export class GrievanceService {
       'SUBMIT_GRIEVANCE',
       'Grievances',
       newGrievance.id,
-      `Submitted grievance ${trackingCode}: ${newGrievance.title}`
+      `Submitted grievance ${trackingCode} auto-assigned to ${assignedOfficerName || 'Unassigned'}`
     );
 
     return newGrievance;

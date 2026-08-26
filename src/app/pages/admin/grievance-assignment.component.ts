@@ -94,11 +94,8 @@ import { Grievance } from '../../core/models/complaint.model';
                 </div>
               </td>
               <td class="p-4 text-right space-x-2">
-                <button (click)="openCommentModal(g)" class="px-3 py-1.5 bg-slate-100 text-slate-800 rounded-lg font-bold text-xs hover:bg-slate-200 transition">
-                  Comments ({{ grievanceService.getCommentsForGrievance(g.id).length }})
-                </button>
-                <button (click)="openAssignModal(g)" class="px-3.5 py-1.5 bg-[#A0C8C3] text-slate-950 rounded-lg font-extrabold text-xs hover:bg-teal-300 transition shadow-sm">
-                  Assign Officer →
+                <button (click)="openCommentModal(g)" class="px-3.5 py-1.5 bg-slate-900 text-white rounded-lg font-extrabold text-xs hover:bg-slate-800 transition shadow-sm">
+                  Comments & Discussion ({{ grievanceService.getCommentsForGrievance(g.id).length }})
                 </button>
               </td>
             </tr>
@@ -110,54 +107,6 @@ import { Grievance } from '../../core/models/complaint.model';
             </tr>
           </tbody>
         </table>
-      </div>
-
-      <!-- Officer Assignment Modal (Department is pre-chosen by tourist) -->
-      <div *ngIf="selectedGrievance" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in">
-          <div class="flex justify-between items-center border-b pb-3">
-            <h3 class="font-bold text-base text-slate-900">Assign Officer</h3>
-            <button (click)="selectedGrievance = null" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
-          </div>
-
-          <p class="text-xs text-slate-500 font-mono">{{ selectedGrievance.trackingCode }}: {{ selectedGrievance.title }}</p>
-
-          <!-- Dynamic Department Selection Dropdown -->
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Assign Target Department *</label>
-            <select [(ngModel)]="targetDeptId" (change)="onDepartmentChange()" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold bg-white focus:ring-2 focus:ring-[#A0C8C3]">
-              <option *ngFor="let d of departmentService.departments()" [value]="d.id">
-                {{ d.name }} ({{ d.code }})
-              </option>
-            </select>
-          </div>
-
-          <!-- Officer Selection Dropdown -->
-          <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Select Nodal Officer *</label>
-            <select [(ngModel)]="targetOfficerId" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold bg-white focus:ring-2 focus:ring-[#A0C8C3]">
-              <option value="">Select an officer to assign...</option>
-              <option *ngFor="let off of getOfficersForTargetDept()" [value]="off.id">
-                {{ off.name }} ({{ off.email }})
-              </option>
-            </select>
-
-            <div *ngIf="getOfficersForTargetDept().length === 0" class="mt-2 text-xs text-rose-600 italic p-2 bg-rose-50 rounded-xl">
-              No officers registered under this department yet. Please register an officer under this department.
-            </div>
-          </div>
-
-          <div class="flex space-x-2 pt-2 border-t">
-            <button (click)="selectedGrievance = null" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
-            <button 
-              (click)="confirmAssignment()" 
-              [disabled]="!targetOfficerId" 
-              class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 transition"
-            >
-              Confirm Officer Assignment
-            </button>
-          </div>
-        </div>
       </div>
 
       <!-- Admin Grievance Comments & Discussion Modal -->

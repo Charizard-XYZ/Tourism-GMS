@@ -10,20 +10,83 @@ export class AuthService {
 
   // State Signals
   readonly currentUser = signal<User | null>(null);
-  readonly userRole = computed(() => this.currentUser()?.role || 'citizen');
+  readonly isInitialized = signal<boolean>(false);
+  readonly userRole = computed<UserRole | null>(() => this.currentUser()?.role || null);
   readonly isAuthenticated = computed(() => !!this.currentUser());
 
   // List of Officers registered by Directorate Admin
-  readonly registeredOfficers = signal<RegisteredOfficer[]>([]);
+  readonly registeredOfficers = signal<RegisteredOfficer[]>([
+    {
+      id: 'OFF-847291',
+      name: 'Ramesh Chand',
+      email: 'ramesh.chand@hp.gov.in',
+      password: 'password123',
+      departmentId: 'dept-01',
+      departmentName: 'Transport & Mobility Cell',
+      designation: 'Senior Transport Inspector',
+      phone: '+91 98160 12345',
+      isRevoked: false,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'OFF-912834',
+      name: 'Sunil Kumar',
+      email: 'sunil.kumar@hp.gov.in',
+      password: 'password123',
+      departmentId: 'dept-02',
+      departmentName: 'Hospitality & Hotel Standards',
+      designation: 'Hospitality Nodal Inspector',
+      phone: '+91 98160 67890',
+      isRevoked: false,
+      createdAt: new Date().toISOString()
+    }
+  ]);
 
   constructor() {
+    this.restoreSessionFromStorage();
     this.syncFromBackend();
+  }
+
+  private restoreSessionFromStorage(): void {
+    try {
+      const savedUser = localStorage.getItem('gms_session_user');
+      if (savedUser) {
+        this.currentUser.set(JSON.parse(savedUser));
+      }
+
+      const savedCitizens = localStorage.getItem('gms_registered_citizens');
+      if (savedCitizens) {
+        this.registeredCitizens.set(JSON.parse(savedCitizens));
+      }
+
+      const savedOfficers = localStorage.getItem('gms_registered_officers');
+      if (savedOfficers) {
+        this.registeredOfficers.set(JSON.parse(savedOfficers));
+      }
+    } catch (err) {
+      console.warn('Failed to restore authentication session from localStorage:', err);
+    } finally {
+      this.isInitialized.set(true);
+    }
+  }
+
+  async ensureInitialized(): Promise<boolean> {
+    if (this.isInitialized()) return true;
+    return new Promise(resolve => {
+      const interval = setInterval(() => {
+        if (this.isInitialized()) {
+          clearInterval(interval);
+          resolve(true);
+        }
+      }, 10);
+    });
   }
 
   async syncFromBackend() {
     const remote = await this.firebaseService.fetchApi<RegisteredOfficer[]>('/officers');
     if (remote && Array.isArray(remote)) {
       this.registeredOfficers.set(remote);
+      localStorage.setItem('gms_registered_officers', JSON.stringify(remote));
     }
   }
 
@@ -220,12 +283,13 @@ export class AuthService {
             isActive: true
           };
           this.currentUser.set(user);
+          localStorage.setItem('gms_session_user', JSON.stringify(user));
           resolve(true);
           return;
         }
 
         if (role === 'admin') {
-          const validAdminEmails = ['ab@gmail.com'];
+          const validAdminEmails = ['admin@gmail.com'];
           const isEmailValid = validAdminEmails.includes(cleanEmail);
           const isPasswordValid = password === 'admin';
 
@@ -237,12 +301,13 @@ export class AuthService {
           const user: User = {
             uid: 'ADM-1001',
             email: cleanEmail,
-            displayName: cleanEmail === 'ab@gmail.com' ? 'Abhishek Kumar' : '',
+            displayName: cleanEmail === 'admin@gmail.com' ? 'Abhishek Kumar' : '',
             role: 'admin',
             createdAt: new Date().toISOString(),
             isActive: true
           };
           this.currentUser.set(user);
+          localStorage.setItem('gms_session_user', JSON.stringify(user));
           resolve(true);
           return;
         }
@@ -270,6 +335,7 @@ export class AuthService {
           isActive: true
         };
         this.currentUser.set(user);
+        localStorage.setItem('gms_session_user', JSON.stringify(user));
         resolve(true);
       }, 400);
     });
@@ -287,7 +353,7 @@ export class AuthService {
 
         const existingOfficer = this.registeredOfficers().find(o => o.email.toLowerCase().trim() === cleanEmail);
         const existingCitizen = this.registeredCitizens().find(c => c.email.toLowerCase().trim() === cleanEmail);
-        const isAdminEmail = cleanEmail === 'ab@gmail.com' || cleanEmail.includes('admin');
+        const isAdminEmail = cleanEmail === 'admin@gmail.com' || cleanEmail.includes('admin');
 
         if (existingOfficer || existingCitizen || isAdminEmail) {
           reject(new Error(`Email address "${email}" is already registered. Please log in or try another email.`));
@@ -314,25 +380,76 @@ export class AuthService {
         };
 
         this.registeredCitizens.update(list => [...list, citizenRecord]);
+        localStorage.setItem('gms_registered_citizens', JSON.stringify(this.registeredCitizens()));
         this.currentUser.set(newUser);
+        localStorage.setItem('gms_session_user', JSON.stringify(newUser));
         resolve(true);
       }, 400);
     });
   }
 
+  updateUserProfile(name: string, email: string, phone: string): void {
+    const user = this.currentUser();
+    if (!user) return;
+
+    const cleanNewEmail = email.trim().toLowerCase();
+    const cleanOldEmail = user.email.trim().toLowerCase();
+
+    // Check unique email across all roles if email was changed
+    if (cleanNewEmail !== cleanOldEmail) {
+      const isTakenByOfficer = this.registeredOfficers().some(o => o.email.toLowerCase() === cleanNewEmail && o.id !== user.uid);
+      const isTakenByCitizen = this.registeredCitizens().some(c => c.email.toLowerCase() === cleanNewEmail && c.id !== user.uid);
+      const isAdminEmail = cleanNewEmail === 'admin@gmail.com' || (cleanNewEmail.includes('admin') && user.role !== 'admin');
+
+      if (isTakenByOfficer || isTakenByCitizen || isAdminEmail) {
+        throw new Error(`Email address "${email.trim()}" is already registered by another user.`);
+      }
+    }
+
+    const updatedUser: User = {
+      ...user,
+      displayName: name.trim(),
+      email: cleanNewEmail,
+      phoneNumber: phone.trim()
+    };
+
+    this.currentUser.set(updatedUser);
+    localStorage.setItem('gms_session_user', JSON.stringify(updatedUser));
+
+    // Update in corresponding roster list while preserving user ID and records
+    if (user.role === 'citizen') {
+      this.registeredCitizens.update(list =>
+        list.map(c => (c.id === user.uid || c.email.toLowerCase() === cleanOldEmail)
+          ? { ...c, name: name.trim(), email: cleanNewEmail, phone: phone.trim() }
+          : c
+        )
+      );
+      localStorage.setItem('gms_registered_citizens', JSON.stringify(this.registeredCitizens()));
+    } else if (user.role === 'officer') {
+      this.registeredOfficers.update(list =>
+        list.map(o => (o.id === user.uid || o.email.toLowerCase() === cleanOldEmail)
+          ? { ...o, name: name.trim(), email: cleanNewEmail, phone: phone.trim() }
+          : o
+        )
+      );
+      localStorage.setItem('gms_registered_officers', JSON.stringify(this.registeredOfficers()));
+    }
+  }
+
   logout(): void {
+    localStorage.removeItem('gms_session_user');
     this.currentUser.set(null);
   }
 
   isCitizen(): boolean {
-    return this.userRole() === 'citizen';
+    return this.isAuthenticated() && this.userRole() === 'citizen';
   }
 
   isOfficer(): boolean {
-    return this.userRole() === 'officer';
+    return this.isAuthenticated() && this.userRole() === 'officer';
   }
 
   isAdmin(): boolean {
-    return this.userRole() === 'admin';
+    return this.isAuthenticated() && this.userRole() === 'admin';
   }
 }
