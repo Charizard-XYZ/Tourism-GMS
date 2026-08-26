@@ -63,7 +63,7 @@
           class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3] focus:outline-none"
         />
         <p *ngIf="hasSubmitted() && !email.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
-        <p *ngIf="hasSubmitted() && email.trim() && !isEmailValid(email)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format. Must be in format: username@domain.com</p>
+        <p *ngIf="hasSubmitted() && email.trim() && !isEmailValid(email)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format. Must be in format: username@gmail.com</p>
       </div>
 
       <div>

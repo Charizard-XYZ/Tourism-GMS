@@ -1,5 +1,5 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { User, UserRole, RegisteredOfficer } from '../models/user.model';
+import { User, UserRole, RegisteredOfficer, formatPhoneNumber } from '../models/user.model';
 import { FirebaseService } from './firebase.service';
 
 @Injectable({
@@ -100,10 +100,12 @@ export class AuthService {
       throw new Error(`Email address "${officer.email}" is already registered to Officer "${existing.name}". All emails must be unique.`);
     }
 
+    const formattedPhone = formatPhoneNumber(officer.phone || '');
     const newOfficer: RegisteredOfficer = {
       ...officer,
       email: cleanEmail,
       password: officer.password,
+      phone: formattedPhone,
       id: `OFF-${Math.floor(100000 + Math.random() * 900000)}`,
       createdAt: new Date().toISOString()
     };
@@ -129,6 +131,10 @@ export class AuthService {
       if (existing) {
         throw new Error(`Email address "${updatedData.email}" is already registered to another Officer ("${existing.name}"). All emails must be unique.`);
       }
+    }
+
+    if (updatedData.phone) {
+      updatedData.phone = formatPhoneNumber(updatedData.phone);
     }
 
     this.registeredOfficers.update(list =>
@@ -360,12 +366,13 @@ export class AuthService {
           return;
         }
 
+        const formattedPhone = formatPhoneNumber(phone);
         const citizenRecord = {
           id: `cit-${Date.now().toString().slice(-4)}`,
           name,
           email: cleanEmail,
           password: password,
-          phone,
+          phone: formattedPhone,
           createdAt: new Date().toISOString()
         };
 
@@ -374,7 +381,7 @@ export class AuthService {
           email: cleanEmail,
           displayName: name,
           role: 'citizen',
-          phoneNumber: phone,
+          phoneNumber: formattedPhone,
           createdAt: citizenRecord.createdAt,
           isActive: true
         };
@@ -394,6 +401,7 @@ export class AuthService {
 
     const cleanNewEmail = email.trim().toLowerCase();
     const cleanOldEmail = user.email.trim().toLowerCase();
+    const formattedPhone = formatPhoneNumber(phone);
 
     // Check unique email across all roles if email was changed
     if (cleanNewEmail !== cleanOldEmail) {
@@ -410,7 +418,7 @@ export class AuthService {
       ...user,
       displayName: name.trim(),
       email: cleanNewEmail,
-      phoneNumber: phone.trim()
+      phoneNumber: formattedPhone
     };
 
     this.currentUser.set(updatedUser);
@@ -420,7 +428,7 @@ export class AuthService {
     if (user.role === 'citizen') {
       this.registeredCitizens.update(list =>
         list.map(c => (c.id === user.uid || c.email.toLowerCase() === cleanOldEmail)
-          ? { ...c, name: name.trim(), email: cleanNewEmail, phone: phone.trim() }
+          ? { ...c, name: name.trim(), email: cleanNewEmail, phone: formattedPhone }
           : c
         )
       );
@@ -428,7 +436,7 @@ export class AuthService {
     } else if (user.role === 'officer') {
       this.registeredOfficers.update(list =>
         list.map(o => (o.id === user.uid || o.email.toLowerCase() === cleanOldEmail)
-          ? { ...o, name: name.trim(), email: cleanNewEmail, phone: phone.trim() }
+          ? { ...o, name: name.trim(), email: cleanNewEmail, phone: formattedPhone }
           : o
         )
       );

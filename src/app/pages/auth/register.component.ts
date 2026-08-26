@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastComponent } from '../../common/components/toast.component';
+import { formatPhoneNumber } from '../../core/models/user.model';
 
 @Component({
   selector: 'app-register',
@@ -38,7 +39,7 @@ import { ToastComponent } from '../../common/components/toast.component';
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email Address *</label>
             <input type="text" [(ngModel)]="email" name="reg_usr_comm_id" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="example@gmail.com" class="w-full px-4 py-2.5 border rounded-xl text-sm" />
             <p *ngIf="hasSubmitted() && !email.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
-            <p *ngIf="hasSubmitted() && email.trim() && !isEmailValid(email)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format. Must be in format: username@domain.com</p>
+            <p *ngIf="hasSubmitted() && email.trim() && !isEmailValid(email)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format. Must be in format: username@gmail.com</p>
           </div>
 
           <div>
@@ -54,7 +55,7 @@ import { ToastComponent } from '../../common/components/toast.component';
               autocapitalize="off" 
               spellcheck="false" 
               data-lpignore="true" 
-              placeholder="e.g. +91 9816012345 or 9816012345" 
+              placeholder="Enter mobile number" 
               class="w-full px-4 py-2.5 border rounded-xl text-sm" 
             />
             <p *ngIf="hasSubmitted() && !phone.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
@@ -196,7 +197,7 @@ export class RegisterComponent {
     }
 
     if (!this.isEmailValid(this.email)) {
-      this.errorMessage.set('Invalid email format. Please enter a valid email address (e.g. user@domain.com).');
+      this.errorMessage.set('Invalid email format. Please enter a valid email address (e.g. user@gmail.com).');
       return;
     }
 
@@ -207,7 +208,8 @@ export class RegisterComponent {
 
     this.isLoading.set(true);
     try {
-      await this.authService.register(this.name.trim(), this.email.trim(), this.phone.trim(), this.password.trim());
+      const formattedPhone = formatPhoneNumber(this.phone);
+      await this.authService.register(this.name.trim(), this.email.trim(), formattedPhone, this.password.trim());
       this.isLoading.set(false);
       this.toastMessage.set(`Registration successful! Account created for "${this.name.trim()}". Redirecting to home...`);
       setTimeout(() => {

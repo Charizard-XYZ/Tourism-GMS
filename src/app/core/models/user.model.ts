@@ -25,3 +25,18 @@ export interface RegisteredOfficer {
   createdAt: string;
   isRevoked?: boolean;
 }
+
+export function formatPhoneNumber(val: string): string {
+  if (!val) return '';
+  const clean = val.replace(/\D/g, '');
+  let tenDigits = clean;
+  if (clean.startsWith('91') && clean.length === 12) {
+    tenDigits = clean.slice(2);
+  } else if (clean.length > 10) {
+    tenDigits = clean.slice(-10);
+  }
+  if (tenDigits.length === 10) {
+    return `+91 ${tenDigits.slice(0, 5)} ${tenDigits.slice(5)}`;
+  }
+  return val.trim();
+}

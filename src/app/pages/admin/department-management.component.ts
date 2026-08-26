@@ -140,7 +140,7 @@ import { ToastComponent } from '../../common/components/toast.component';
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Official Email *</label>
                 <input type="text" [(ngModel)]="deptForm.contactEmail" name="sec_dept_comm_addr" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="example@gmail.com" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
                 <p *ngIf="hasSubmitted() && !deptForm.contactEmail.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
-                <p *ngIf="hasSubmitted() && deptForm.contactEmail.trim() && !isEmailValid(deptForm.contactEmail)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format. Must be in format: username@domain.com</p>
+                <p *ngIf="hasSubmitted() && deptForm.contactEmail.trim() && !isEmailValid(deptForm.contactEmail)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format. Must be in format: username@gmail.com</p>
               </div>
             </div>
 

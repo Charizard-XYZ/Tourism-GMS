@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DepartmentService } from '../../core/services/department.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastComponent } from '../../common/components/toast.component';
-import { RegisteredOfficer } from '../../core/models/user.model';
+import { RegisteredOfficer, formatPhoneNumber } from '../../core/models/user.model';
 
 @Component({
   selector: 'app-officer-management',
@@ -124,7 +124,7 @@ import { RegisteredOfficer } from '../../core/models/user.model';
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Official Email (Login ID) *</label>
               <input type="text" [(ngModel)]="newOfficer.email" name="sec_off_reg_addr" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="example@gmail.com" class="w-full px-3 py-2 border rounded-xl text-xs" />
               <p *ngIf="hasSubmitted() && !newOfficer.email.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
-              <p *ngIf="hasSubmitted() && newOfficer.email.trim() && !isEmailValid(newOfficer.email)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format. Must be in format: username@domain.com</p>
+              <p *ngIf="hasSubmitted() && newOfficer.email.trim() && !isEmailValid(newOfficer.email)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format. Must be in format: username@gmail.com</p>
             </div>
 
             <div>
@@ -414,6 +414,7 @@ export class OfficerManagementComponent {
 
     const dept = this.departmentService.departments().find(d => d.id === this.newOfficer.departmentId) || this.departmentService.departments()[0];
     const deptName = dept ? dept.name : 'Unassigned Department';
+    const formattedPhone = formatPhoneNumber(this.newOfficer.phone);
 
     try {
       if (this.editingOfficerId()) {
@@ -424,7 +425,7 @@ export class OfficerManagementComponent {
           password: this.newOfficer.password.trim(),
           departmentId: dept ? dept.id : '',
           departmentName: deptName,
-          phone: this.newOfficer.phone.trim()
+          phone: formattedPhone
         });
 
         if (dept) {
@@ -432,7 +433,7 @@ export class OfficerManagementComponent {
             name: this.newOfficer.name.trim(),
             email: this.newOfficer.email.trim(),
             designation: 'Nodal Officer',
-            phone: this.newOfficer.phone.trim()
+            phone: formattedPhone
           });
         }
 
@@ -446,7 +447,7 @@ export class OfficerManagementComponent {
           designation: 'Nodal Officer',
           departmentId: dept ? dept.id : '',
           departmentName: deptName,
-          phone: this.newOfficer.phone.trim()
+          phone: formattedPhone
         });
 
         if (dept) {
@@ -454,7 +455,7 @@ export class OfficerManagementComponent {
             name: this.newOfficer.name.trim(),
             email: this.newOfficer.email.trim(),
             designation: 'Nodal Officer',
-            phone: this.newOfficer.phone.trim()
+            phone: formattedPhone
           });
         }
 

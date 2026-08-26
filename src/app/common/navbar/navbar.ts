@@ -96,7 +96,7 @@ export class Navbar {
     }
 
     if (!this.isEmailValid(this.editForm.email)) {
-      this.toastMessage.set('Invalid email format. Must be in format: username@domain.com');
+      this.toastMessage.set('Invalid email format. Must be in format: username@gmail.com');
       return;
     }
 
