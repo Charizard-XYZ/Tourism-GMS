@@ -19,7 +19,7 @@ export class DepartmentService {
       code: 'TS-CELL',
       description: 'Taxi fare regulation, permit compliance, prepaid booth oversight, and driver conduct.',
       contactPhone: '+91 177 2654321',
-      contactEmail: 'transport.gms@hp.gov.in',
+      contactEmail: 'transport.gms@sikkim.gov.in',
       isActive: true,
       officerCount: 1,
       activeComplaintsCount: 1,
@@ -27,7 +27,7 @@ export class DepartmentService {
         {
           id: 'OFF-847291',
           name: 'Ramesh Chand',
-          email: 'ramesh.chand@hp.gov.in',
+          email: 'ramesh.chand@sikkim.gov.in',
           designation: 'Senior Transport Inspector',
           phone: '+91 98160 12345'
         }
@@ -40,7 +40,7 @@ export class DepartmentService {
       code: 'HT-STD',
       description: 'Hotel tariff transparency, hygiene compliance, booking refunds, and hospitality dispute redressal.',
       contactPhone: '+91 177 2654322',
-      contactEmail: 'hospitality.gms@hp.gov.in',
+      contactEmail: 'hospitality.gms@sikkim.gov.in',
       isActive: true,
       officerCount: 1,
       activeComplaintsCount: 1,
@@ -48,7 +48,7 @@ export class DepartmentService {
         {
           id: 'OFF-912834',
           name: 'Sunil Kumar',
-          email: 'sunil.kumar@hp.gov.in',
+          email: 'sunil.kumar@sikkim.gov.in',
           designation: 'Hospitality Nodal Inspector',
           phone: '+91 98160 67890'
         }

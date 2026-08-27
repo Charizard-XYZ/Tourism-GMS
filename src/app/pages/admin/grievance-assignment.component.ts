@@ -45,8 +45,6 @@ import { Grievance } from '../../core/models/complaint.model';
 
         <select [(ngModel)]="lifecycleFilter" class="px-4 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]">
           <option value="ALL">All Redressal Lifecycle</option>
-          <option value="submitted">Submitted (Pending Allocation)</option>
-          <option value="assigned">Assigned to Officer</option>
           <option value="in_progress">Under Inquiry / In Progress</option>
           <option value="resolved">Resolution Complete</option>
           <option value="closed">Ticket Closed</option>
@@ -309,8 +307,8 @@ export class GrievanceAssignmentComponent {
 
   getProgressLabel(status: string): string {
     switch (status) {
-      case 'submitted': return 'Submitted (Pending)';
-      case 'assigned': return 'Assigned to Officer';
+      case 'submitted': return 'Submitted';
+      case 'assigned': return 'Assigned';
       case 'in_progress': return 'Under Investigation';
       case 'resolved': return 'Resolved';
       case 'closed': return 'Closed';

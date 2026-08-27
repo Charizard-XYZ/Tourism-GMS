@@ -48,7 +48,7 @@ import { ToastComponent } from '../../common/components/toast.component';
               </div>
               <div>
                 <p class="text-slate-400">Incident Location</p>
-                <p class="font-bold text-slate-900">📍 {{ grievance.location }}</p>
+                <p class="font-bold text-slate-900">{{ grievance.location }}</p>
               </div>
             </div>
           </div>

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DepartmentService } from '../../core/services/department.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastComponent } from '../../common/components/toast.component';
-import { RegisteredOfficer, formatPhoneNumber } from '../../core/models/user.model';
+import { RegisteredOfficer, formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.model';
 
 @Component({
   selector: 'app-officer-management',
@@ -184,10 +184,7 @@ import { RegisteredOfficer, formatPhoneNumber } from '../../core/models/user.mod
               <p *ngIf="hasSubmitted() && newOfficer.password.trim() && newOfficer.confirmPassword.trim() && newOfficer.password !== newOfficer.confirmPassword" class="text-[11px] text-rose-600 font-bold mt-1">Passwords do not match.</p>
             </div>
 
-            <div>
-              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Designation / Role Title</label>
-              <input type="text" [(ngModel)]="newOfficer.designation" name="sec_off_desig_title" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="e.g. Senior Nodal Officer" class="w-full px-3 py-2 border rounded-xl text-xs" />
-            </div>
+
 
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Assign Target Department</label>
@@ -380,9 +377,7 @@ export class OfficerManagementComponent {
   }
 
   isPhoneTextInvalid(val: string): boolean {
-    if (!val.trim()) return false;
-    const clean = val.replace(/[\s+-]/g, '');
-    return !/^\d+$/.test(clean) || clean.length !== 10;
+    return isPhoneTextInvalid(val);
   }
 
   saveOfficer() {
@@ -398,7 +393,7 @@ export class OfficerManagementComponent {
     }
 
     if (!this.isEmailValid(this.newOfficer.email)) {
-      this.toastMessage.set('Invalid email format. Please enter a valid officer email address (e.g. officer@hp.gov.in).');
+      this.toastMessage.set('Invalid email format. Please enter a valid officer email address (e.g. officer@sikkim.gov.in).');
       return;
     }
 

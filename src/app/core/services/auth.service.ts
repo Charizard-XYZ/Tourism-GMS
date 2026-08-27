@@ -19,7 +19,7 @@ export class AuthService {
     {
       id: 'OFF-847291',
       name: 'Ramesh Chand',
-      email: 'ramesh.chand@hp.gov.in',
+      email: 'ramesh.chand@sikkim.gov.in',
       password: 'password123',
       departmentId: 'dept-01',
       departmentName: 'Transport & Mobility Cell',
@@ -31,7 +31,7 @@ export class AuthService {
     {
       id: 'OFF-912834',
       name: 'Sunil Kumar',
-      email: 'sunil.kumar@hp.gov.in',
+      email: 'sunil.kumar@sikkim.gov.in',
       password: 'password123',
       departmentId: 'dept-02',
       departmentName: 'Hospitality & Hotel Standards',
@@ -83,10 +83,16 @@ export class AuthService {
   }
 
   async syncFromBackend() {
-    const remote = await this.firebaseService.fetchApi<RegisteredOfficer[]>('/officers');
-    if (remote && Array.isArray(remote)) {
-      this.registeredOfficers.set(remote);
-      localStorage.setItem('gms_registered_officers', JSON.stringify(remote));
+    const remoteOfficers = await this.firebaseService.fetchApi<RegisteredOfficer[]>('/officers');
+    if (remoteOfficers && Array.isArray(remoteOfficers)) {
+      this.registeredOfficers.set(remoteOfficers);
+      localStorage.setItem('gms_registered_officers', JSON.stringify(remoteOfficers));
+    }
+
+    const remoteCitizens = await this.firebaseService.fetchApi<any[]>('/citizens');
+    if (remoteCitizens && Array.isArray(remoteCitizens)) {
+      this.registeredCitizens.set(remoteCitizens);
+      localStorage.setItem('gms_registered_citizens', JSON.stringify(remoteCitizens));
     }
   }
 
@@ -321,7 +327,7 @@ export class AuthService {
         // Citizen / Tourist account validation
         const registered = this.registeredCitizens().find(c => c.email.toLowerCase() === cleanEmail);
         if (!registered) {
-          reject(new Error(`Access Denied: Account "${email}" is not registered. Please register your tourist account first before logging in.`));
+          reject(new Error('Access Denied: Invalid email or password.'));
           return;
         }
 
@@ -347,7 +353,24 @@ export class AuthService {
     });
   }
 
-  readonly registeredCitizens = signal<{ id: string; name: string; email: string; password?: string; phone?: string; createdAt: string }[]>([]);
+  readonly registeredCitizens = signal<{ id: string; name: string; email: string; password?: string; phone?: string; createdAt: string }[]>([
+    {
+      id: 'cit-001',
+      name: 'Amit Kapoor',
+      email: 'amit.kapoor@gmail.com',
+      password: 'password123',
+      phone: '+91 98765 43210',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'cit-002',
+      name: 'Neha Sharma',
+      email: 'neha.sharma@gmail.com',
+      password: 'password123',
+      phone: '+91 98160 54321',
+      createdAt: new Date().toISOString()
+    }
+  ]);
 
   /**
    * User Registration (Tourist / Citizen)
@@ -390,6 +413,13 @@ export class AuthService {
         localStorage.setItem('gms_registered_citizens', JSON.stringify(this.registeredCitizens()));
         this.currentUser.set(newUser);
         localStorage.setItem('gms_session_user', JSON.stringify(newUser));
+
+        // Push Citizen Record to Backend API Database
+        this.firebaseService.fetchApi('/citizens', {
+          method: 'POST',
+          body: JSON.stringify(citizenRecord)
+        });
+
         resolve(true);
       }, 400);
     });
@@ -433,6 +463,17 @@ export class AuthService {
         )
       );
       localStorage.setItem('gms_registered_citizens', JSON.stringify(this.registeredCitizens()));
+
+      // Push updated Citizen profile to Backend API Database
+      this.firebaseService.fetchApi(`/citizens/${user.uid}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          id: user.uid,
+          name: name.trim(),
+          email: cleanNewEmail,
+          phone: formattedPhone
+        })
+      });
     } else if (user.role === 'officer') {
       this.registeredOfficers.update(list =>
         list.map(o => (o.id === user.uid || o.email.toLowerCase() === cleanOldEmail)

@@ -5,6 +5,7 @@ import { DepartmentService } from '../../core/services/department.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Department } from '../../core/models/department.model';
 import { ToastComponent } from '../../common/components/toast.component';
+import { isPhoneTextInvalid } from '../../core/models/user.model';
 
 @Component({
   selector: 'app-department-management',
@@ -406,9 +407,7 @@ export class DepartmentManagementComponent {
   }
 
   isPhoneTextInvalid(val: string): boolean {
-    if (!val.trim()) return false;
-    const clean = val.replace(/[\s+-]/g, '');
-    return !/^\d+$/.test(clean) || clean.length !== 10;
+    return isPhoneTextInvalid(val);
   }
 
   saveDepartment() {
@@ -424,7 +423,7 @@ export class DepartmentManagementComponent {
     }
 
     if (!this.isEmailValid(this.deptForm.contactEmail)) {
-      this.toastMessage.set('Invalid official email format. Please enter a valid email address (e.g. dept@hp.gov.in).');
+      this.toastMessage.set('Invalid official email format. Please enter a valid email address (e.g. dept@sikkim.gov.in).');
       return;
     }
 

@@ -20,7 +20,7 @@ let dbData = {
       code: 'TS-CELL',
       description: 'Taxi fare regulation, permit compliance, prepaid booth oversight, and driver conduct.',
       contactPhone: '+91 177 2654321',
-      contactEmail: 'transport.gms@hp.gov.in',
+      contactEmail: 'transport.gms@sikkim.gov.in',
       isActive: true,
       officerCount: 1,
       activeComplaintsCount: 1,
@@ -28,7 +28,7 @@ let dbData = {
         {
           id: 'OFF-847291',
           name: 'Ramesh Chand',
-          email: 'ramesh.chand@hp.gov.in',
+          email: 'ramesh.chand@sikkim.gov.in',
           designation: 'Senior Transport Inspector',
           phone: '+91 98160 12345'
         }
@@ -41,7 +41,7 @@ let dbData = {
       code: 'HT-STD',
       description: 'Hotel tariff transparency, hygiene compliance, booking refunds, and hospitality dispute redressal.',
       contactPhone: '+91 177 2654322',
-      contactEmail: 'hospitality.gms@hp.gov.in',
+      contactEmail: 'hospitality.gms@sikkim.gov.in',
       isActive: true,
       officerCount: 1,
       activeComplaintsCount: 1,
@@ -49,7 +49,7 @@ let dbData = {
         {
           id: 'OFF-912834',
           name: 'Sunil Kumar',
-          email: 'sunil.kumar@hp.gov.in',
+          email: 'sunil.kumar@sikkim.gov.in',
           designation: 'Hospitality Nodal Inspector',
           phone: '+91 98160 67890'
         }
@@ -61,7 +61,7 @@ let dbData = {
     {
       id: 'OFF-847291',
       name: 'Ramesh Chand',
-      email: 'ramesh.chand@hp.gov.in',
+      email: 'ramesh.chand@sikkim.gov.in',
       password: 'password123',
       departmentId: 'dept-01',
       departmentName: 'Transport & Mobility Cell',
@@ -73,7 +73,7 @@ let dbData = {
     {
       id: 'OFF-912834',
       name: 'Sunil Kumar',
-      email: 'sunil.kumar@hp.gov.in',
+      email: 'sunil.kumar@sikkim.gov.in',
       password: 'password123',
       departmentId: 'dept-02',
       departmentName: 'Hospitality & Hotel Standards',
@@ -123,6 +123,24 @@ let dbData = {
       location: 'Mall Road Manali',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
+    }
+  ],
+  citizens: [
+    {
+      id: 'cit-001',
+      name: 'Amit Kapoor',
+      email: 'amit.kapoor@gmail.com',
+      password: 'password123',
+      phone: '+91 98765 43210',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'cit-002',
+      name: 'Neha Sharma',
+      email: 'neha.sharma@gmail.com',
+      password: 'password123',
+      phone: '+91 98160 54321',
+      createdAt: new Date().toISOString()
     }
   ],
   comments: [],
@@ -220,6 +238,49 @@ app.delete('/api/officers/:id', (req, res) => {
   dbData.officers = dbData.officers.filter(o => o.id !== id);
   saveData();
   res.json({ success: true, message: `Officer ${id} access revoked.` });
+});
+
+// GET /api/citizens
+app.get('/api/citizens', (req, res) => {
+  res.json(dbData.citizens || []);
+});
+
+// POST /api/citizens
+app.post('/api/citizens', (req, res) => {
+  const citizen = req.body;
+  const cleanEmail = (citizen.email || '').toLowerCase().trim();
+  
+  if (!dbData.citizens) dbData.citizens = [];
+  
+  const existing = dbData.citizens.find(c => c.email.toLowerCase().trim() === cleanEmail || c.id === citizen.id);
+  if (existing) {
+    dbData.citizens = dbData.citizens.map(c => (c.email.toLowerCase().trim() === cleanEmail || c.id === citizen.id) ? { ...c, ...citizen } : c);
+  } else {
+    dbData.citizens.push(citizen);
+  }
+  
+  saveData();
+  res.status(201).json(citizen);
+});
+
+// PUT /api/citizens/:id
+app.put('/api/citizens/:id', (req, res) => {
+  const { id } = req.params;
+  const updatedData = req.body;
+  
+  if (!dbData.citizens) dbData.citizens = [];
+  dbData.citizens = dbData.citizens.map(c => (c.id === id || c.email.toLowerCase().trim() === (updatedData.email || '').toLowerCase().trim()) ? { ...c, ...updatedData } : c);
+  saveData();
+  res.json({ success: true, message: `Citizen ${id} updated.` });
+});
+
+// DELETE /api/citizens/:id
+app.delete('/api/citizens/:id', (req, res) => {
+  const { id } = req.params;
+  if (!dbData.citizens) dbData.citizens = [];
+  dbData.citizens = dbData.citizens.filter(c => c.id !== id);
+  saveData();
+  res.json({ success: true, message: `Citizen ${id} deleted.` });
 });
 
 // GET /api/grievances

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastComponent } from '../../common/components/toast.component';
-import { formatPhoneNumber } from '../../core/models/user.model';
+import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.model';
 
 @Component({
   selector: 'app-register',
@@ -172,9 +172,7 @@ export class RegisterComponent {
   }
 
   isPhoneTextInvalid(val: string): boolean {
-    if (!val.trim()) return false;
-    const clean = val.replace(/[\s+-]/g, '');
-    return !/^\d+$/.test(clean) || clean.length !== 10;
+    return isPhoneTextInvalid(val);
   }
 
   async onRegister() {

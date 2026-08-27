@@ -1,4 +1,22 @@
 {
+  "citizens": [
+    {
+      "id": "cit-001",
+      "name": "Amit Kapoor",
+      "email": "amit.kapoor@gmail.com",
+      "password": "password123",
+      "phone": "+91 98765 43210",
+      "createdAt": "2026-08-26T16:43:06.183Z"
+    },
+    {
+      "id": "cit-002",
+      "name": "Neha Sharma",
+      "email": "neha.sharma@gmail.com",
+      "password": "password123",
+      "phone": "+91 98160 54321",
+      "createdAt": "2026-08-26T16:43:06.183Z"
+    }
+  ],
   "departments": [
     {
       "id": "dept-01",
@@ -6,7 +24,7 @@
       "code": "TS-CELL",
       "description": "Taxi fare regulation, permit compliance, prepaid booth oversight, and driver conduct.",
       "contactPhone": "+91 177 2654321",
-      "contactEmail": "transport.gms@hp.gov.in",
+      "contactEmail": "transport.gms@sikkim.gov.in",
       "isActive": true,
       "officerCount": 1,
       "activeComplaintsCount": 1,
@@ -14,7 +32,7 @@
         {
           "id": "OFF-847291",
           "name": "Ramesh Chand",
-          "email": "ramesh.chand@hp.gov.in",
+          "email": "ramesh.chand@sikkim.gov.in",
           "designation": "Senior Transport Inspector",
           "phone": "+91 98160 12345"
         }
@@ -27,7 +45,7 @@
       "code": "HT-STD",
       "description": "Hotel tariff transparency, hygiene compliance, booking refunds, and hospitality dispute redressal.",
       "contactPhone": "+91 177 2654322",
-      "contactEmail": "hospitality.gms@hp.gov.in",
+      "contactEmail": "hospitality.gms@sikkim.gov.in",
       "isActive": true,
       "officerCount": 1,
       "activeComplaintsCount": 1,
@@ -35,7 +53,7 @@
         {
           "id": "OFF-912834",
           "name": "Sunil Kumar",
-          "email": "sunil.kumar@hp.gov.in",
+          "email": "sunil.kumar@sikkim.gov.in",
           "designation": "Hospitality Nodal Inspector",
           "phone": "+91 98160 67890"
         }
@@ -47,7 +65,7 @@
     {
       "id": "OFF-847291",
       "name": "Ramesh Chand",
-      "email": "ramesh.chand@hp.gov.in",
+      "email": "ramesh.chand@sikkim.gov.in",
       "password": "password123",
       "departmentId": "dept-01",
       "departmentName": "Transport & Mobility Cell",
@@ -59,7 +77,7 @@
     {
       "id": "OFF-912834",
       "name": "Sunil Kumar",
-      "email": "sunil.kumar@hp.gov.in",
+      "email": "sunil.kumar@sikkim.gov.in",
       "password": "password123",
       "departmentId": "dept-02",
       "departmentName": "Hospitality & Hotel Standards",
@@ -70,59 +88,6 @@
     }
   ],
   "grievances": [
-    {
-      "id": "g-7302",
-      "trackingCode": "GMS-2026-4967",
-      "status": "assigned",
-      "isEscalated": false,
-      "createdAt": "2026-08-26T20:50:47.302Z",
-      "updatedAt": "2026-08-26T20:50:47.302Z",
-      "title": "Taxi",
-      "description": "Taxi charged high price",
-      "category": "Transport & Mobility Cell",
-      "departmentId": "dept-01",
-      "departmentName": "Transport & Mobility Cell",
-      "location": "Lal bazar",
-      "touristLocationName": "Central Region",
-      "citizenId": "cit-3424",
-      "citizenName": "Abhishek",
-      "citizenEmail": "abh@gmail.com",
-      "citizenPhone": "1245783265",
-      "attachments": [],
-      "assignedOfficerId": "OFF-847291",
-      "assignedOfficerName": "Ramesh Chand"
-    },
-    {
-      "id": "g-1660",
-      "trackingCode": "GMS-2026-2001",
-      "status": "resolved",
-      "isEscalated": false,
-      "createdAt": "2026-08-26T17:20:51.660Z",
-      "updatedAt": "2026-08-26T17:37:02.118Z",
-      "title": "phonw62",
-      "description": "yfuhgdshgsdj",
-      "category": "Transport & Mobility Cell",
-      "departmentId": "dept-01",
-      "departmentName": "Transport & Mobility Cell",
-      "location": "ghgjjdgbhgdh",
-      "touristLocationName": "Central Region",
-      "citizenId": "cit-2363",
-      "citizenName": "chandu",
-      "citizenEmail": "chandu@gmail.com",
-      "citizenPhone": "1245783265",
-      "attachments": [],
-      "assignedOfficerId": "OFF-847291",
-      "assignedOfficerName": "Ramesh Chand",
-      "resolutionAttachments": [
-        {
-          "name": "Officer_Inspection_Report_2560.pdf",
-          "url": "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600",
-          "size": "920 KB",
-          "type": "application/pdf"
-        }
-      ],
-      "resolvedAt": "2026-08-26T17:37:02.098Z"
-    },
     {
       "id": "g-1001",
       "trackingCode": "GMS-2026-8492",
@@ -164,31 +129,8 @@
       "updatedAt": "2026-08-26T16:43:06.183Z"
     }
   ],
-  "comments": [
-    {
-      "id": "comm-6253",
-      "createdAt": "2026-08-26T17:41:26.253Z",
-      "grievanceId": "g-1660",
-      "userId": "cit-2363",
-      "userName": "chandu",
-      "userRole": "citizen",
-      "commentText": "[REOPENED TICKET]: case was incomplete",
-      "isInternalOnly": false
-    }
-  ],
+  "comments": [],
   "auditLogs": [
-    {
-      "id": "log-7303",
-      "timestamp": "2026-08-26T20:50:47.303Z",
-      "userId": "cit-3424",
-      "userName": "Abhishek",
-      "userRole": "citizen",
-      "action": "SUBMIT_GRIEVANCE",
-      "targetCollection": "Grievances",
-      "targetId": "g-7302",
-      "details": "Submitted grievance GMS-2026-4967 auto-assigned to Ramesh Chand",
-      "ipAddress": "127.0.0.1"
-    },
     {
       "id": "log-7712",
       "timestamp": "2026-08-26T17:45:57.712Z",
@@ -198,79 +140,7 @@
       "action": "ADD_OFFICER",
       "targetCollection": "Departments",
       "targetId": "dept-02",
-      "details": "Assigned officer Sunil Kumar (sunil.kumar@hp.gov.in) exclusively to department Hospitality & Hotel Standards",
-      "ipAddress": "127.0.0.1"
-    },
-    {
-      "id": "log-6254",
-      "timestamp": "2026-08-26T17:41:26.254Z",
-      "userId": "cit-2363",
-      "userName": "chandu",
-      "userRole": "citizen",
-      "action": "ADD_COMMENT",
-      "targetCollection": "Comments",
-      "targetId": "g-1660",
-      "details": "Posted public comment on grievance g-1660",
-      "ipAddress": "127.0.0.1"
-    },
-    {
-      "id": "log-6255",
-      "timestamp": "2026-08-26T17:41:26.255Z",
-      "userId": "cit-2363",
-      "userName": "chandu",
-      "userRole": "citizen",
-      "action": "REOPEN_GRIEVANCE",
-      "targetCollection": "Grievances",
-      "targetId": "g-1660",
-      "details": "Reopened grievance ticket g-1660. Reason: case was incomplete",
-      "ipAddress": "127.0.0.1"
-    },
-    {
-      "id": "log-2098",
-      "timestamp": "2026-08-26T17:37:02.098Z",
-      "userId": "OFF-847291",
-      "userName": "Ramesh Chand",
-      "userRole": "officer",
-      "action": "UPDATE_STATUS",
-      "targetCollection": "Grievances",
-      "targetId": "g-1660",
-      "details": "Status updated to RESOLVED for GMS-2026-2001",
-      "ipAddress": "127.0.0.1"
-    },
-    {
-      "id": "log-8725",
-      "timestamp": "2026-08-26T17:30:38.725Z",
-      "userId": "ADM-1001",
-      "userName": "Abhishek Kumar",
-      "userRole": "admin",
-      "action": "ADD_OFFICER",
-      "targetCollection": "Departments",
-      "targetId": "dept-01",
-      "details": "Assigned officer Ramesh Chand (ramesh.chand@hp.gov.in) exclusively to department Transport & Mobility Cell",
-      "ipAddress": "127.0.0.1"
-    },
-    {
-      "id": "log-3309",
-      "timestamp": "2026-08-26T17:29:53.309Z",
-      "userId": "ADM-1001",
-      "userName": "Abhishek Kumar",
-      "userRole": "admin",
-      "action": "REMOVE_OFFICER",
-      "targetCollection": "Departments",
-      "targetId": "dept-01",
-      "details": "Removed officer ID OFF-847291 from department dept-01",
-      "ipAddress": "127.0.0.1"
-    },
-    {
-      "id": "log-1661",
-      "timestamp": "2026-08-26T17:20:51.661Z",
-      "userId": "cit-2363",
-      "userName": "chandu",
-      "userRole": "citizen",
-      "action": "SUBMIT_GRIEVANCE",
-      "targetCollection": "Grievances",
-      "targetId": "g-1660",
-      "details": "Submitted grievance GMS-2026-2001 auto-assigned to Ramesh Chand",
+      "details": "Assigned officer Sunil Kumar (sunil.kumar@sikkim.gov.in) exclusively to department Hospitality & Hotel Standards",
       "ipAddress": "127.0.0.1"
     }
   ]

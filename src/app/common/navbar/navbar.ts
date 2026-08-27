@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastComponent } from '../components/toast.component';
+import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.model';
 
 @Component({
   selector: 'app-navbar',
@@ -72,9 +73,7 @@ export class Navbar {
   }
 
   isPhoneTextInvalid(val: string): boolean {
-    if (!val.trim()) return false;
-    const clean = val.replace(/[\s+-]/g, '');
-    return !/^\d+$/.test(clean) || clean.length !== 10;
+    return isPhoneTextInvalid(val);
   }
 
   saveProfile() {
@@ -101,7 +100,8 @@ export class Navbar {
     }
 
     try {
-      this.authService.updateUserProfile(this.editForm.name, this.editForm.email, this.editForm.phone);
+      const formattedPhone = formatPhoneNumber(this.editForm.phone);
+      this.authService.updateUserProfile(this.editForm.name, this.editForm.email, formattedPhone);
       this.isEditProfileOpen.set(false);
       this.toastMessage.set('Profile details updated successfully!');
     } catch (err: any) {
