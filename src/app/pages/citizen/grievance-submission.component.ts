@@ -157,7 +157,7 @@ export class GrievanceSubmissionComponent {
     }
   }
 
-  onSubmit() {
+  async onSubmit() {
     this.hasSubmitted = true;
     if (!this.title.trim() || !this.description.trim() || !this.location.trim()) {
       this.toastMessage.set('Please fill out all required fields.');
@@ -171,7 +171,7 @@ export class GrievanceSubmissionComponent {
     const selectedCategory = this.category || (this.activeDepartments()[0]?.name || 'General Tourism');
     const matchedDept = this.departmentService.departments().find(d => d.name === selectedCategory);
 
-    const newGrievance = this.grievanceService.submitGrievance({
+    const newGrievance = await this.grievanceService.submitGrievance({
       title: this.title,
       description: this.description,
       category: selectedCategory as GrievanceCategory,

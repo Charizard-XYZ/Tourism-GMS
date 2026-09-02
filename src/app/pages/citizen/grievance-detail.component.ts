@@ -73,22 +73,23 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
             </div>
           </div>
 
-          <!-- Official Resolution Card (If Resolved/Closed) -->
-          <div *ngIf="grievance.resolutionDetails" class="bg-emerald-50/80 p-6 sm:p-8 rounded-3xl border border-emerald-200 shadow-sm space-y-4">
+          <!-- Official Resolution Card (If Resolved/Closed or Resolution Files Exist) -->
+          <div *ngIf="grievance.resolutionDetails || (grievance.resolutionAttachments && grievance.resolutionAttachments.length > 0)" class="bg-emerald-50/80 p-6 sm:p-8 rounded-3xl border border-emerald-200 shadow-sm space-y-4">
             <div class="flex justify-between items-center border-b border-emerald-200 pb-3">
               <h3 class="font-extrabold text-emerald-900 text-lg">
-                Official Resolution Report
+                Official Resolution Report & Officer Attachment Proof
               </h3>
-              <span class="text-xs font-bold text-emerald-700">Resolved on {{ grievance.resolvedAt | date:'dd/MM/yyyy' }}</span>
+              <span *ngIf="grievance.resolvedAt" class="text-xs font-bold text-emerald-700">Resolved on {{ grievance.resolvedAt | date:'dd/MM/yyyy' }}</span>
             </div>
 
-            <p class="text-sm text-emerald-950 leading-relaxed whitespace-pre-line">{{ grievance.resolutionDetails }}</p>
+            <p *ngIf="grievance.resolutionDetails" class="text-sm text-emerald-950 leading-relaxed whitespace-pre-line">{{ grievance.resolutionDetails }}</p>
 
             <div *ngIf="grievance.resolutionAttachments && grievance.resolutionAttachments.length > 0" class="pt-2">
-              <p class="text-xs font-bold text-emerald-800 uppercase mb-2">Resolution Attachments / Proof:</p>
+              <p class="text-xs font-bold text-emerald-800 uppercase mb-2">Resolution Attachments / Proof File Uploaded by Officer:</p>
               <div class="flex flex-wrap gap-2">
-                <a *ngFor="let resAtt of grievance.resolutionAttachments" [href]="resAtt.url" target="_blank" class="px-3 py-1.5 bg-white border border-emerald-300 text-emerald-800 rounded-xl text-xs font-bold">
-                  {{ resAtt.name }}
+                <a *ngFor="let resAtt of grievance.resolutionAttachments" [href]="resAtt.url" target="_blank" class="px-3.5 py-2 bg-white border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold flex items-center space-x-2 hover:bg-emerald-100 transition shadow-sm">
+                  <span>{{ resAtt.name }}</span>
+                  <span *ngIf="resAtt.size" class="text-[10px] text-emerald-600 font-semibold">({{ resAtt.size }})</span>
                 </a>
               </div>
             </div>

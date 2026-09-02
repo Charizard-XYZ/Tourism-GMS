@@ -21,22 +21,29 @@ import { SystemSettingsComponent } from './pages/admin/system-settings.component
 
 import { adminGuard, officerGuard, citizenGuard, guestGuard } from './core/guards/role.guard';
 
+import { ProfileComponent } from './pages/profile/profile.component';
+
 export const routes: Routes = [
   { path: '', component: HeroSectionComponent },
   { path: 'home/hero-section', component: HeroSectionComponent },
   { path: 'auth/login', component: LoginComponent, canActivate: [guestGuard] },
   { path: 'auth/register', component: RegisterComponent, canActivate: [guestGuard] },
 
+  // Profile Route (Available to Citizen, Officer, and Admin)
+  { path: 'profile', component: ProfileComponent },
+
   // Citizen Portal Routes
   { path: 'citizen/dashboard', component: CitizenDashboardComponent, canActivate: [citizenGuard] },
   { path: 'citizen/submit', component: GrievanceSubmissionComponent, canActivate: [citizenGuard] },
   { path: 'citizen/history', component: GrievanceHistoryComponent, canActivate: [citizenGuard] },
   { path: 'citizen/grievance/:id', component: GrievanceDetailComponent, canActivate: [citizenGuard] },
+  { path: 'citizen/profile', component: ProfileComponent, canActivate: [citizenGuard] },
 
   // Officer Portal Routes
   { path: 'officer/dashboard', component: OfficerDashboardComponent, canActivate: [officerGuard] },
   { path: 'officer/grievances', component: AssignedGrievancesComponent, canActivate: [officerGuard] },
   { path: 'officer/process/:id', component: GrievanceProcessingComponent, canActivate: [officerGuard] },
+  { path: 'officer/profile', component: ProfileComponent, canActivate: [officerGuard] },
 
   // Admin Portal Routes
   { path: 'admin/dashboard', component: AdminDashboardComponent, canActivate: [adminGuard] },
@@ -45,6 +52,7 @@ export const routes: Routes = [
   { path: 'admin/grievances', component: GrievanceAssignmentComponent, canActivate: [adminGuard] },
   { path: 'admin/reports', component: ReportsAnalyticsComponent, canActivate: [adminGuard] },
   { path: 'admin/settings', component: SystemSettingsComponent, canActivate: [adminGuard] },
+  { path: 'admin/profile', component: ProfileComponent, canActivate: [adminGuard] },
 
   { path: '**', redirectTo: '' }
 ];

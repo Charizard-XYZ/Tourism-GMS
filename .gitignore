@@ -11,6 +11,12 @@
 npm-debug.log
 yarn-error.log
 
+# Environment & Secrets
+.env
+.env.local
+*.env
+*.pem
+
 # IDEs and editors
 .idea/
 .project
@@ -42,3 +48,6 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Firebase Admin service-account credential
+server/src/config/tourism-gms-firebase-adminsdk-fbsvc-56a698dd84.json

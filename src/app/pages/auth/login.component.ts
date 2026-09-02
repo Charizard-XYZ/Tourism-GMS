@@ -27,12 +27,22 @@ export class LoginComponent {
 
   isForgotPasswordOpen = signal<boolean>(false);
   resetEmail = '';
+  hasResetSubmitted = signal<boolean>(false);
+  resetError = signal<string | null>(null);
   resetSuccess = signal<string | null>(null);
 
   setRole(role: UserRole) {
     this.selectedRole.set(role);
     this.hasSubmitted.set(false);
     this.errorMessage.set(null);
+  }
+
+  openForgotPasswordModal() {
+    this.resetEmail = '';
+    this.hasResetSubmitted.set(false);
+    this.resetError.set(null);
+    this.resetSuccess.set(null);
+    this.isForgotPasswordOpen.set(true);
   }
 
   isEmailValid(val: string): boolean {
@@ -70,12 +80,34 @@ export class LoginComponent {
     }
   }
 
-  sendPasswordReset() {
-    if (!this.resetEmail.trim()) return;
-    this.resetSuccess.set(`Password reset link dispatched to ${this.resetEmail}`);
-    setTimeout(() => {
-      this.isForgotPasswordOpen.set(false);
-      this.resetSuccess.set(null);
-    }, 2000);
+  async sendPasswordReset() {
+    this.hasResetSubmitted.set(true);
+    this.resetError.set(null);
+    this.resetSuccess.set(null);
+
+    const cleanEmail = this.resetEmail.trim().toLowerCase();
+
+    if (!cleanEmail) {
+      this.resetError.set('Please enter your email address.');
+      return;
+    }
+
+    if (!this.isEmailValid(cleanEmail)) {
+      this.resetError.set('Please enter a valid email address (e.g. example@gmail.com).');
+      return;
+    }
+
+    try {
+      await this.authService.sendPasswordResetEmail(cleanEmail);
+      const roleName = this.selectedRole() === 'citizen' ? 'Tourist' : this.selectedRole() === 'officer' ? 'Officer' : 'Administrator';
+      this.resetSuccess.set(`Password reset link dispatched via Firebase Auth to ${cleanEmail} for your ${roleName} account.`);
+      setTimeout(() => {
+        this.isForgotPasswordOpen.set(false);
+        this.resetSuccess.set(null);
+        this.hasResetSubmitted.set(false);
+      }, 2500);
+    } catch (err: any) {
+      this.resetError.set(err.message || 'Failed to send password reset email.');
+    }
   }
 }

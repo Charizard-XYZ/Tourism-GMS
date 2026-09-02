@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'admin';
+    }
+
+    function isOfficer() {
+      return isAuthenticated() && getUserData().role == 'officer';
+    }
+
+    function isCitizen() {
+      return isAuthenticated() && getUserData().role == 'citizen';
+    }
+
+    // Users Collection: users/{uid}
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      // Users can update their own name/phone, but cannot change role or uid
+      allow update: if isOwner(userId) 
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.uid == resource.data.uid;
+      allow create, delete: if isAdmin();
+    }
+
+    // Departments Collection: departments/{deptId}
+    match /departments/{deptId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Officers Collection: officers/{officerId}
+    match /officers/{officerId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Grievances Collection: grievances/{grievanceId}
+    match /grievances/{grievanceId} {
+      allow read: if isAuthenticated();
+      // Citizens can submit grievances owned by their UID
+      allow create: if isAuthenticated() && request.resource.data.citizenId == request.auth.uid;
+      // Officers and Admins can update status, assignment, resolution details
+      allow update: if isAdmin() || isOfficer() || (isCitizen() && resource.data.citizenId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // Comments Collection: comments/{commentId}
+    match /comments/{commentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || isOwner(resource.data.userId);
+    }
+
+    // Feedback Collection: feedback/{feedbackId}
+    match /feedback/{feedbackId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.citizenId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Notifications Collection: notifications/{notificationId}
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin() || isOwner(resource.data.userId);
+    }
+
+    // Activity Logs Collection: activityLogs/{logId}
+    match /activityLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Audit logs are append-only
+    }
+  }
+}

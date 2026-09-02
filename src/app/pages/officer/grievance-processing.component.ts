@@ -104,16 +104,22 @@ import { ToastComponent } from '../../common/components/toast.component';
             </div>
 
             <!-- Resolution Details Input (Required if resolved) -->
-            <div *ngIf="selectedStatus === 'resolved'" class="space-y-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
-              <label class="block text-xs font-extrabold text-emerald-900 uppercase">Official Resolution Report *</label>
+            <div *ngIf="selectedStatus === 'resolved' || (grievance.resolutionAttachments && grievance.resolutionAttachments.length > 0)" class="space-y-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+              <label class="block text-xs font-extrabold text-emerald-900 uppercase">Official Resolution Report & Uploaded Proof</label>
               <textarea [(ngModel)]="resolutionReport" rows="4" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Detail official findings, penalty issued, refund provided, or corrective action taken..." class="w-full px-3 py-2 bg-white border border-emerald-300 rounded-xl text-xs"></textarea>
 
-              <button type="button" (click)="simulateResolutionProof()" class="w-full py-2 bg-white border border-emerald-300 rounded-xl text-xs font-bold text-emerald-800 hover:bg-emerald-100">
+              <button type="button" (click)="simulateResolutionProof()" class="w-full py-2 bg-white border border-emerald-300 rounded-xl text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition">
                 + Attach Inspection Proof / PDF
               </button>
 
-              <div *ngIf="resolutionFiles.length > 0" class="text-xs text-emerald-800">
-                <span *ngFor="let f of resolutionFiles">📄 {{ f.name }}</span>
+              <div *ngIf="resolutionFiles.length > 0 || (grievance.resolutionAttachments && grievance.resolutionAttachments.length > 0)" class="text-xs text-emerald-800 space-y-1.5 pt-1">
+                <p class="font-bold text-[11px] text-emerald-900 uppercase">Attached Resolution Proof Files:</p>
+                <div class="flex flex-wrap gap-2">
+                  <a *ngFor="let f of (resolutionFiles.length > 0 ? resolutionFiles : grievance.resolutionAttachments)" [href]="f.url" target="_blank" class="px-3 py-1.5 bg-white border border-emerald-300 rounded-xl text-xs font-bold text-emerald-900 flex items-center space-x-1.5 hover:bg-emerald-100 transition shadow-sm">
+                    <span>{{ f.name }}</span>
+                    <span *ngIf="f.size" class="text-[10px] text-emerald-600 font-semibold">({{ f.size }})</span>
+                  </a>
+                </div>
               </div>
             </div>
 

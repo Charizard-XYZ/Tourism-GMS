@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DepartmentService } from '../../core/services/department.service';
 import { AuthService } from '../../core/services/auth.service';
+import { GrievanceService } from '../../core/services/grievance.service';
 import { ToastComponent } from '../../common/components/toast.component';
 import { RegisteredOfficer, formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.model';
 
@@ -131,8 +132,7 @@ import { RegisteredOfficer, formatPhoneNumber, isPhoneTextInvalid } from '../../
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">{{ editingOfficerId() ? 'Update Password *' : 'Create Password *' }}</label>
               <div class="relative">
                 <input 
-                  type="text" 
-                  [style.-webkit-text-security]="showPassword() ? 'none' : 'disc'" 
+                  [type]="showPassword() ? 'text' : 'password'" 
                   [(ngModel)]="newOfficer.password" 
                   name="reg_sec_pass" 
                   required 
@@ -147,7 +147,8 @@ import { RegisteredOfficer, formatPhoneNumber, isPhoneTextInvalid } from '../../
                 <button 
                   type="button" 
                   (click)="showPassword.set(!showPassword())" 
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 focus:outline-none"
+                  aria-label="Toggle officer password visibility"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
                 >
                   {{ showPassword() ? 'Hide' : 'Show' }}
                 </button>
@@ -159,8 +160,7 @@ import { RegisteredOfficer, formatPhoneNumber, isPhoneTextInvalid } from '../../
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Confirm Password *</label>
               <div class="relative">
                 <input 
-                  type="text" 
-                  [style.-webkit-text-security]="showConfirmPassword() ? 'none' : 'disc'" 
+                  [type]="showConfirmPassword() ? 'text' : 'password'" 
                   [(ngModel)]="newOfficer.confirmPassword" 
                   name="reg_confirm_sec_pass" 
                   required 
@@ -175,7 +175,8 @@ import { RegisteredOfficer, formatPhoneNumber, isPhoneTextInvalid } from '../../
                 <button 
                   type="button" 
                   (click)="showConfirmPassword.set(!showConfirmPassword())" 
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs p-1 focus:outline-none"
+                  aria-label="Toggle officer confirm password visibility"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
                 >
                   {{ showConfirmPassword() ? 'Hide' : 'Show' }}
                 </button>
@@ -198,7 +199,7 @@ import { RegisteredOfficer, formatPhoneNumber, isPhoneTextInvalid } from '../../
 
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contact Phone</label>
-              <input type="text" [ngModel]="newOfficer.phone" (ngModelChange)="onOfficerPhoneChange($event)" name="sec_off_ph_val" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="e.g. +91 9816012345 or 9816012345" class="w-full px-3 py-2 border rounded-xl text-xs" />
+              <input type="text" [ngModel]="newOfficer.phone" (ngModelChange)="onOfficerPhoneChange($event)" name="sec_off_ph_val" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter mobile number" class="w-full px-3 py-2 border rounded-xl text-xs" />
               <p *ngIf="hasSubmitted() && newOfficer.phone.trim() && isPhoneTextInvalid(newOfficer.phone)" class="text-[11px] text-rose-600 font-bold mt-1">Enter phone number</p>
             </div>
 
@@ -380,7 +381,7 @@ export class OfficerManagementComponent {
     return isPhoneTextInvalid(val);
   }
 
-  saveOfficer() {
+  async saveOfficer() {
     this.hasSubmitted.set(true);
     if (!this.newOfficer.name.trim() || !this.newOfficer.email.trim() || !this.newOfficer.password.trim() || !this.newOfficer.confirmPassword.trim()) {
       this.toastMessage.set('Please fill out all required fields.');
@@ -414,7 +415,7 @@ export class OfficerManagementComponent {
     try {
       if (this.editingOfficerId()) {
         // Edit mode
-        this.authService.updateOfficerByAdmin(this.editingOfficerId()!, {
+        await this.authService.updateOfficerByAdmin(this.editingOfficerId()!, {
           name: this.newOfficer.name.trim(),
           email: this.newOfficer.email.trim(),
           password: this.newOfficer.password.trim(),
@@ -424,10 +425,10 @@ export class OfficerManagementComponent {
         });
 
         if (dept) {
-          this.departmentService.addOfficerToDepartment(dept.id, {
+          await this.departmentService.addOfficerToDepartment(dept.id, {
             name: this.newOfficer.name.trim(),
             email: this.newOfficer.email.trim(),
-            designation: 'Nodal Officer',
+            designation: 'Officer',
             phone: formattedPhone
           });
         }
@@ -435,21 +436,21 @@ export class OfficerManagementComponent {
         this.toastMessage.set(`Officer details updated successfully for "${this.newOfficer.name}".`);
       } else {
         // Create mode
-        this.authService.registerOfficerByAdmin({
+        await this.authService.registerOfficerByAdmin({
           name: this.newOfficer.name.trim(),
           email: this.newOfficer.email.trim(),
           password: this.newOfficer.password.trim(),
-          designation: 'Nodal Officer',
+          designation: 'Officer',
           departmentId: dept ? dept.id : '',
           departmentName: deptName,
           phone: formattedPhone
         });
 
         if (dept) {
-          this.departmentService.addOfficerToDepartment(dept.id, {
+          await this.departmentService.addOfficerToDepartment(dept.id, {
             name: this.newOfficer.name.trim(),
             email: this.newOfficer.email.trim(),
-            designation: 'Nodal Officer',
+            designation: 'Officer',
             phone: formattedPhone
           });
         }
@@ -466,23 +467,21 @@ export class OfficerManagementComponent {
     }
   }
 
-  revokeOfficer(id: string, name: string) {
+  grievanceService = inject(GrievanceService);
+
+  async revokeOfficer(id: string, name: string) {
     const registered = this.authService.registeredOfficers().find(o => o.id === id);
-    this.authService.revokeOfficerAccess(id);
-    this.departmentService.removeOfficerFromAllDepartments(id);
-    if (registered?.email) {
-      this.departmentService.removeOfficerFromAllDepartments(registered.email);
-    }
+    await this.authService.revokeOfficerAccess(id);
     this.toastMessage.set(`Officer access revoked for "${name}". Removed from department and credentials disabled.`);
   }
 
-  unrevokeOfficer(id: string, name: string) {
-    this.authService.restoreOfficerAccess(id);
+  async unrevokeOfficer(id: string, name: string) {
+    await this.authService.restoreOfficerAccess(id);
     this.toastMessage.set(`Officer "${name}" unrevoked successfully! Credentials re-enabled.`);
   }
 
-  deleteOfficerPermanently(id: string, name: string) {
-    this.authService.removeOfficerByAdmin(id);
+  async deleteOfficerPermanently(id: string, name: string) {
+    await this.authService.removeOfficerByAdmin(id);
     this.toastMessage.set(`Officer account permanently deleted for "${name}".`);
   }
 }

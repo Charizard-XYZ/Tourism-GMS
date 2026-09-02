@@ -66,8 +66,7 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Create Password *</label>
             <div class="relative">
               <input 
-                type="text" 
-                [style.-webkit-text-security]="showPassword() ? 'none' : 'disc'" 
+                [type]="showPassword() ? 'text' : 'password'" 
                 [(ngModel)]="password" 
                 name="reg_sec_pass" 
                 required 
@@ -82,7 +81,8 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
               <button 
                 type="button" 
                 (click)="showPassword.set(!showPassword())" 
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm p-1 focus:outline-none"
+                aria-label="Toggle password visibility"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
               >
                 {{ showPassword() ? 'Hide' : 'Show' }}
               </button>
@@ -94,8 +94,7 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Confirm Password *</label>
             <div class="relative">
               <input 
-                type="text" 
-                [style.-webkit-text-security]="showConfirmPassword() ? 'none' : 'disc'" 
+                [type]="showConfirmPassword() ? 'text' : 'password'" 
                 [(ngModel)]="confirmPassword" 
                 name="reg_confirm_sec_pass" 
                 required 
@@ -110,7 +109,8 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
               <button 
                 type="button" 
                 (click)="showConfirmPassword.set(!showConfirmPassword())" 
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm p-1 focus:outline-none"
+                aria-label="Toggle confirm password visibility"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
               >
                 {{ showConfirmPassword() ? 'Hide' : 'Show' }}
               </button>

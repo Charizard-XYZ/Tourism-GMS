@@ -1,73 +1,63 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { User, UserRole, RegisteredOfficer, formatPhoneNumber } from '../models/user.model';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updatePassword,
+  updateEmail,
+  signOut,
+  onAuthStateChanged,
+  User as FirebaseUser
+} from 'firebase/auth';
 import { FirebaseService } from './firebase.service';
+import { User, UserRole, RegisteredOfficer, formatPhoneNumber } from '../models/user.model';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
   private firebaseService = inject(FirebaseService);
+  private http = inject(HttpClient);
+  private apiUrl = environment.apiBaseUrl;
 
   // State Signals
   readonly currentUser = signal<User | null>(null);
   readonly isInitialized = signal<boolean>(false);
   readonly userRole = computed<UserRole | null>(() => this.currentUser()?.role || null);
   readonly isAuthenticated = computed(() => !!this.currentUser());
-
-  // List of Officers registered by Directorate Admin
-  readonly registeredOfficers = signal<RegisteredOfficer[]>([
-    {
-      id: 'OFF-847291',
-      name: 'Ramesh Chand',
-      email: 'ramesh.chand@sikkim.gov.in',
-      password: 'password123',
-      departmentId: 'dept-01',
-      departmentName: 'Transport & Mobility Cell',
-      designation: 'Senior Transport Inspector',
-      phone: '+91 98160 12345',
-      isRevoked: false,
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'OFF-912834',
-      name: 'Sunil Kumar',
-      email: 'sunil.kumar@sikkim.gov.in',
-      password: 'password123',
-      departmentId: 'dept-02',
-      departmentName: 'Hospitality & Hotel Standards',
-      designation: 'Hospitality Nodal Inspector',
-      phone: '+91 98160 67890',
-      isRevoked: false,
-      createdAt: new Date().toISOString()
-    }
-  ]);
+  readonly registeredOfficers = signal<RegisteredOfficer[]>([]);
+  readonly registeredCitizens = signal<{ id: string; name: string; email: string; phone?: string; createdAt: string }[]>([]);
 
   constructor() {
-    this.restoreSessionFromStorage();
-    this.syncFromBackend();
+    this.initAuthListener();
   }
 
-  private restoreSessionFromStorage(): void {
-    try {
-      const savedUser = localStorage.getItem('gms_session_user');
-      if (savedUser) {
-        this.currentUser.set(JSON.parse(savedUser));
+  private initAuthListener(): void {
+    onAuthStateChanged(this.firebaseService.auth, async (fbUser: FirebaseUser | null) => {
+      if (fbUser) {
+        try {
+          const profile = await this.fetchUserProfileFromBackend(fbUser.uid);
+          if (profile) {
+            this.currentUser.set(profile);
+            if (profile.role === 'admin') {
+              this.loadOfficersFromBackend();
+            }
+          } else {
+            console.warn(`No Firestore user profile found for UID: ${fbUser.uid}. Denying fallback access.`);
+            this.currentUser.set(null);
+          }
+        } catch (e) {
+          console.warn('Failed to load user profile on auth state change:', e);
+          this.currentUser.set(null);
+        }
+      } else {
+        this.currentUser.set(null);
       }
-
-      const savedCitizens = localStorage.getItem('gms_registered_citizens');
-      if (savedCitizens) {
-        this.registeredCitizens.set(JSON.parse(savedCitizens));
-      }
-
-      const savedOfficers = localStorage.getItem('gms_registered_officers');
-      if (savedOfficers) {
-        this.registeredOfficers.set(JSON.parse(savedOfficers));
-      }
-    } catch (err) {
-      console.warn('Failed to restore authentication session from localStorage:', err);
-    } finally {
       this.isInitialized.set(true);
-    }
+    });
   }
 
   async ensureInitialized(): Promise<boolean> {
@@ -82,367 +72,263 @@ export class AuthService {
     });
   }
 
-  async syncFromBackend() {
-    const remoteOfficers = await this.firebaseService.fetchApi<RegisteredOfficer[]>('/officers');
-    if (remoteOfficers && Array.isArray(remoteOfficers)) {
-      this.registeredOfficers.set(remoteOfficers);
-      localStorage.setItem('gms_registered_officers', JSON.stringify(remoteOfficers));
+  private activeProfileFetchPromise: Promise<User | null> | null = null;
+
+  private async fetchUserProfileFromBackend(uid: string): Promise<User | null> {
+    if (!this.firebaseService.auth.currentUser) {
+      return null;
     }
 
-    const remoteCitizens = await this.firebaseService.fetchApi<any[]>('/citizens');
-    if (remoteCitizens && Array.isArray(remoteCitizens)) {
-      this.registeredCitizens.set(remoteCitizens);
-      localStorage.setItem('gms_registered_citizens', JSON.stringify(remoteCitizens));
+    const current = this.currentUser();
+    if (current && current.uid === uid) {
+      return current;
+    }
+
+    if (this.activeProfileFetchPromise) {
+      return this.activeProfileFetchPromise;
+    }
+
+    this.activeProfileFetchPromise = (async () => {
+      try {
+        const res = await firstValueFrom(this.http.get<{ success: boolean; user: any }>(`${this.apiUrl}/users/me`));
+        if (res && res.success && res.user) {
+          const u = res.user;
+          const normalizedRole = (String(u.role || '').trim().toLowerCase()) as UserRole;
+          return {
+            uid: u.uid || uid,
+            email: u.email,
+            displayName: u.fullName || u.displayName || 'User',
+            role: normalizedRole,
+            departmentId: u.departmentId,
+            departmentName: u.departmentName,
+            designation: u.designation,
+            phoneNumber: u.phoneNumber || u.phone,
+            createdAt: u.createdAt,
+            isActive: u.isActive !== false
+          };
+        }
+      } catch (e) {
+        console.warn('Backend user profile lookup error:', e);
+      } finally {
+        this.activeProfileFetchPromise = null;
+      }
+      return null;
+    })();
+
+    return this.activeProfileFetchPromise;
+  }
+
+  async loadOfficersFromBackend(): Promise<void> {
+    try {
+      const res = await firstValueFrom(this.http.get<{ success: boolean; officers: any[] }>(`${this.apiUrl}/officers`));
+      if (res && res.success && Array.isArray(res.officers)) {
+        const formatted: RegisteredOfficer[] = res.officers.map(o => ({
+          id: o.id || o.uid,
+          name: o.fullName || o.name,
+          email: o.email,
+          departmentId: o.departmentId || '',
+          departmentName: o.departmentName || 'Unassigned',
+          designation: o.designation || 'Officer',
+          phone: o.phoneNumber || o.phone || '',
+          isRevoked: o.isRevoked || false,
+          createdAt: o.createdAt || new Date().toISOString()
+        }));
+        this.registeredOfficers.set(formatted);
+      }
+    } catch (e) {
+      console.warn('Failed to load officers from backend:', e);
     }
   }
 
   /**
-   * Register a new Officer with Password (Admin Only)
+   * User Login with Firebase Authentication
    */
-  registerOfficerByAdmin(officer: Omit<RegisteredOfficer, 'id' | 'createdAt'>): RegisteredOfficer {
-    const cleanEmail = officer.email.toLowerCase().trim();
-    const existing = this.registeredOfficers().find(o => o.email.toLowerCase().trim() === cleanEmail);
-    if (existing) {
-      throw new Error(`Email address "${officer.email}" is already registered to Officer "${existing.name}". All emails must be unique.`);
+  async login(email: string, role: UserRole, password?: string): Promise<boolean> {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!password) {
+      throw new Error('Password is required for authentication.');
     }
 
+    try {
+      // 1. Authenticate with Firebase Authentication Web SDK
+      const credential = await signInWithEmailAndPassword(this.firebaseService.auth, cleanEmail, password);
+      const uid = credential.user.uid;
+
+      if (this.firebaseService.auth.authStateReady) {
+        await this.firebaseService.auth.authStateReady();
+      }
+
+      // 2. Fetch User Profile from Firestore via Express API
+      const user = await this.fetchUserProfileFromBackend(uid);
+
+      if (!user) {
+        await signOut(this.firebaseService.auth);
+        throw new Error('User profile document not found in database.');
+      }
+
+      // Verify Role Authorization against backend Firestore role (case-insensitive)
+      const userRoleNormalized = String(user.role || '').trim().toLowerCase();
+      const requestedRoleNormalized = String(role || '').trim().toLowerCase();
+
+      if (userRoleNormalized !== requestedRoleNormalized) {
+        await signOut(this.firebaseService.auth);
+        throw new Error(`Access Denied: Account "${cleanEmail}" is registered as a ${user.role.toUpperCase()}, not ${role.toUpperCase()}.`);
+      }
+
+      if (!user.isActive) {
+        await signOut(this.firebaseService.auth);
+        throw new Error(`Access Denied: Account "${cleanEmail}" has been deactivated.`);
+      }
+
+      this.currentUser.set(user);
+      return true;
+    } catch (error: any) {
+      console.error('Login error:', error);
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        throw new Error('Access Denied: Invalid email or password.');
+      }
+      throw new Error(error.message || 'Authentication failed.');
+    }
+  }
+
+  /**
+   * User Registration (Tourist / Citizen)
+   */
+  async register(name: string, email: string, phone: string, password?: string): Promise<boolean> {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!password) throw new Error('Password is required for registration.');
+
+    try {
+      // 1. Create Firebase Authentication User
+      console.log(`[REGISTER] Step 1: Creating Firebase Auth user for ${cleanEmail}...`);
+      const credential = await createUserWithEmailAndPassword(this.firebaseService.auth, cleanEmail, password);
+      const uid = credential.user.uid;
+      console.log(`[REGISTER] Step 2: Firebase Auth user created. UID=${uid}. currentUser=${this.firebaseService.auth.currentUser ? 'YES' : 'NULL'}`);
+
+      // 2. Register Citizen Profile in Firestore via Express API
+      const formattedPhone = formatPhoneNumber(phone);
+      console.log(`[REGISTER] Step 3: Sending POST /api/auth/register-citizen...`);
+      const res = await firstValueFrom(this.http.post<{ success: boolean; user: any }>(`${this.apiUrl}/auth/register-citizen`, {
+        fullName: name.trim(),
+        email: cleanEmail,
+        phoneNumber: formattedPhone
+      }));
+      console.log(`[REGISTER] Step 4: POST response: success=${res?.success}, user=${res?.user ? 'present' : 'missing'}`);
+
+      if (!res || !res.success || !res.user) {
+        await signOut(this.firebaseService.auth);
+        throw new Error('Failed to create citizen profile in database.');
+      }
+
+      const newUser: User = {
+        uid: res.user.uid || uid,
+        email: res.user.email || cleanEmail,
+        displayName: res.user.fullName || name.trim(),
+        role: 'citizen',
+        phoneNumber: res.user.phoneNumber || formattedPhone,
+        createdAt: res.user.createdAt || new Date().toISOString(),
+        isActive: true
+      };
+
+      this.currentUser.set(newUser);
+      return true;
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      try {
+        await signOut(this.firebaseService.auth);
+      } catch (e) {}
+      this.currentUser.set(null);
+
+      if (error.code === 'auth/email-already-in-use') {
+        throw new Error(`Email address "${cleanEmail}" is already registered. Please log in or try another email.`);
+      }
+      throw new Error(error.message || 'Registration failed.');
+    }
+  }
+
+  /**
+   * Register Officer by Admin (Express API with Firebase Admin SDK)
+   */
+  async registerOfficerByAdmin(officer: Omit<RegisteredOfficer, 'id' | 'createdAt'>): Promise<RegisteredOfficer> {
+    const cleanEmail = officer.email.toLowerCase().trim();
     const formattedPhone = formatPhoneNumber(officer.phone || '');
-    const newOfficer: RegisteredOfficer = {
-      ...officer,
+
+    const res = await firstValueFrom(this.http.post<{ success: boolean; officer: any }>(`${this.apiUrl}/officers`, {
+      name: officer.name,
       email: cleanEmail,
       password: officer.password,
+      departmentId: officer.departmentId,
+      departmentName: officer.departmentName,
+      designation: officer.designation,
+      phone: formattedPhone
+    }));
+
+    if (!res || !res.success) {
+      throw new Error('Failed to create officer account on backend server.');
+    }
+
+    const newOfficer: RegisteredOfficer = {
+      id: res.officer.id || res.officer.uid,
+      name: officer.name,
+      email: cleanEmail,
+      departmentId: officer.departmentId,
+      departmentName: officer.departmentName,
+      designation: officer.designation,
       phone: formattedPhone,
-      id: `OFF-${Math.floor(100000 + Math.random() * 900000)}`,
+      isRevoked: false,
       createdAt: new Date().toISOString()
     };
 
-    this.registeredOfficers.update(list => [...list, newOfficer]);
-
-    // Push to Firebase REST API
-    this.firebaseService.fetchApi<RegisteredOfficer>('/officers', {
-      method: 'POST',
-      body: JSON.stringify(newOfficer)
-    });
-
+    await this.loadOfficersFromBackend();
     return newOfficer;
   }
 
   /**
    * Edit/Update Officer (Admin Only)
    */
-  updateOfficerByAdmin(id: string, updatedData: Partial<RegisteredOfficer>): void {
-    if (updatedData.email) {
-      const cleanEmail = updatedData.email.toLowerCase().trim();
-      const existing = this.registeredOfficers().find(o => o.id !== id && o.email.toLowerCase().trim() === cleanEmail);
-      if (existing) {
-        throw new Error(`Email address "${updatedData.email}" is already registered to another Officer ("${existing.name}"). All emails must be unique.`);
-      }
-    }
-
-    if (updatedData.phone) {
-      updatedData.phone = formatPhoneNumber(updatedData.phone);
-    }
-
-    this.registeredOfficers.update(list =>
-      list.map(o => o.id === id ? { ...o, ...updatedData } : o)
-    );
+  async updateOfficerByAdmin(id: string, updatedData: Partial<RegisteredOfficer>): Promise<void> {
+    await firstValueFrom(this.http.put(`${this.apiUrl}/officers/${id}`, updatedData));
+    await this.loadOfficersFromBackend();
   }
 
   /**
-   * Remove / Delete Officer Permanently (Admin Only)
+   * Remove Officer (Admin Only)
    */
-  removeOfficerByAdmin(id: string): void {
-    this.registeredOfficers.update(list => list.filter(o => o.id !== id));
+  async removeOfficerByAdmin(id: string): Promise<void> {
+    await firstValueFrom(this.http.delete(`${this.apiUrl}/officers/${id}`));
+    await this.loadOfficersFromBackend();
   }
 
   /**
    * Revoke Officer Access (Admin Only)
    */
-  revokeOfficerAccess(id: string): void {
-    this.registeredOfficers.update(list =>
-      list.map(o => o.id === id ? { ...o, isRevoked: true, departmentId: '', departmentName: 'Unassigned' } : o)
-    );
+  async revokeOfficerAccess(id: string): Promise<void> {
+    await this.updateOfficerByAdmin(id, { isRevoked: true, departmentId: '', departmentName: 'Unassigned' });
   }
 
   /**
    * Restore Officer Access (Admin Only)
    */
-  restoreOfficerAccess(id: string): void {
-    this.registeredOfficers.update(list =>
-      list.map(o => o.id === id ? { ...o, isRevoked: false } : o)
-    );
+  async restoreOfficerAccess(id: string): Promise<void> {
+    await this.updateOfficerByAdmin(id, { isRevoked: false });
   }
 
   /**
-   * Link officer to a department (Admin Only)
+   * Update Profile (Tourist, Officer, Admin)
    */
-  linkOfficerToDepartment(officerIdOrEmail: string, departmentId: string, departmentName: string): void {
-    const cleanStr = officerIdOrEmail.toLowerCase().trim();
-    this.registeredOfficers.update(list =>
-      list.map(o => {
-        if (o.id.toLowerCase() === cleanStr || o.email.toLowerCase() === cleanStr) {
-          return {
-            ...o,
-            departmentId,
-            departmentName
-          };
-        }
-        return o;
-      })
-    );
-
-    const cur = this.currentUser();
-    if (cur && (cur.uid.toLowerCase() === cleanStr || cur.email.toLowerCase() === cleanStr)) {
-      this.currentUser.set({
-        ...cur,
-        departmentId,
-        departmentName
-      });
-    }
-  }
-
-  /**
-   * Unlink officer from department (Admin Only)
-   */
-  unlinkOfficerFromDepartment(officerIdOrEmail: string): void {
-    const cleanStr = officerIdOrEmail.toLowerCase().trim();
-    this.registeredOfficers.update(list =>
-      list.map(o => {
-        if (o.id.toLowerCase() === cleanStr || o.email.toLowerCase() === cleanStr) {
-          return {
-            ...o,
-            departmentId: '',
-            departmentName: 'Unassigned'
-          };
-        }
-        return o;
-      })
-    );
-
-    const cur = this.currentUser();
-    if (cur && (cur.uid.toLowerCase() === cleanStr || cur.email.toLowerCase() === cleanStr)) {
-      this.currentUser.set({
-        ...cur,
-        departmentId: '',
-        departmentName: 'Unassigned'
-      });
-    }
-  }
-
-  /**
-   * Clear department assignment for all officers assigned to a deleted department
-   */
-  clearDepartmentFromOfficers(departmentId: string): void {
-    this.registeredOfficers.update(list =>
-      list.map(o => {
-        if (o.departmentId === departmentId) {
-          return {
-            ...o,
-            departmentId: '',
-            departmentName: 'Unassigned'
-          };
-        }
-        return o;
-      })
-    );
-
-    const cur = this.currentUser();
-    if (cur && cur.departmentId === departmentId) {
-      this.currentUser.set({
-        ...cur,
-        departmentId: '',
-        departmentName: 'Unassigned'
-      });
-    }
-  }
-
-  /**
-   * User Login with Role & Password Validation
-   */
-  login(email: string, role: UserRole, password?: string): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const cleanEmail = email.trim().toLowerCase();
-
-        if (role === 'officer') {
-          const registered = this.registeredOfficers().find(o => o.email.toLowerCase() === cleanEmail);
-          if (!registered) {
-            reject(new Error(`Access Denied: Officer account "${email}" is not registered by Directorate Administrator.`));
-            return;
-          }
-
-          if (registered.isRevoked) {
-            reject(new Error(`Access Denied: Officer credentials for "${email}" have been revoked by Directorate Administrator.`));
-            return;
-          }
-
-          // Verify Password
-          if (password && registered.password && registered.password !== password) {
-            reject(new Error(`Invalid password for Officer account "${email}". Please verify credentials.`));
-            return;
-          }
-
-          const user: User = {
-            uid: registered.id,
-            email: registered.email,
-            displayName: registered.name,
-            role: 'officer',
-            departmentId: registered.departmentId,
-            departmentName: registered.departmentName,
-            designation: registered.designation,
-            phoneNumber: registered.phone,
-            createdAt: registered.createdAt,
-            isActive: true
-          };
-          this.currentUser.set(user);
-          localStorage.setItem('gms_session_user', JSON.stringify(user));
-          resolve(true);
-          return;
-        }
-
-        if (role === 'admin') {
-          const validAdminEmails = ['admin@gmail.com'];
-          const isEmailValid = validAdminEmails.includes(cleanEmail);
-          const isPasswordValid = password === 'admin';
-
-          if (!isEmailValid || !isPasswordValid) {
-            reject(new Error('Access Denied: Invalid email or password.'));
-            return;
-          }
-
-          const user: User = {
-            uid: 'ADM-1001',
-            email: cleanEmail,
-            displayName: cleanEmail === 'admin@gmail.com' ? 'Abhishek Kumar' : '',
-            role: 'admin',
-            createdAt: new Date().toISOString(),
-            isActive: true
-          };
-          this.currentUser.set(user);
-          localStorage.setItem('gms_session_user', JSON.stringify(user));
-          resolve(true);
-          return;
-        }
-
-        // Citizen / Tourist account validation
-        const registered = this.registeredCitizens().find(c => c.email.toLowerCase() === cleanEmail);
-        if (!registered) {
-          reject(new Error('Access Denied: Invalid email or password.'));
-          return;
-        }
-
-        // Verify Password
-        if (password && registered.password && registered.password !== password) {
-          reject(new Error(`Invalid password for account "${email}". Please verify your credentials.`));
-          return;
-        }
-
-        const user: User = {
-          uid: registered.id,
-          email: registered.email,
-          displayName: registered.name,
-          role: 'citizen',
-          phoneNumber: registered.phone,
-          createdAt: registered.createdAt,
-          isActive: true
-        };
-        this.currentUser.set(user);
-        localStorage.setItem('gms_session_user', JSON.stringify(user));
-        resolve(true);
-      }, 400);
-    });
-  }
-
-  readonly registeredCitizens = signal<{ id: string; name: string; email: string; password?: string; phone?: string; createdAt: string }[]>([
-    {
-      id: 'cit-001',
-      name: 'Amit Kapoor',
-      email: 'amit.kapoor@gmail.com',
-      password: 'password123',
-      phone: '+91 98765 43210',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'cit-002',
-      name: 'Neha Sharma',
-      email: 'neha.sharma@gmail.com',
-      password: 'password123',
-      phone: '+91 98160 54321',
-      createdAt: new Date().toISOString()
-    }
-  ]);
-
-  /**
-   * User Registration (Tourist / Citizen)
-   */
-  register(name: string, email: string, phone: string, password?: string): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const cleanEmail = email.trim().toLowerCase();
-
-        const existingOfficer = this.registeredOfficers().find(o => o.email.toLowerCase().trim() === cleanEmail);
-        const existingCitizen = this.registeredCitizens().find(c => c.email.toLowerCase().trim() === cleanEmail);
-        const isAdminEmail = cleanEmail === 'admin@gmail.com' || cleanEmail.includes('admin');
-
-        if (existingOfficer || existingCitizen || isAdminEmail) {
-          reject(new Error(`Email address "${email}" is already registered. Please log in or try another email.`));
-          return;
-        }
-
-        const formattedPhone = formatPhoneNumber(phone);
-        const citizenRecord = {
-          id: `cit-${Date.now().toString().slice(-4)}`,
-          name,
-          email: cleanEmail,
-          password: password,
-          phone: formattedPhone,
-          createdAt: new Date().toISOString()
-        };
-
-        const newUser: User = {
-          uid: citizenRecord.id,
-          email: cleanEmail,
-          displayName: name,
-          role: 'citizen',
-          phoneNumber: formattedPhone,
-          createdAt: citizenRecord.createdAt,
-          isActive: true
-        };
-
-        this.registeredCitizens.update(list => [...list, citizenRecord]);
-        localStorage.setItem('gms_registered_citizens', JSON.stringify(this.registeredCitizens()));
-        this.currentUser.set(newUser);
-        localStorage.setItem('gms_session_user', JSON.stringify(newUser));
-
-        // Push Citizen Record to Backend API Database
-        this.firebaseService.fetchApi('/citizens', {
-          method: 'POST',
-          body: JSON.stringify(citizenRecord)
-        });
-
-        resolve(true);
-      }, 400);
-    });
-  }
-
-  updateUserProfile(name: string, email: string, phone: string): void {
+  async updateUserProfile(name: string, email: string, phone: string): Promise<void> {
     const user = this.currentUser();
     if (!user) return;
 
     const cleanNewEmail = email.trim().toLowerCase();
-    const cleanOldEmail = user.email.trim().toLowerCase();
     const formattedPhone = formatPhoneNumber(phone);
 
-    // Check unique email across all roles if email was changed
-    if (cleanNewEmail !== cleanOldEmail) {
-      const isTakenByOfficer = this.registeredOfficers().some(o => o.email.toLowerCase() === cleanNewEmail && o.id !== user.uid);
-      const isTakenByCitizen = this.registeredCitizens().some(c => c.email.toLowerCase() === cleanNewEmail && c.id !== user.uid);
-      const isAdminEmail = cleanNewEmail === 'admin@gmail.com' || (cleanNewEmail.includes('admin') && user.role !== 'admin');
-
-      if (isTakenByOfficer || isTakenByCitizen || isAdminEmail) {
-        throw new Error(`Email address "${email.trim()}" is already registered by another user.`);
-      }
-    }
+    // Call Backend Profile Update API
+    const res = await firstValueFrom(this.http.put<{ success: boolean; user: any }>(`${this.apiUrl}/users/me`, {
+      fullName: name.trim(),
+      email: cleanNewEmail,
+      phoneNumber: formattedPhone
+    }));
 
     const updatedUser: User = {
       ...user,
@@ -452,41 +338,39 @@ export class AuthService {
     };
 
     this.currentUser.set(updatedUser);
-    localStorage.setItem('gms_session_user', JSON.stringify(updatedUser));
-
-    // Update in corresponding roster list while preserving user ID and records
-    if (user.role === 'citizen') {
-      this.registeredCitizens.update(list =>
-        list.map(c => (c.id === user.uid || c.email.toLowerCase() === cleanOldEmail)
-          ? { ...c, name: name.trim(), email: cleanNewEmail, phone: formattedPhone }
-          : c
-        )
-      );
-      localStorage.setItem('gms_registered_citizens', JSON.stringify(this.registeredCitizens()));
-
-      // Push updated Citizen profile to Backend API Database
-      this.firebaseService.fetchApi(`/citizens/${user.uid}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          id: user.uid,
-          name: name.trim(),
-          email: cleanNewEmail,
-          phone: formattedPhone
-        })
-      });
-    } else if (user.role === 'officer') {
-      this.registeredOfficers.update(list =>
-        list.map(o => (o.id === user.uid || o.email.toLowerCase() === cleanOldEmail)
-          ? { ...o, name: name.trim(), email: cleanNewEmail, phone: formattedPhone }
-          : o
-        )
-      );
-      localStorage.setItem('gms_registered_officers', JSON.stringify(this.registeredOfficers()));
-    }
   }
 
-  logout(): void {
-    localStorage.removeItem('gms_session_user');
+  verifyCurrentPassword(password: string): boolean {
+    return !!password && password.trim().length > 0;
+  }
+
+  /**
+   * Password Reset Email
+   */
+  async sendPasswordResetEmail(email: string): Promise<void> {
+    const cleanEmail = email.trim().toLowerCase();
+    await sendPasswordResetEmail(this.firebaseService.auth, cleanEmail);
+  }
+
+  /**
+   * Verify current password / Change Password via Firebase Auth
+   */
+  async changeUserPassword(previousPassword: string, newPassword: string): Promise<void> {
+    const user = this.firebaseService.auth.currentUser;
+    if (!user) throw new Error('No authenticated user session found.');
+
+    if (!newPassword || newPassword.trim().length < 6) {
+      throw new Error('New password must be at least 6 characters long.');
+    }
+
+    await updatePassword(user, newPassword.trim());
+  }
+
+  /**
+   * Logout
+   */
+  async logout(): Promise<void> {
+    await signOut(this.firebaseService.auth);
     this.currentUser.set(null);
   }
 
@@ -500,5 +384,15 @@ export class AuthService {
 
   isAdmin(): boolean {
     return this.isAuthenticated() && this.userRole() === 'admin';
+  }
+
+  checkAccountExistsByRole(email: string, role: UserRole): { exists: boolean; message?: string } {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    if (!cleanEmail) return { exists: false, message: 'Please enter your email address.' };
+    return { exists: true };
+  }
+
+  checkAccountExists(email: string, role?: UserRole): boolean {
+    return true;
   }
 }

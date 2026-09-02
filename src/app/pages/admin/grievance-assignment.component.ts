@@ -32,7 +32,7 @@ import { Grievance } from '../../core/models/complaint.model';
           autocapitalize="off"
           spellcheck="false"
           data-lpignore="true"
-          placeholder="Search by Code, Title, Tourist Name..." 
+          placeholder="Search by Code, Title, Officer Name..." 
           class="px-4 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]"
         />
 
@@ -118,9 +118,37 @@ import { Grievance } from '../../core/models/complaint.model';
             <button (click)="commentModalGrievance = null" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
           </div>
 
-          <p class="text-xs text-slate-700 font-semibold bg-slate-50 p-3 rounded-xl border border-slate-100">
-            {{ commentModalGrievance.title }}
-          </p>
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+            <h4 class="text-xs font-extrabold text-slate-800 uppercase">Grievance Description & Tourist Attachments</h4>
+            <p class="text-xs text-slate-700 leading-relaxed whitespace-pre-line">{{ commentModalGrievance.description }}</p>
+
+            <!-- Tourist Attached Files -->
+            <div *ngIf="commentModalGrievance.attachments && commentModalGrievance.attachments.length > 0" class="pt-2">
+              <p class="text-[11px] font-bold text-slate-700 uppercase mb-1.5">Submitted Tourist Complaint Evidence Files:</p>
+              <div class="flex flex-wrap gap-2">
+                <a *ngFor="let att of commentModalGrievance.attachments" [href]="att.url" target="_blank" class="px-3 py-1.5 bg-white border border-slate-300 text-slate-800 rounded-xl text-xs font-bold flex items-center space-x-1.5 hover:bg-slate-100 transition shadow-xs">
+                  <span>{{ att.name }}</span>
+                  <span *ngIf="att.size" class="text-[10px] text-slate-500 font-semibold">({{ att.size }})</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Display Official Resolution Report & Uploaded Proof Files for Admin -->
+          <div *ngIf="commentModalGrievance.resolutionDetails || (commentModalGrievance.resolutionAttachments && commentModalGrievance.resolutionAttachments.length > 0)" class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
+            <h4 class="text-xs font-extrabold text-emerald-900 uppercase">Official Resolution Report & Uploaded Proof File</h4>
+            <p *ngIf="commentModalGrievance.resolutionDetails" class="text-xs text-emerald-950 leading-relaxed whitespace-pre-line">{{ commentModalGrievance.resolutionDetails }}</p>
+
+            <div *ngIf="commentModalGrievance.resolutionAttachments && commentModalGrievance.resolutionAttachments.length > 0" class="pt-1">
+              <p class="text-[11px] font-bold text-emerald-800 uppercase mb-1.5">Uploaded Officer Proof / Inspection Reports:</p>
+              <div class="flex flex-wrap gap-2">
+                <a *ngFor="let att of commentModalGrievance.resolutionAttachments" [href]="att.url" target="_blank" class="px-3.5 py-1.5 bg-white border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold flex items-center space-x-1.5 hover:bg-emerald-100 transition shadow-sm">
+                  <span>{{ att.name }}</span>
+                  <span *ngIf="att.size" class="text-[10px] text-emerald-600 font-semibold">({{ att.size }})</span>
+                </a>
+              </div>
+            </div>
+          </div>
 
           <!-- Comment List -->
           <div class="space-y-3 max-h-60 overflow-y-auto pr-1">
@@ -198,13 +226,50 @@ export class GrievanceAssignmentComponent {
   departmentFilter = 'ALL';
   lifecycleFilter = 'ALL';
 
+  isGrievanceAssignedToValidDeptAndOfficer(g: Grievance): boolean {
+    const depts = this.departmentService.departments();
+    const registeredOfficers = this.authService.registeredOfficers();
+    const activeOfficers = registeredOfficers.filter(o => !o.isRevoked);
+
+    const deptName = g.departmentName || g.category;
+    const targetDept = depts.find(d => 
+      d.id === g.departmentId || 
+      (deptName && d.name.toLowerCase().trim() === deptName.toLowerCase().trim()) ||
+      (deptName && d.code.toLowerCase().trim() === deptName.toLowerCase().trim())
+    );
+
+    if (!targetDept || !targetDept.isActive) return false;
+
+    const deptActiveOfficers = activeOfficers.filter(o =>
+      o.departmentId === targetDept.id ||
+      (o.departmentName && o.departmentName.toLowerCase().trim() === targetDept.name.toLowerCase().trim())
+    );
+
+    if (deptActiveOfficers.length === 0) return false;
+
+    if (!g.assignedOfficerId) return false;
+
+    const assignedOff = registeredOfficers.find(o => 
+      o.id === g.assignedOfficerId || 
+      o.email.toLowerCase().trim() === (g.assignedOfficerId || '').toLowerCase().trim() ||
+      o.name.toLowerCase().trim() === (g.assignedOfficerName || '').toLowerCase().trim()
+    );
+
+    if (!assignedOff || assignedOff.isRevoked) return false;
+
+    return true;
+  }
+
   filteredGrievances(): Grievance[] {
     return this.grievanceService.grievances().filter(g => {
+      const isValidAssignment = this.isGrievanceAssignedToValidDeptAndOfficer(g);
+      if (!isValidAssignment) return false;
+
       const keyword = this.searchKeyword.toLowerCase().trim();
       const matchesSearch = !keyword ||
         g.trackingCode.toLowerCase().includes(keyword) ||
         g.title.toLowerCase().includes(keyword) ||
-        g.citizenName.toLowerCase().includes(keyword) ||
+        (!!g.assignedOfficerName && g.assignedOfficerName.toLowerCase().includes(keyword)) ||
         g.location.toLowerCase().includes(keyword);
 
       const matchesDept = this.departmentFilter === 'ALL' ||

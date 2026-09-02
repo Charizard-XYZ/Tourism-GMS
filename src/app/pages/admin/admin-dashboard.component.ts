@@ -1,14 +1,17 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { DepartmentService } from '../../core/services/department.service';
+import { AuthService } from '../../core/services/auth.service';
 import { ReportsService } from '../../core/services/reports.service';
+import { Grievance } from '../../core/models/complaint.model';
+import { ToastComponent } from '../../common/components/toast.component';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, ToastComponent],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
@@ -79,13 +82,19 @@ import { ReportsService } from '../../core/services/reports.service';
                   <span class="font-mono text-xs font-bold text-slate-700">{{ g.trackingCode }}</span>
                   <span class="px-2 py-0.5 bg-amber-200 text-amber-900 text-[10px] font-extrabold uppercase rounded">Unassigned</span>
                 </div>
-                <h4 class="font-bold text-sm text-slate-900 mt-1">{{ g.title }}</h4>
-                <p class="text-xs text-slate-500">Tourist: {{ g.citizenName }} | Location: {{ g.location }}</p>
+                <p class="text-xs text-slate-600">Department: <strong class="text-teal-800 font-bold">{{ g.departmentName || g.category }}</strong> | Tourist: {{ g.citizenName }} | Location: {{ g.location }}</p>
+                
+                <!-- Tourist Attached Files for Admin -->
+                <div *ngIf="g.attachments && g.attachments.length > 0" class="pt-2 flex flex-wrap gap-2">
+                  <a *ngFor="let att of g.attachments" [href]="att.url" target="_blank" class="px-2.5 py-1 bg-white border border-amber-300 text-amber-950 rounded-lg text-[11px] font-bold hover:bg-amber-100 transition">
+                    <span>{{ att.name }}</span>
+                  </a>
+                </div>
               </div>
 
-              <a routerLink="/admin/grievances" class="px-4 py-2 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 shrink-0 text-center">
-                Assign Officer
-              </a>
+              <button (click)="assignOfficerClick(g)" class="px-4 py-2 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 shrink-0 text-center">
+                Assign
+              </button>
             </div>
 
             <div *ngIf="unassignedGrievances().length === 0" class="p-8 text-center text-slate-400 text-xs italic bg-slate-50 rounded-2xl">
@@ -121,6 +130,8 @@ import { ReportsService } from '../../core/services/reports.service';
 
       </div>
 
+      <app-toast [message]="toastMessage()" (dismiss)="toastMessage.set(null)"></app-toast>
+
     </div>
   `
 })
@@ -128,7 +139,105 @@ export class AdminDashboardComponent {
   grievanceService = inject(GrievanceService);
   departmentService = inject(DepartmentService);
   reportsService = inject(ReportsService);
+  authService = inject(AuthService);
+  router = inject(Router);
+
+  toastMessage = signal<string | null>(null);
 
   metrics = () => this.reportsService.getOverallMetrics();
-  unassignedGrievances = computed(() => this.grievanceService.grievances().filter(g => g.status === 'submitted' || !g.assignedOfficerId));
+
+  unassignedGrievances = computed(() => {
+    const allGrievances = this.grievanceService.grievances();
+    const allDepts = this.departmentService.departments();
+    const registeredOfficers = this.authService.registeredOfficers();
+    const activeOfficers = registeredOfficers.filter(o => !o.isRevoked);
+
+    return allGrievances.filter(g => {
+      if (g.status === 'resolved' || g.status === 'closed') {
+        return false;
+      }
+
+      const deptName = g.departmentName || g.category;
+      const targetDept = allDepts.find(d => 
+        d.id === g.departmentId || 
+        (deptName && d.name.toLowerCase().trim() === deptName.toLowerCase().trim()) ||
+        (deptName && d.code.toLowerCase().trim() === deptName.toLowerCase().trim())
+      );
+
+      // Condition 1: Department does not exist (deleted by admin)
+      if (!targetDept) {
+        return true;
+      }
+
+      // Condition 2: Department exists but is inactive
+      if (!targetDept.isActive) {
+        return true;
+      }
+
+      // Find active officers assigned to this department
+      const deptActiveOfficers = activeOfficers.filter(o =>
+        o.departmentId === targetDept.id ||
+        (o.departmentName && o.departmentName.toLowerCase().trim() === targetDept.name.toLowerCase().trim())
+      );
+
+      // Condition 3: No officer is assigned in that department
+      if (deptActiveOfficers.length === 0) {
+        return true;
+      }
+
+      // Condition 4: No officer assigned to this grievance or assigned officer was revoked
+      if (!g.assignedOfficerId) {
+        return true;
+      }
+
+      const assignedOff = registeredOfficers.find(o => 
+        o.id === g.assignedOfficerId || 
+        o.email.toLowerCase().trim() === (g.assignedOfficerId || '').toLowerCase().trim() ||
+        o.name.toLowerCase().trim() === (g.assignedOfficerName || '').toLowerCase().trim()
+      );
+
+      if (!assignedOff || assignedOff.isRevoked) {
+        return true;
+      }
+
+      return false;
+    });
+  });
+
+  assignOfficerClick(g: Grievance) {
+    const deptName = g.departmentName || g.category;
+    const depts = this.departmentService.departments();
+    const registeredOfficers = this.authService.registeredOfficers();
+    const activeOfficers = registeredOfficers.filter(o => !o.isRevoked);
+
+    const targetDept = depts.find(d => 
+      d.id === g.departmentId || 
+      (deptName && d.name.toLowerCase().trim() === deptName.toLowerCase().trim()) ||
+      (deptName && d.code.toLowerCase().trim() === deptName.toLowerCase().trim())
+    );
+
+    if (!targetDept) {
+      this.toastMessage.set(`Department does not exist. Please create ${deptName}`);
+      return;
+    }
+
+    if (!targetDept.isActive) {
+      this.toastMessage.set(`please activate department`);
+      this.router.navigate(['/admin/departments'], { queryParams: { deptId: targetDept.id } });
+      return;
+    }
+
+    const deptActiveOfficers = activeOfficers.filter(o =>
+      o.departmentId === targetDept.id ||
+      (o.departmentName && o.departmentName.toLowerCase().trim() === targetDept.name.toLowerCase().trim())
+    );
+
+    if (deptActiveOfficers.length === 0) {
+      this.toastMessage.set(`please assign officer`);
+      this.router.navigate(['/admin/departments'], { queryParams: { deptId: targetDept.id } });
+      return;
+    }
+
+    this.router.navigate(['/admin/departments'], { queryParams: { deptId: targetDept.id } });
+  }
 }

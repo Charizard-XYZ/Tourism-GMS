@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DepartmentService } from '../../core/services/department.service';
 import { AuthService } from '../../core/services/auth.service';
+import { GrievanceService } from '../../core/services/grievance.service';
 import { Department } from '../../core/models/department.model';
 import { ToastComponent } from '../../common/components/toast.component';
 import { isPhoneTextInvalid } from '../../core/models/user.model';
@@ -114,12 +115,14 @@ import { isPhoneTextInvalid } from '../../core/models/user.model';
                 <input type="text" [(ngModel)]="deptForm.name" name="sec_dept_ident" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter Department name" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
                 <p *ngIf="hasSubmitted() && !deptForm.name.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
                 <p *ngIf="hasSubmitted() && deptForm.name.trim() && isNameNumericInvalid(deptForm.name)" class="text-[11px] text-rose-600 font-bold mt-1">Names can not be in number</p>
+                <p *ngIf="hasSubmitted() && isNameAndCodeSame()" class="text-[11px] text-rose-600 font-bold mt-1">Department Name and Department Code / ID should not be the same.</p>
               </div>
 
               <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Department Code *</label>
                 <input type="text" [(ngModel)]="deptForm.code" name="code" required autocomplete="one-time-code" autocorrect="off" autocapitalize="on" spellcheck="false" data-lpignore="true" placeholder="e.g. TS-CELL" class="w-full px-4 py-2.5 border rounded-xl text-xs font-mono" />
                 <p *ngIf="hasSubmitted() && !deptForm.code.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+                <p *ngIf="hasSubmitted() && isNameAndCodeSame()" class="text-[11px] text-rose-600 font-bold mt-1">Department Name and Department Code / ID should not be the same.</p>
               </div>
             </div>
 
@@ -132,7 +135,7 @@ import { isPhoneTextInvalid } from '../../core/models/user.model';
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contact Phone *</label>
-                <input type="text" [ngModel]="deptForm.contactPhone" (ngModelChange)="onDeptPhoneChange($event)" name="contactPhone" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="e.g. +91 9816012345 or 9816012345" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
+                <input type="text" [ngModel]="deptForm.contactPhone" (ngModelChange)="onDeptPhoneChange($event)" name="contactPhone" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter mobile number" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
                 <p *ngIf="hasSubmitted() && !deptForm.contactPhone.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
                 <p *ngIf="hasSubmitted() && deptForm.contactPhone.trim() && isPhoneTextInvalid(deptForm.contactPhone)" class="text-[11px] text-rose-600 font-bold mt-1">Enter phone number</p>
               </div>
@@ -357,7 +360,7 @@ export class DepartmentManagementComponent {
     this.isQuickAddOfficerModalOpen.set(true);
   }
 
-  submitQuickAddOfficer() {
+  async submitQuickAddOfficer() {
     if (!this.selectedDeptForAddOfficer || !this.quickSelectedOfficerId) return;
 
     const registered = this.authService.registeredOfficers().find(o => o.id === this.quickSelectedOfficerId);
@@ -367,7 +370,7 @@ export class DepartmentManagementComponent {
       d.id !== this.selectedDeptForAddOfficer!.id && d.assignedOfficers?.some(o => o.id === registered.id || o.email.toLowerCase() === registered.email.toLowerCase())
     );
 
-    this.departmentService.addOfficerToDepartment(this.selectedDeptForAddOfficer.id, {
+    await this.departmentService.addOfficerToDepartment(this.selectedDeptForAddOfficer.id, {
       name: registered.name,
       email: registered.email,
       designation: registered.designation || 'Officer',
@@ -384,10 +387,13 @@ export class DepartmentManagementComponent {
     this.quickSelectedOfficerId = '';
   }
 
-  removeOfficerFromDept(deptId: string, officerId: string) {
+  async removeOfficerFromDept(deptId: string, officerId: string) {
     try {
-      this.departmentService.removeOfficerFromDepartment(deptId, officerId);
-      this.toastMessage.set(`Officer removed from department.`);
+      const dept = this.departmentService.departments().find(d => d.id === deptId);
+      const targetOfficer = dept?.assignedOfficers?.find(o => o.id === officerId);
+
+      await this.departmentService.removeOfficerFromDepartment(deptId, officerId);
+      this.toastMessage.set(`Officer "${targetOfficer?.name || officerId}" removed from department.`);
     } catch (err: any) {
       this.toastMessage.set(err.message || 'Action failed.');
     }
@@ -395,6 +401,12 @@ export class DepartmentManagementComponent {
 
   onDeptPhoneChange(val: string) {
     this.deptForm.contactPhone = val;
+  }
+
+  isNameAndCodeSame(): boolean {
+    const cleanName = (this.deptForm.name || '').trim().toLowerCase();
+    const cleanCode = (this.deptForm.code || '').trim().toLowerCase();
+    return !!cleanName && !!cleanCode && cleanName === cleanCode;
   }
 
   isNameNumericInvalid(val: string): boolean {
@@ -410,10 +422,15 @@ export class DepartmentManagementComponent {
     return isPhoneTextInvalid(val);
   }
 
-  saveDepartment() {
+  async saveDepartment() {
     this.hasSubmitted.set(true);
     if (!this.deptForm.name.trim() || !this.deptForm.code.trim() || !this.deptForm.description.trim() || !this.deptForm.contactPhone.trim() || !this.deptForm.contactEmail.trim()) {
       this.toastMessage.set('Please fill out all required fields.');
+      return;
+    }
+
+    if (this.isNameAndCodeSame()) {
+      this.toastMessage.set('Department Name and Department Code / ID should not be the same.');
       return;
     }
 
@@ -434,10 +451,10 @@ export class DepartmentManagementComponent {
 
     try {
       if (this.editingDeptId) {
-        this.departmentService.updateDepartment(this.editingDeptId, this.deptForm);
+        await this.departmentService.updateDepartment(this.editingDeptId, this.deptForm);
         this.toastMessage.set(`Department updated successfully.`);
       } else {
-        this.departmentService.createDepartment(this.deptForm);
+        const created = await this.departmentService.createDepartment(this.deptForm);
         this.toastMessage.set(`New department created successfully.`);
       }
       this.isModalOpen.set(false);
@@ -446,18 +463,20 @@ export class DepartmentManagementComponent {
     }
   }
 
-  toggleStatus(id: string) {
+  async toggleStatus(id: string) {
     try {
-      this.departmentService.toggleDepartmentStatus(id);
+      await this.departmentService.toggleDepartmentStatus(id);
       this.toastMessage.set(`Department status updated.`);
     } catch (err: any) {
       this.toastMessage.set(err.message);
     }
   }
 
-  deleteDepartment(id: string, name: string) {
+  grievanceService = inject(GrievanceService);
+
+  async deleteDepartment(id: string, name: string) {
     try {
-      this.departmentService.deleteDepartment(id);
+      await this.departmentService.deleteDepartment(id);
       this.toastMessage.set(`Department "${name}" deleted successfully.`);
     } catch (err: any) {
       this.toastMessage.set(err.message || 'Failed to delete department.');

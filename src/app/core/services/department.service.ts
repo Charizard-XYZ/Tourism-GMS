@@ -1,115 +1,58 @@
 import { Injectable, signal, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { Department, DepartmentOfficer } from '../models/department.model';
 import { AuditLogService } from './audit-log.service';
 import { AuthService } from './auth.service';
-import { FirebaseService } from './firebase.service';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class DepartmentService {
+  private http = inject(HttpClient);
   private auditLogService = inject(AuditLogService);
   private authService = inject(AuthService);
-  private firebaseService = inject(FirebaseService);
+  private apiUrl = environment.apiBaseUrl;
 
-  private initialDepartments: Department[] = [
-    {
-      id: 'dept-01',
-      name: 'Transport & Mobility Cell',
-      code: 'TS-CELL',
-      description: 'Taxi fare regulation, permit compliance, prepaid booth oversight, and driver conduct.',
-      contactPhone: '+91 177 2654321',
-      contactEmail: 'transport.gms@sikkim.gov.in',
-      isActive: true,
-      officerCount: 1,
-      activeComplaintsCount: 1,
-      assignedOfficers: [
-        {
-          id: 'OFF-847291',
-          name: 'Ramesh Chand',
-          email: 'ramesh.chand@sikkim.gov.in',
-          designation: 'Senior Transport Inspector',
-          phone: '+91 98160 12345'
-        }
-      ],
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: 'dept-02',
-      name: 'Hospitality & Hotel Standards',
-      code: 'HT-STD',
-      description: 'Hotel tariff transparency, hygiene compliance, booking refunds, and hospitality dispute redressal.',
-      contactPhone: '+91 177 2654322',
-      contactEmail: 'hospitality.gms@sikkim.gov.in',
-      isActive: true,
-      officerCount: 1,
-      activeComplaintsCount: 1,
-      assignedOfficers: [
-        {
-          id: 'OFF-912834',
-          name: 'Sunil Kumar',
-          email: 'sunil.kumar@sikkim.gov.in',
-          designation: 'Hospitality Nodal Inspector',
-          phone: '+91 98160 67890'
-        }
-      ],
-      createdAt: new Date().toISOString()
-    }
-  ];
-
-  readonly departments = signal<Department[]>(this.initialDepartments);
+  readonly departments = signal<Department[]>([]);
 
   constructor() {
-    this.restoreFromStorage();
-    this.syncFromBackend();
+    this.loadDepartmentsFromBackend();
   }
 
-  private restoreFromStorage(): void {
+  async loadDepartmentsFromBackend(): Promise<void> {
     try {
-      const savedDepts = localStorage.getItem('gms_departments');
-      if (savedDepts) {
-        this.departments.set(JSON.parse(savedDepts));
+      const res = await firstValueFrom(this.http.get<{ success: boolean; departments: Department[] }>(`${this.apiUrl}/departments`));
+      if (res && res.success && Array.isArray(res.departments)) {
+        this.departments.set(res.departments);
       }
-    } catch (err) {
-      console.warn('Failed to restore departments from localStorage:', err);
-    }
-  }
-
-  private saveToStorage(): void {
-    try {
-      localStorage.setItem('gms_departments', JSON.stringify(this.departments()));
-    } catch (err) {
-      console.warn('Failed to save departments to localStorage:', err);
-    }
-  }
-
-  async syncFromBackend() {
-    const remote = await this.firebaseService.fetchApi<Department[]>('/departments');
-    if (remote && Array.isArray(remote)) {
-      this.departments.set(remote);
-      this.saveToStorage();
+    } catch (e) {
+      console.warn('Failed to load departments from backend:', e);
     }
   }
 
   /**
-   * Only Administrator can create departments
+   * Create Department (Admin Only)
    */
-  createDepartment(dept: Omit<Department, 'id' | 'createdAt' | 'officerCount' | 'activeComplaintsCount'>): Department {
+  async createDepartment(dept: Omit<Department, 'id' | 'createdAt' | 'officerCount' | 'activeComplaintsCount'>): Promise<Department> {
     if (!this.authService.isAdmin()) {
       throw new Error('Unauthorized: Only Administrators can create departments.');
     }
 
-    const assignedOfficers = dept.assignedOfficers || [];
-    const newDept: Department = {
-      ...dept,
-      id: `dept-${Date.now().toString().slice(-4)}`,
-      assignedOfficers,
-      officerCount: assignedOfficers.length,
-      activeComplaintsCount: 0,
-      createdAt: new Date().toISOString()
-    };
+    const cleanName = (dept.name || '').trim().toLowerCase();
+    const cleanCode = (dept.code || '').trim().toLowerCase();
 
-    this.departments.update(list => [...list, newDept]);
+    if (cleanName === cleanCode) {
+      throw new Error('Department Name and Department Code / ID should not be the same.');
+    }
+
+    const res = await firstValueFrom(this.http.post<{ success: boolean; department: Department }>(`${this.apiUrl}/departments`, dept));
+    if (!res || !res.success) {
+      throw new Error('Failed to create department on backend server.');
+    }
+
+    await this.loadDepartmentsFromBackend();
 
     const currentUser = this.authService.currentUser();
     if (currentUser) {
@@ -119,36 +62,24 @@ export class DepartmentService {
         currentUser.role,
         'CREATE_DEPARTMENT',
         'Departments',
-        newDept.id,
-        `Created department: ${newDept.name} (${newDept.code}) with ${assignedOfficers.length} officers`
+        res.department.id,
+        `Created department: ${res.department.name} (${res.department.code})`
       );
     }
 
-    return newDept;
+    return res.department;
   }
 
   /**
-   * Only Administrator can update departments
+   * Update Department (Admin Only)
    */
-  updateDepartment(id: string, updates: Partial<Department>): void {
+  async updateDepartment(id: string, updates: Partial<Department>): Promise<void> {
     if (!this.authService.isAdmin()) {
       throw new Error('Unauthorized: Only Administrators can edit departments.');
     }
 
-    this.departments.update(list =>
-      list.map(d => {
-        if (d.id === id) {
-          const updatedOfficers = updates.assignedOfficers || d.assignedOfficers || [];
-          return {
-            ...d,
-            ...updates,
-            assignedOfficers: updatedOfficers,
-            officerCount: updatedOfficers.length
-          };
-        }
-        return d;
-      })
-    );
+    await firstValueFrom(this.http.put(`${this.apiUrl}/departments/${id}`, updates));
+    await this.loadDepartmentsFromBackend();
 
     const currentUser = this.authService.currentUser();
     if (currentUser) {
@@ -165,152 +96,64 @@ export class DepartmentService {
   }
 
   /**
-   * Add Officer to a Department
+   * Add Officer to Department
    */
-  addOfficerToDepartment(departmentId: string, officer: Omit<DepartmentOfficer, 'id'>): void {
+  async addOfficerToDepartment(departmentId: string, officer: Omit<DepartmentOfficer, 'id'>): Promise<void> {
     if (!this.authService.isAdmin()) {
       throw new Error('Unauthorized: Only Administrators can modify department officers.');
     }
 
     const dept = this.departments().find(d => d.id === departmentId);
-    const deptName = dept ? dept.name : 'Unassigned';
-    const cleanEmail = officer.email.toLowerCase().trim();
-
-    const newOfficer: DepartmentOfficer = {
+    const assignedOfficers = dept ? [...(dept.assignedOfficers || [])] : [];
+    assignedOfficers.push({
       ...officer,
-      email: cleanEmail,
       id: `off-${Date.now().toString().slice(-4)}`
-    };
+    });
 
-    // Remove officer from ALL departments first to guarantee strict 1-department-per-officer assignment
-    this.departments.update(list =>
-      list.map(d => {
-        const currentOfficers = d.assignedOfficers || [];
-        const filteredOfficers = currentOfficers.filter(o => o.email.toLowerCase().trim() !== cleanEmail);
-        return {
-          ...d,
-          assignedOfficers: filteredOfficers,
-          officerCount: filteredOfficers.length
-        };
-      })
-    );
-
-    // Add officer exclusively to the single target department
-    this.departments.update(list =>
-      list.map(d => {
-        if (d.id === departmentId) {
-          const currentOfficers = d.assignedOfficers || [];
-          const updatedOfficers = [...currentOfficers, newOfficer];
-          return {
-            ...d,
-            assignedOfficers: updatedOfficers,
-            officerCount: updatedOfficers.length
-          };
-        }
-        return d;
-      })
-    );
-
-    // Link officer in AuthService registeredOfficers roster
-    this.authService.linkOfficerToDepartment(cleanEmail, departmentId, deptName);
-
-    const currentUser = this.authService.currentUser();
-    if (currentUser) {
-      this.auditLogService.log(
-        currentUser.uid,
-        currentUser.displayName,
-        currentUser.role,
-        'ADD_OFFICER',
-        'Departments',
-        departmentId,
-        `Assigned officer ${newOfficer.name} (${cleanEmail}) exclusively to department ${deptName}`
-      );
-    }
+    await this.updateDepartment(departmentId, {
+      assignedOfficers,
+      officerCount: assignedOfficers.length
+    });
   }
 
   /**
-   * Remove officer from ALL departments (e.g. when officer is revoked)
+   * Remove Officer from Department
    */
-  removeOfficerFromAllDepartments(officerIdOrEmail: string): void {
-    const cleanStr = officerIdOrEmail.toLowerCase().trim();
-    this.departments.update(list =>
-      list.map(d => {
-        const currentOfficers = d.assignedOfficers || [];
-        const updatedOfficers = currentOfficers.filter(o => 
-          o.id.toLowerCase().trim() !== cleanStr && o.email.toLowerCase().trim() !== cleanStr
-        );
-        return {
-          ...d,
-          assignedOfficers: updatedOfficers,
-          officerCount: updatedOfficers.length
-        };
-      })
-    );
-  }
-
-  /**
-   * Remove Officer from a Department
-   */
-  removeOfficerFromDepartment(departmentId: string, officerId: string): void {
+  async removeOfficerFromDepartment(departmentId: string, officerId: string): Promise<void> {
     if (!this.authService.isAdmin()) {
-      throw new Error('Unauthorized: Only Administrators can remove department officers.');
+      throw new Error('Unauthorized: Only Administrators can modify department officers.');
     }
 
     const dept = this.departments().find(d => d.id === departmentId);
-    const targetOfficer = dept?.assignedOfficers?.find(o => o.id === officerId);
+    if (!dept) return;
 
-    this.departments.update(list =>
-      list.map(d => {
-        if (d.id === departmentId) {
-          const currentOfficers = d.assignedOfficers || [];
-          const updatedOfficers = currentOfficers.filter(o => o.id !== officerId && o.email !== targetOfficer?.email);
-          return {
-            ...d,
-            assignedOfficers: updatedOfficers,
-            officerCount: updatedOfficers.length
-          };
-        }
-        return d;
-      })
-    );
+    const filtered = (dept.assignedOfficers || []).filter(o => o.id !== officerId && o.email !== officerId);
+    await this.updateDepartment(departmentId, {
+      assignedOfficers: filtered,
+      officerCount: filtered.length
+    });
+  }
 
-    // Unlink officer in AuthService registeredOfficers roster
-    this.authService.unlinkOfficerFromDepartment(officerId);
-    if (targetOfficer?.email) {
-      this.authService.unlinkOfficerFromDepartment(targetOfficer.email);
-    }
-
-    const currentUser = this.authService.currentUser();
-    if (currentUser) {
-      this.auditLogService.log(
-        currentUser.uid,
-        currentUser.displayName,
-        currentUser.role,
-        'REMOVE_OFFICER',
-        'Departments',
-        departmentId,
-        `Removed officer ID ${officerId} from department ${departmentId}`
-      );
+  async toggleDepartmentStatus(id: string): Promise<void> {
+    const dept = this.departments().find(d => d.id === id);
+    if (dept) {
+      await this.updateDepartment(id, { isActive: !dept.isActive });
     }
   }
 
   /**
-   * Only Administrator can permanently delete a department
+   * Delete Department (Admin Only)
    */
-  deleteDepartment(id: string): void {
+  async deleteDepartment(id: string): Promise<void> {
     if (!this.authService.isAdmin()) {
       throw new Error('Unauthorized: Only Administrators can delete departments.');
     }
 
-    const dept = this.departments().find(d => d.id === id);
-
-    this.departments.update(list => list.filter(d => d.id !== id));
-
-    // Clear department assignment for all registered officers belonging to deleted department
-    this.authService.clearDepartmentFromOfficers(id);
+    await firstValueFrom(this.http.delete(`${this.apiUrl}/departments/${id}`));
+    await this.loadDepartmentsFromBackend();
 
     const currentUser = this.authService.currentUser();
-    if (currentUser && dept) {
+    if (currentUser) {
       this.auditLogService.log(
         currentUser.uid,
         currentUser.displayName,
@@ -318,39 +161,29 @@ export class DepartmentService {
         'DELETE_DEPARTMENT',
         'Departments',
         id,
-        `Deleted department ${dept.name} (${dept.code})`
+        `Deleted department record ID ${id}`
       );
     }
   }
 
-  /**
-   * Only Administrator can delete/deactivate department
-   */
-  toggleDepartmentStatus(id: string): void {
-    if (!this.authService.isAdmin()) {
-      throw new Error('Unauthorized: Only Administrators can toggle department status.');
-    }
+  getDepartmentById(id: string): Department | undefined {
+    return this.departments().find(d => d.id === id);
+  }
 
-    this.departments.update(list =>
-      list.map(d => {
-        if (d.id === id) {
-          const newStatus = !d.isActive;
-          const currentUser = this.authService.currentUser();
-          if (currentUser) {
-            this.auditLogService.log(
-              currentUser.uid,
-              currentUser.displayName,
-              currentUser.role,
-              newStatus ? 'ACTIVATE_DEPARTMENT' : 'DEACTIVATE_DEPARTMENT',
-              'Departments',
-              id,
-              `${newStatus ? 'Activated' : 'Deactivated'} department ${d.name}`
-            );
-          }
-          return { ...d, isActive: newStatus };
-        }
-        return d;
-      })
+  getDepartmentByCode(code: string): Department | undefined {
+    const cleanCode = code.trim().toLowerCase();
+    return this.departments().find(d => d.code.trim().toLowerCase() === cleanCode);
+  }
+
+  getDepartmentByName(name: string): Department | undefined {
+    const cleanName = name.trim().toLowerCase();
+    return this.departments().find(d => d.name.trim().toLowerCase() === cleanName);
+  }
+
+  getOfficerAssignedDepartment(officerIdOrEmail: string): Department | undefined {
+    const cleanStr = officerIdOrEmail.toLowerCase().trim();
+    return this.departments().find(d =>
+      d.isActive && (d.assignedOfficers || []).some(o => o.id.toLowerCase() === cleanStr || o.email.toLowerCase() === cleanStr)
     );
   }
 }

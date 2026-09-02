@@ -12,7 +12,7 @@
               Tourism GMS
             </span>
           </div>
-          <p class="text-xs text-slate-400 font-normal hidden sm:block">Department of Tourism & Civil Aviation</p>
+          <p class="text-xs text-slate-400 font-normal hidden sm:block">Department of Tourism & Civil Aviation, Govt. of Sikkim</p>
         </div>
       </a>
 
@@ -50,6 +50,13 @@
           >
             <span>File Grievance</span>
           </a>
+          <a 
+            routerLink="/citizen/profile" 
+            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+          >
+            My Profile
+          </a>
         </ng-container>
 
         <!-- Officer Links -->
@@ -67,6 +74,13 @@
             class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
           >
             Assigned Cases
+          </a>
+          <a 
+            routerLink="/officer/profile" 
+            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+          >
+            My Profile
           </a>
         </ng-container>
 
@@ -107,6 +121,13 @@
           >
             Reports
           </a>
+          <a 
+            routerLink="/admin/profile" 
+            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+          >
+            My Profile
+          </a>
         </ng-container>
       </nav>
 
@@ -143,10 +164,6 @@
             </div>
 
             <div class="border-t border-slate-100 mt-2 pt-2 space-y-1">
-              <button *ngIf="authService.isCitizen()" (click)="openEditProfileModal()" class="w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 rounded-xl transition font-extrabold flex items-center justify-between">
-                <span>Edit Profile</span>
-                <span class="text-teal-700 font-mono">→</span>
-              </button>
               <button (click)="logout()" class="w-full text-center py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition font-medium">
                 Logout
               </button>
@@ -183,6 +200,7 @@
     <ng-container *ngIf="authService.isCitizen()">
       <a routerLink="/citizen/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">My Complaints</a>
       <a routerLink="/citizen/history" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">History</a>
+      <a routerLink="/citizen/profile" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">My Profile</a>
       <a routerLink="/citizen/submit" (click)="toggleMobileMenu()" class="block px-3 py-2.5 rounded-lg text-sm font-extrabold bg-[#A0C8C3] text-slate-950">File Grievance</a>
     </ng-container>
 
@@ -190,6 +208,7 @@
     <ng-container *ngIf="authService.isOfficer()">
       <a routerLink="/officer/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Officer Queue</a>
       <a routerLink="/officer/grievances" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Assigned Cases</a>
+      <a routerLink="/officer/profile" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">My Profile</a>
     </ng-container>
 
     <!-- Admin Links -->
@@ -199,6 +218,7 @@
       <a routerLink="/admin/officers" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Officers</a>
       <a routerLink="/admin/grievances" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Grievance Desk</a>
       <a routerLink="/admin/reports" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Reports</a>
+      <a routerLink="/admin/profile" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">My Profile</a>
     </ng-container>
   </div>
 </header>
@@ -262,7 +282,7 @@
           autocapitalize="off"
           spellcheck="false"
           data-lpignore="true"
-          placeholder="e.g. +91 98160 12345 or 9816012345" 
+          placeholder="Enter mobile number" 
           class="w-full px-4 py-2.5 border rounded-xl text-xs font-mono" 
         />
         <p *ngIf="hasSubmitted() && !editForm.phone.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
