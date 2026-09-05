@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { GrievanceService } from '../../core/services/grievance.service';
 import { ToastComponent } from '../components/toast.component';
 import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.model';
 
@@ -15,6 +16,7 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
 })
 export class Navbar {
   authService = inject(AuthService);
+  grievanceService = inject(GrievanceService);
   router = inject(Router);
 
   isProfileOpen = signal<boolean>(false);
@@ -36,6 +38,13 @@ export class Navbar {
     return '/';
   }
 
+  getProfileRoute(): string {
+    if (this.authService.isTourist()) return '/tourist/profile';
+    if (this.authService.isOfficer()) return '/officer/profile';
+    if (this.authService.isAdmin()) return '/admin/profile';
+    return '/';
+  }
+
   toggleProfile() {
     this.isProfileOpen.update(v => !v);
   }
@@ -44,74 +53,13 @@ export class Navbar {
     this.isMobileMenuOpen.update(v => !v);
   }
 
-  openEditProfileModal() {
-    if (!this.authService.isCitizen()) return;
-    const cur = this.authService.currentUser();
-    if (cur) {
-      this.editForm = {
-        name: cur.displayName || '',
-        email: cur.email || '',
-        phone: cur.phoneNumber || ''
-      };
-    }
-    this.hasSubmitted.set(false);
-    this.isEditProfileOpen.set(true);
+
+
+  async logout() {
     this.isProfileOpen.set(false);
-  }
-
-  onPhoneChange(val: string) {
-    this.editForm.phone = val;
-  }
-
-  isNameNumericInvalid(val: string): boolean {
-    if (!val.trim()) return false;
-    return /\d/.test(val);
-  }
-
-  isEmailValid(val: string): boolean {
-    return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(val.trim());
-  }
-
-  isPhoneTextInvalid(val: string): boolean {
-    return isPhoneTextInvalid(val);
-  }
-
-  saveProfile() {
-    this.hasSubmitted.set(true);
-
-    if (!this.editForm.name.trim() || !this.editForm.email.trim() || !this.editForm.phone.trim()) {
-      this.toastMessage.set('Please fill out all required fields.');
-      return;
-    }
-
-    if (this.isNameNumericInvalid(this.editForm.name)) {
-      this.toastMessage.set('Names can not be in number');
-      return;
-    }
-
-    if (this.isPhoneTextInvalid(this.editForm.phone)) {
-      this.toastMessage.set('Enter phone number');
-      return;
-    }
-
-    if (!this.isEmailValid(this.editForm.email)) {
-      this.toastMessage.set('Invalid email format. Must be in format: username@gmail.com');
-      return;
-    }
-
-    try {
-      const formattedPhone = formatPhoneNumber(this.editForm.phone);
-      this.authService.updateUserProfile(this.editForm.name, this.editForm.email, formattedPhone);
-      this.isEditProfileOpen.set(false);
-      this.toastMessage.set('Profile details updated successfully!');
-    } catch (err: any) {
-      this.toastMessage.set(err.message || 'Failed to update profile.');
-    }
-  }
-
-  logout() {
-    this.authService.logout();
-    this.isProfileOpen.set(false);
-    this.router.navigate(['/']);
+    this.isMobileMenuOpen.set(false);
+    await this.authService.logout();
+    this.grievanceService.clearState();
+    this.router.navigate(['/'], { replaceUrl: true });
   }
 }

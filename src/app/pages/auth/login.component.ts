@@ -16,7 +16,7 @@ export class LoginComponent {
   authService = inject(AuthService);
   router = inject(Router);
 
-  selectedRole = signal<UserRole>('citizen');
+  selectedRole = signal<UserRole>('tourist');
   email = '';
   password = '';
   showPassword = signal<boolean>(false);
@@ -99,7 +99,7 @@ export class LoginComponent {
 
     try {
       await this.authService.sendPasswordResetEmail(cleanEmail);
-      const roleName = this.selectedRole() === 'citizen' ? 'Tourist' : this.selectedRole() === 'officer' ? 'Officer' : 'Administrator';
+      const roleName = this.selectedRole() === 'tourist' ? 'Tourist' : this.selectedRole() === 'officer' ? 'Officer' : 'Administrator';
       this.resetSuccess.set(`Password reset link dispatched via Firebase Auth to ${cleanEmail} for your ${roleName} account.`);
       setTimeout(() => {
         this.isForgotPasswordOpen.set(false);

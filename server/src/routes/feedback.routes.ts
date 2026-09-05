@@ -32,8 +32,8 @@ router.post('/', authenticateFirebaseToken, validateBody(submitFeedbackSchema), 
     const feedbackDoc = {
       id: docRef.id,
       grievanceId,
-      citizenId: uid,
-      citizenName: displayName || 'Tourist',
+      touristId: uid,
+      touristName: displayName || 'Tourist',
       rating,
       comments: comments || '',
       createdAt: new Date().toISOString()

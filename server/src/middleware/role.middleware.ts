@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from './auth.middleware';
 
-export function authorizeRoles(...allowedRoles: Array<'admin' | 'officer' | 'citizen'>) {
+export function authorizeRoles(...allowedRoles: Array<'admin' | 'officer' | 'tourist'>) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({

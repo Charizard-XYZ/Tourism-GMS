@@ -70,7 +70,7 @@ All configuration, role guards, and data ingestion pathways described in this do
 │                     (Port 5000)                         │
 │ ├─ Workload Load-Balancing Engine                       │
 │ ├─ Department & Officer Roster Controllers              │
-│ ├─ Citizen Registration & Profile Controllers           │
+│ ├─ Tourist Registration & Profile Controllers           │
 │ └─ Grievance & Comment Data Engine                      │
 └────────────────────────────┬────────────────────────────┘
                              │
@@ -78,7 +78,7 @@ All configuration, role guards, and data ingestion pathways described in this do
                              ▼
 ┌─────────────────────────────────────────────────────────┐
 │            Persistent File DB (server/db_data.json)      │
-│  (departments, officers, citizens, grievances, logs)    │
+│  (departments, officers, tourists, grievances, logs)    │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -163,7 +163,7 @@ npm run build
 ### Nodal Officer Privileges
 - **Capabilities**: View assigned grievance queue, update resolution progress, upload inspection PDFs, post public updates.
 
-### Citizen / Tourist Accounts
+### Tourist Accounts
 - **Capabilities**: Register account, file new grievances, track progress, edit profile details, post comments, rate resolution quality.
 
 ---
@@ -174,7 +174,7 @@ All application data is persistently saved in `server/db_data.json` across six c
 
 ```json
 {
-  "citizens": [],
+  "tourists": [],
   "departments": [],
   "officers": [],
   "grievances": [],
@@ -196,9 +196,9 @@ All application data is persistently saved in `server/db_data.json` across six c
 | `GET` | `/api/officers` | List all registered Nodal Officers |
 | `POST` | `/api/officers` | Register new Nodal Officer |
 | `DELETE` | `/api/officers/:id` | Revoke officer access |
-| `GET` | `/api/citizens` | List all registered tourist accounts |
-| `POST` | `/api/citizens` | Register new citizen/tourist account |
-| `PUT` | `/api/citizens/:id` | Update citizen account profile |
+| `GET` | `/api/users` | List all registered user/tourist accounts |
+| `POST` | `/api/auth/register-tourist` | Register new tourist account |
+| `PUT` | `/api/users/:id` | Update user/tourist account profile |
 | `GET` | `/api/grievances` | List all submitted grievances |
 | `POST` | `/api/grievances` | Submit new grievance (Triggers auto-assignment) |
 | `PUT` | `/api/grievances/:id` | Update grievance status / details |
@@ -209,7 +209,7 @@ All application data is persistently saved in `server/db_data.json` across six c
 
 ## Security Controls & Validation
 
-1. **Role-Based Guards**: `roleGuard` (Admin, Officer, Citizen) and `guestGuard` enforce route permissions.
+1. **Role-Based Guards**: `roleGuard` (Admin, Officer, Tourist) and `guestGuard` enforce route permissions.
 2. **Phone Number Sanitization**: Automatically normalizes inputs to `+91 XXXXX XXXXX`.
 3. **Unique Email Enforcement**: Prevents duplicate email registrations across all user roles.
 4. **Password Masking**: Includes web text security font masking and show/hide toggles.
@@ -232,8 +232,8 @@ All application data is persistently saved in `server/db_data.json` across six c
 ```
 Tourism-GMS/
 ├── server/                      # Node.js Express Backend REST API
-│   ├── server.js               # Main REST API Server (Port 5000)
-│   └── db_data.json            # Persistent File Database
+│   ├── src/                    # Backend TypeScript REST API (Port 5000)
+│   └── tsconfig.json           # Backend TypeScript configuration
 ├── src/                         # Angular 19 SPA Source Code
 │   ├── app/
 │   │   ├── common/             # Shared Components (Navbar, Footer, Toast)
@@ -244,7 +244,7 @@ Tourism-GMS/
 │   │   └── pages/              # Portal Page Views
 │   │       ├── admin/          # Admin Dashboard & Management Pages
 │   │       ├── auth/           # Login & Registration Pages
-│   │       ├── citizen/        # Tourist Dashboard & Submission Pages
+│   │       ├── tourist/        # Tourist Dashboard & Submission Pages
 │   │       ├── home/           # Hero Section & Overview Components
 │   │       └── officer/        # Officer Queue & Processing Pages
 │   ├── app.routes.ts           # SPA Route Definitions

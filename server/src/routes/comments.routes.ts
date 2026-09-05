@@ -21,9 +21,9 @@ router.get('/', authenticateFirebaseToken, async (req: AuthenticatedRequest, res
     const snapshot = await query.get();
     const comments = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
-    // Filter out internal comments for citizens
+    // Filter out internal comments for tourists
     const filtered = comments.filter((c: any) => {
-      if (req.user!.role === 'citizen' && c.isInternalOnly) return false;
+      if (req.user!.role === 'tourist' && c.isInternalOnly) return false;
       return true;
     });
 
@@ -51,7 +51,7 @@ router.post('/', authenticateFirebaseToken, validateBody(createCommentSchema), a
       userName: displayName || 'User',
       userRole: role,
       commentText,
-      isInternalOnly: role === 'citizen' ? false : (isInternalOnly || false),
+      isInternalOnly: role === 'tourist' ? false : (isInternalOnly || false),
       createdAt: new Date().toISOString()
     };
 

@@ -39,18 +39,18 @@ export class HeroSectionComponent {
       return;
     }
 
-    // Citizen / Tourist
+    // Tourist
     if (!this.searchQuery.trim()) {
-      this.router.navigate(['/citizen/dashboard']);
+      this.router.navigate(['/tourist/dashboard']);
       return;
     }
     this.searchError.set(null);
 
     const found = this.grievanceService.getGrievanceById(this.searchQuery.trim());
     if (found) {
-      this.router.navigate(['/citizen/grievance', found.id]);
+      this.router.navigate(['/tourist/grievance', found.id]);
     } else {
-      this.searchError.set(`No complaint found with Tracking Code "${this.searchQuery}". Try GMS-2026-8941`);
+      this.searchError.set(`No complaint found with Tracking Code "${this.searchQuery}". Please verify your tracking code format (e.g. GMS-YYYY-XXXX).`);
     }
   }
 }

@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
@@ -26,8 +26,11 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
           </p>
         </div>
 
-        <a routerLink="/officer/grievances" class="bg-amber-400 text-slate-950 px-6 py-3.5 rounded-2xl font-extrabold text-sm hover:bg-amber-300 transition shadow-lg shrink-0">
-          Review Workqueue →
+        <a routerLink="/officer/grievances" class="bg-amber-400 text-slate-950 px-6 py-3.5 rounded-2xl font-extrabold text-sm hover:bg-amber-300 transition shadow-lg shrink-0 flex items-center space-x-1.5">
+          <span>Review Workqueue</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          </svg>
         </a>
       </div>
 
@@ -77,7 +80,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
               <h3 class="font-bold text-base text-slate-900">
                 <a [routerLink]="['/officer/process', g.id]">{{ g.title }}</a>
               </h3>
-              <p class="text-xs text-slate-500 line-clamp-1">Tourist: {{ g.citizenName }} ({{ g.citizenPhone || g.citizenEmail }})</p>
+              <p class="text-xs text-slate-500 line-clamp-1">Tourist: {{ g.touristName || 'Tourist' }} ({{ g.touristPhone || g.touristEmail || 'No contact' }})</p>
               <div class="flex items-center space-x-4 text-[11px] text-slate-400 pt-1">
                 <span>Location: {{ g.location }}</span>
                 <span>Filed: {{ g.createdAt | date:'dd/MM/yyyy' }}</span>
@@ -85,10 +88,17 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
             </div>
 
             <div class="shrink-0">
-              <a [routerLink]="['/officer/process', g.id]" class="px-4 py-2 bg-amber-500 text-slate-950 rounded-xl text-xs font-bold hover:bg-amber-400 shadow-sm">
-                Process Case →
+              <a [routerLink]="['/officer/process', g.id]" class="px-4 py-2 bg-amber-500 text-slate-950 rounded-xl text-xs font-bold hover:bg-amber-400 shadow-sm flex items-center space-x-1">
+                <span>Process Case</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
               </a>
             </div>
+          </div>
+
+          <div *ngIf="grievanceService.roleGrievances().length === 0" class="p-12 text-center text-slate-400 text-xs">
+            No grievances in your department workqueue currently.
           </div>
         </div>
       </div>
@@ -96,16 +106,20 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
     </div>
   `
 })
-export class OfficerDashboardComponent {
+export class OfficerDashboardComponent implements OnInit {
   grievanceService = inject(GrievanceService);
   authService = inject(AuthService);
+
+  async ngOnInit(): Promise<void> {
+    await this.grievanceService.loadGrievancesFromBackend();
+  }
 
   assignedCount(): number {
     return this.grievanceService.roleGrievances().length;
   }
 
   pendingCount(): number {
-    return this.grievanceService.roleGrievances().filter(g => g.status === 'assigned' || g.status === 'in_progress').length;
+    return this.grievanceService.roleGrievances().filter(g => g.status === 'assigned' || g.status === 'in_progress' || g.status === 'submitted').length;
   }
 
   resolvedCount(): number {

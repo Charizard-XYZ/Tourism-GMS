@@ -5,6 +5,7 @@ import { RouterLink, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastComponent } from '../../common/components/toast.component';
 import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.model';
+import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
 
 @Component({
   selector: 'app-register',
@@ -17,7 +18,10 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
         <!-- Back to Home -->
         <div>
           <a routerLink="/" class="inline-flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-teal-700 transition">
-            <span>← Back to Home</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Back to Home</span>
           </a>
         </div>
 
@@ -30,7 +34,7 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
         <form (submit)="onRegister()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="space-y-4">
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Full Name *</label>
-            <input type="text" [(ngModel)]="name" name="usr_ident_title" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter your name" class="w-full px-4 py-2.5 border rounded-xl text-sm" />
+            <input type="text" [ngModel]="name" (ngModelChange)="onNameChange($event)" name="usr_ident_title" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter your name" class="w-full px-4 py-2.5 border rounded-xl text-sm" />
             <p *ngIf="hasSubmitted() && !name.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
             <p *ngIf="hasSubmitted() && name.trim() && isNameNumericInvalid(name)" class="text-[11px] text-rose-600 font-bold mt-1">Names can not be in number</p>
           </div>
@@ -157,6 +161,10 @@ export class RegisterComponent {
   hasSubmitted = signal<boolean>(false);
   errorMessage = signal<string | null>(null);
   toastMessage = signal<string | null>(null);
+
+  onNameChange(val: string) {
+    this.name = capitalizeFirstChar(val);
+  }
 
   onPhoneChange(val: string) {
     this.phone = val;

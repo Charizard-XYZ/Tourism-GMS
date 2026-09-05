@@ -36,6 +36,8 @@ export class StatusBadgeComponent {
         return 'bg-rose-50 text-rose-700 border border-rose-200';
       case 'closed':
         return 'bg-slate-100 text-slate-700 border border-slate-300';
+      case 'cancelled':
+        return 'bg-rose-50 text-rose-600 border border-rose-200';
       default:
         return 'bg-slate-50 text-slate-600';
     }
@@ -50,6 +52,7 @@ export class StatusBadgeComponent {
       case 'resolved': return 'bg-emerald-500';
       case 'reopened': return 'bg-rose-500 animate-ping';
       case 'closed': return 'bg-slate-500';
+      case 'cancelled': return 'bg-rose-500';
       default: return 'bg-slate-400';
     }
   }

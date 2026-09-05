@@ -7,7 +7,8 @@ export type GrievanceStatus =
   | 'in_progress'
   | 'resolved'
   | 'reopened'
-  | 'closed';
+  | 'closed'
+  | 'cancelled';
 
 export interface GrievanceAttachment {
   name: string;
@@ -19,19 +20,23 @@ export interface GrievanceAttachment {
 export interface Grievance {
   id: string;
   trackingCode: string;
+  grievanceCode?: string;
   title: string;
   description: string;
   category: GrievanceCategory;
+  departmentCode?: string;
+  originalDepartmentName?: string;
+  originalDepartmentCode?: string;
+  departmentDeleted?: boolean;
   subCategory?: string;
   location: string;
   touristLocationName?: string;
   status: GrievanceStatus;
   
-  citizenId: string;
-  citizenName: string;
-  citizenEmail: string;
-  citizenPhone?: string;
-
+  touristId?: string;
+  touristName?: string;
+  touristEmail?: string;
+  touristPhone?: string;
   departmentId?: string;
   departmentName?: string;
 

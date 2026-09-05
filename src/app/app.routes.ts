@@ -3,10 +3,10 @@ import { HeroSectionComponent } from './pages/home/hero-section/hero-section.com
 import { LoginComponent } from './pages/auth/login.component';
 import { RegisterComponent } from './pages/auth/register.component';
 
-import { CitizenDashboardComponent } from './pages/citizen/citizen-dashboard.component';
-import { GrievanceSubmissionComponent } from './pages/citizen/grievance-submission.component';
-import { GrievanceHistoryComponent } from './pages/citizen/grievance-history.component';
-import { GrievanceDetailComponent } from './pages/citizen/grievance-detail.component';
+import { TouristDashboardComponent } from './pages/tourist/tourist-dashboard.component';
+import { GrievanceSubmissionComponent } from './pages/tourist/grievance-submission.component';
+import { GrievanceHistoryComponent } from './pages/tourist/grievance-history.component';
+import { GrievanceDetailComponent } from './pages/tourist/grievance-detail.component';
 
 import { OfficerDashboardComponent } from './pages/officer/officer-dashboard.component';
 import { AssignedGrievancesComponent } from './pages/officer/assigned-grievances.component';
@@ -19,7 +19,7 @@ import { GrievanceAssignmentComponent } from './pages/admin/grievance-assignment
 import { ReportsAnalyticsComponent } from './pages/admin/reports-analytics.component';
 import { SystemSettingsComponent } from './pages/admin/system-settings.component';
 
-import { adminGuard, officerGuard, citizenGuard, guestGuard } from './core/guards/role.guard';
+import { adminGuard, officerGuard, touristGuard, guestGuard } from './core/guards/role.guard';
 
 import { ProfileComponent } from './pages/profile/profile.component';
 
@@ -29,15 +29,17 @@ export const routes: Routes = [
   { path: 'auth/login', component: LoginComponent, canActivate: [guestGuard] },
   { path: 'auth/register', component: RegisterComponent, canActivate: [guestGuard] },
 
-  // Profile Route (Available to Citizen, Officer, and Admin)
+  // Profile Route (Available to Tourist, Officer, and Admin)
   { path: 'profile', component: ProfileComponent },
 
-  // Citizen Portal Routes
-  { path: 'citizen/dashboard', component: CitizenDashboardComponent, canActivate: [citizenGuard] },
-  { path: 'citizen/submit', component: GrievanceSubmissionComponent, canActivate: [citizenGuard] },
-  { path: 'citizen/history', component: GrievanceHistoryComponent, canActivate: [citizenGuard] },
-  { path: 'citizen/grievance/:id', component: GrievanceDetailComponent, canActivate: [citizenGuard] },
-  { path: 'citizen/profile', component: ProfileComponent, canActivate: [citizenGuard] },
+  // Tourist Portal Routes
+  { path: 'tourist/dashboard', component: TouristDashboardComponent, canActivate: [touristGuard] },
+  { path: 'tourist/submit', component: GrievanceSubmissionComponent, canActivate: [touristGuard] },
+  { path: 'tourist/history', component: GrievanceHistoryComponent, canActivate: [touristGuard] },
+  { path: 'tourist/grievance/:id', component: GrievanceDetailComponent, canActivate: [touristGuard] },
+  { path: 'tourist/profile', component: ProfileComponent, canActivate: [touristGuard] },
+
+
 
   // Officer Portal Routes
   { path: 'officer/dashboard', component: OfficerDashboardComponent, canActivate: [officerGuard] },

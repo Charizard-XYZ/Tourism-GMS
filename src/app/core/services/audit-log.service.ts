@@ -15,7 +15,7 @@ export class AuditLogService {
   readonly logs = signal<ActivityLog[]>([]);
 
   constructor() {
-    this.loadLogsFromBackend();
+    // Eager backend call removed to avoid premature 401/403 for unauthenticated visitors or non-admins
   }
 
   async loadLogsFromBackend(): Promise<void> {

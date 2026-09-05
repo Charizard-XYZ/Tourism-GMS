@@ -7,6 +7,7 @@ import { GrievanceService } from '../../core/services/grievance.service';
 import { Department } from '../../core/models/department.model';
 import { ToastComponent } from '../../common/components/toast.component';
 import { isPhoneTextInvalid } from '../../core/models/user.model';
+import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
 
 @Component({
   selector: 'app-department-management',
@@ -77,7 +78,7 @@ import { isPhoneTextInvalid } from '../../core/models/user.model';
                   <p class="font-bold text-slate-900 truncate">{{ off.name }}</p>
                   <p class="text-[10px] text-slate-500 font-mono truncate">{{ off.email }}</p>
                 </div>
-                <button (click)="removeOfficerFromDept(dept.id, off.id)" title="Remove Officer from Department" class="text-rose-600 font-bold px-1.5 py-0.5 hover:bg-rose-100 rounded text-xs">
+                <button (click)="confirmRemoveOfficer(dept.id, off.id, off.name)" title="Remove Officer from Department" class="text-rose-600 font-bold px-1.5 py-0.5 hover:bg-rose-100 rounded text-xs">
                   ✕
                 </button>
               </div>
@@ -92,7 +93,7 @@ import { isPhoneTextInvalid } from '../../core/models/user.model';
             <button (click)="openEditModal(dept)" class="flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200">
               Edit Dept
             </button>
-            <button (click)="deleteDepartment(dept.id, dept.name)" class="px-3 py-2 bg-rose-50 text-rose-700 rounded-xl text-xs font-bold hover:bg-rose-100">
+            <button (click)="confirmDeleteDepartment(dept.id, dept.name)" class="px-3 py-2 bg-rose-50 text-rose-700 rounded-xl text-xs font-bold hover:bg-rose-100">
               Delete
             </button>
           </div>
@@ -105,14 +106,18 @@ import { isPhoneTextInvalid } from '../../core/models/user.model';
         <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
           <div class="flex justify-between items-center border-b pb-3">
             <h3 class="font-bold text-lg text-slate-900">{{ editingDeptId ? 'Edit Department' : 'Create New Department' }}</h3>
-            <button (click)="isModalOpen.set(false)" class="text-slate-400 hover:text-slate-600 text-xl font-bold">✕</button>
+            <button (click)="isModalOpen.set(false)" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
-          <form (submit)="saveDepartment()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="space-y-4">
+          <form (submit)="promptSaveDepartment()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Department Name *</label>
-                <input type="text" [(ngModel)]="deptForm.name" name="sec_dept_ident" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter Department name" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
+                <input type="text" [ngModel]="deptForm.name" (ngModelChange)="onDeptNameChange($event)" name="sec_dept_ident" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter Department name" class="w-full px-4 py-2.5 border rounded-xl text-xs" />
                 <p *ngIf="hasSubmitted() && !deptForm.name.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
                 <p *ngIf="hasSubmitted() && deptForm.name.trim() && isNameNumericInvalid(deptForm.name)" class="text-[11px] text-rose-600 font-bold mt-1">Names can not be in number</p>
                 <p *ngIf="hasSubmitted() && isNameAndCodeSame()" class="text-[11px] text-rose-600 font-bold mt-1">Department Name and Department Code / ID should not be the same.</p>
@@ -162,8 +167,11 @@ import { isPhoneTextInvalid } from '../../core/models/user.model';
                     <span class="font-bold text-slate-900">{{ off.name }}</span>
                     <span class="text-slate-500 text-[11px] ml-1 font-mono">({{ off.email }})</span>
                   </div>
-                  <button type="button" (click)="removeOfficerFromForm(i)" class="text-rose-600 font-bold px-2 py-0.5 hover:bg-rose-50 rounded text-xs">
-                    Remove
+                  <button type="button" (click)="removeOfficerFromForm(i)" class="text-rose-600 font-bold px-2 py-0.5 hover:bg-rose-50 rounded text-xs flex items-center space-x-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Remove</span>
                   </button>
                 </div>
               </div>
@@ -184,9 +192,12 @@ import { isPhoneTextInvalid } from '../../core/models/user.model';
                     type="button" 
                     (click)="addSelectedOfficerToForm()" 
                     [disabled]="!selectedOfficerIdForForm"
-                    class="w-full py-2 bg-teal-700 text-white rounded-xl text-xs font-bold hover:bg-teal-800 disabled:opacity-50"
+                    class="w-full py-2 bg-teal-700 text-white rounded-xl text-xs font-bold hover:bg-teal-800 disabled:opacity-50 flex items-center justify-center space-x-1.5"
                   >
-                    + Assign Selected Officer
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Assign Selected Officer</span>
                   </button>
                 </div>
 
@@ -211,7 +222,11 @@ import { isPhoneTextInvalid } from '../../core/models/user.model';
         <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in relative">
           <div class="flex justify-between items-center border-b pb-3">
             <h3 class="font-bold text-base text-slate-900">Assign Officer to {{ selectedDeptForAddOfficer?.name }}</h3>
-            <button (click)="isQuickAddOfficerModalOpen.set(false)" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+            <button (click)="isQuickAddOfficerModalOpen.set(false)" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
           <p class="text-xs text-slate-500">Select an unassigned registered officer to assign exclusively to this department.</p>
@@ -235,6 +250,33 @@ import { isPhoneTextInvalid } from '../../core/models/user.model';
           <div class="flex space-x-2 pt-2 border-t">
             <button (click)="isQuickAddOfficerModalOpen.set(false)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
             <button (click)="submitQuickAddOfficer()" [disabled]="!quickSelectedOfficerId" class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50">Assign Selected Officer</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Confirmation Dialog (Layer: z-[70]) -->
+      <div *ngIf="confirmationModal()" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+          <div class="flex justify-between items-center border-b pb-3">
+            <h3 class="font-bold text-base text-slate-900">{{ confirmationModal()?.title }}</h3>
+            <button (click)="confirmationModal.set(null)" aria-label="Close dialog" class="text-slate-400 hover:text-slate-600 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs text-slate-600">{{ confirmationModal()?.message }}</p>
+          <div class="flex space-x-2 pt-3 border-t">
+            <button (click)="confirmationModal.set(null)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">
+              Cancel
+            </button>
+            <button 
+              (click)="executeConfirmedAction()" 
+              [class]="confirmationModal()?.isDestructive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-[#0F172A] hover:bg-slate-800'"
+              class="flex-1 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm"
+            >
+              {{ confirmationModal()?.confirmBtnText || 'Confirm' }}
+            </button>
           </div>
         </div>
       </div>
@@ -268,6 +310,10 @@ export class DepartmentManagementComponent {
     isActive: true,
     assignedOfficers: [] as any[]
   };
+
+  onDeptNameChange(val: string) {
+    this.deptForm.name = capitalizeFirstChar(val);
+  }
 
   getUnassignedRegisteredOfficers() {
     const depts = this.departmentService.departments();
@@ -366,21 +412,16 @@ export class DepartmentManagementComponent {
     const registered = this.authService.registeredOfficers().find(o => o.id === this.quickSelectedOfficerId);
     if (!registered) return;
 
-    const existingDept = this.departmentService.departments().find(d => 
-      d.id !== this.selectedDeptForAddOfficer!.id && d.assignedOfficers?.some(o => o.id === registered.id || o.email.toLowerCase() === registered.email.toLowerCase())
-    );
+    try {
+      await this.authService.updateOfficerByAdmin(registered.id, {
+        departmentId: this.selectedDeptForAddOfficer.id,
+        departmentName: this.selectedDeptForAddOfficer.name
+      });
+      await this.departmentService.loadDepartmentsFromBackend();
 
-    await this.departmentService.addOfficerToDepartment(this.selectedDeptForAddOfficer.id, {
-      name: registered.name,
-      email: registered.email,
-      designation: registered.designation || 'Officer',
-      phone: registered.phone
-    });
-
-    if (existingDept) {
-      this.toastMessage.set(`Reassigned officer "${registered.name}" exclusively to ${this.selectedDeptForAddOfficer.name} (removed from ${existingDept.name}).`);
-    } else {
       this.toastMessage.set(`Assigned officer "${registered.name}" to ${this.selectedDeptForAddOfficer.name}`);
+    } catch (err: any) {
+      this.toastMessage.set(err.message || 'Failed to assign officer.');
     }
 
     this.isQuickAddOfficerModalOpen.set(false);
@@ -392,8 +433,13 @@ export class DepartmentManagementComponent {
       const dept = this.departmentService.departments().find(d => d.id === deptId);
       const targetOfficer = dept?.assignedOfficers?.find(o => o.id === officerId);
 
-      await this.departmentService.removeOfficerFromDepartment(deptId, officerId);
-      this.toastMessage.set(`Officer "${targetOfficer?.name || officerId}" removed from department.`);
+      await this.authService.updateOfficerByAdmin(officerId, {
+        departmentId: '',
+        departmentName: 'Unassigned'
+      });
+      await this.departmentService.loadDepartmentsFromBackend();
+
+      this.toastMessage.set(`Officer "${targetOfficer?.name || officerId}" unassigned from department.`);
     } catch (err: any) {
       this.toastMessage.set(err.message || 'Action failed.');
     }
@@ -422,7 +468,39 @@ export class DepartmentManagementComponent {
     return isPhoneTextInvalid(val);
   }
 
-  async saveDepartment() {
+  confirmationModal = signal<{
+    title: string;
+    message: string;
+    confirmBtnText: string;
+    isDestructive?: boolean;
+    action: () => Promise<void>;
+  } | null>(null);
+
+  confirmRemoveOfficer(deptId: string, officerId: string, officerName: string) {
+    this.confirmationModal.set({
+      title: 'Remove Officer from Department',
+      message: `Are you sure you want to remove "${officerName}" from this department? The officer will become Unassigned.`,
+      confirmBtnText: 'Yes, Remove',
+      isDestructive: true,
+      action: async () => {
+        await this.removeOfficerFromDept(deptId, officerId);
+      }
+    });
+  }
+
+  confirmDeleteDepartment(id: string, name: string) {
+    this.confirmationModal.set({
+      title: 'Delete Department',
+      message: `Are you sure you want to delete department "${name}"? Solved grievances will be preserved, and open cases will be moved to unassigned tickets.`,
+      confirmBtnText: 'Yes, Delete',
+      isDestructive: true,
+      action: async () => {
+        await this.deleteDepartment(id, name);
+      }
+    });
+  }
+
+  promptSaveDepartment() {
     this.hasSubmitted.set(true);
     if (!this.deptForm.name.trim() || !this.deptForm.code.trim() || !this.deptForm.description.trim() || !this.deptForm.contactPhone.trim() || !this.deptForm.contactEmail.trim()) {
       this.toastMessage.set('Please fill out all required fields.');
@@ -449,12 +527,36 @@ export class DepartmentManagementComponent {
       return;
     }
 
+    if (this.editingDeptId) {
+      this.confirmationModal.set({
+        title: 'Save Changes Confirmation',
+        message: `Are you sure you want to save these changes for department "${this.deptForm.name}"?`,
+        confirmBtnText: 'Yes, Save Changes',
+        isDestructive: false,
+        action: async () => {
+          await this.executeSaveDepartment();
+        }
+      });
+    } else {
+      this.executeSaveDepartment();
+    }
+  }
+
+  async executeConfirmedAction() {
+    const modal = this.confirmationModal();
+    this.confirmationModal.set(null);
+    if (modal && modal.action) {
+      await modal.action();
+    }
+  }
+
+  async executeSaveDepartment() {
     try {
       if (this.editingDeptId) {
         await this.departmentService.updateDepartment(this.editingDeptId, this.deptForm);
         this.toastMessage.set(`Department updated successfully.`);
       } else {
-        const created = await this.departmentService.createDepartment(this.deptForm);
+        await this.departmentService.createDepartment(this.deptForm);
         this.toastMessage.set(`New department created successfully.`);
       }
       this.isModalOpen.set(false);

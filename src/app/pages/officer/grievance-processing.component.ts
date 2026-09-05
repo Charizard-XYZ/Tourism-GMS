@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { AuthService } from '../../core/services/auth.service';
+import { DepartmentService } from '../../core/services/department.service';
 import { Grievance, GrievanceStatus } from '../../core/models/complaint.model';
 import { StatusBadgeComponent } from '../../common/components/status-badge.component';
 import { ToastComponent } from '../../common/components/toast.component';
@@ -25,8 +26,11 @@ import { ToastComponent } from '../../common/components/toast.component';
           <h1 class="text-xl font-bold mt-1">Processing Case: {{ grievance.title }}</h1>
         </div>
 
-        <a routerLink="/officer/dashboard" class="px-4 py-2 bg-slate-800 text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-700">
-          ← Officer Desk
+        <a routerLink="/officer/dashboard" class="px-4 py-2 bg-slate-800 text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-700 flex items-center space-x-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span>Officer Desk</span>
         </a>
       </div>
 
@@ -43,8 +47,8 @@ import { ToastComponent } from '../../common/components/toast.component';
             <div class="grid grid-cols-2 gap-4 text-xs pt-3 border-t border-slate-100 text-slate-600">
               <div>
                 <p class="text-slate-400">Tourist Name</p>
-                <p class="font-bold text-slate-900">{{ grievance.citizenName }}</p>
-                <p class="text-[11px] text-slate-500">{{ grievance.citizenPhone || grievance.citizenEmail }}</p>
+                <p class="font-bold text-slate-900">{{ grievance.touristName || 'Tourist' }}</p>
+                <p class="text-[11px] text-slate-500">{{ grievance.touristPhone || grievance.touristEmail || 'No contact details' }}</p>
               </div>
               <div>
                 <p class="text-slate-400">Incident Location</p>
@@ -90,7 +94,18 @@ import { ToastComponent } from '../../common/components/toast.component';
         <!-- Right 5 Cols: Officer Action Control Panel -->
         <div class="lg:col-span-5 space-y-6">
           
-          <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+          <!-- Department Inactive Warning — disables all update actions -->
+          <div *ngIf="isDepartmentInactive()" class="bg-rose-50 border border-rose-200 rounded-3xl p-5 flex items-start space-x-4">
+            <div class="flex-shrink-0 w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center text-rose-700 font-bold text-sm">!</div>
+            <div>
+              <p class="text-xs font-extrabold text-rose-800 uppercase mb-1">Department is Inactive</p>
+              <p class="text-xs text-rose-700">
+                The department assigned to this case has been deactivated. Officers cannot update grievance progress until the department is reactivated by an Administrator.
+              </p>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6" [class.opacity-50]="isDepartmentInactive()" [class.pointer-events-none]="isDepartmentInactive()">
             <h3 class="font-bold text-slate-900 text-base border-b pb-2">Status & Resolution Controls</h3>
 
             <!-- Status Dropdown -->
@@ -142,6 +157,7 @@ export class GrievanceProcessingComponent implements OnInit {
   router = inject(Router);
   grievanceService = inject(GrievanceService);
   authService = inject(AuthService);
+  departmentService = inject(DepartmentService);
 
   grievance?: Grievance;
   selectedStatus: GrievanceStatus = 'in_progress';
@@ -153,15 +169,35 @@ export class GrievanceProcessingComponent implements OnInit {
 
   toastMessage = signal<string | null>(null);
 
-  ngOnInit() {
+  async ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.grievance = this.grievanceService.getGrievanceById(id);
+      if (!this.grievance) {
+        try {
+          const fetched = await this.grievanceService.fetchGrievanceById(id);
+          if (fetched) {
+            this.grievance = fetched;
+          }
+        } catch (e) {
+          console.warn('Failed to fetch grievance on direct route:', e);
+        }
+      }
       if (this.grievance) {
         this.selectedStatus = this.grievance.status;
         this.resolutionReport = this.grievance.resolutionDetails || '';
       }
     }
+  }
+
+  isDepartmentInactive(): boolean {
+    if (!this.grievance) return false;
+    const deptId = (this.grievance as any)['departmentId'] || '';
+    if (!deptId) return false;
+    const dept = this.departmentService.departments().find(d => d.id === deptId);
+    // If dept not found in active list — treat as deleted/inactive
+    if (!dept) return true;
+    return dept.isActive === false;
   }
 
   postNote() {
@@ -181,6 +217,10 @@ export class GrievanceProcessingComponent implements OnInit {
 
   saveStatusUpdate() {
     if (!this.grievance) return;
+    if (this.isDepartmentInactive()) {
+      this.toastMessage.set('Department is inactive. Officers cannot update grievance progress.');
+      return;
+    }
     this.grievanceService.updateStatus(this.grievance.id, this.selectedStatus, this.resolutionReport, this.resolutionFiles);
     this.toastMessage.set(`Case status updated to ${this.selectedStatus.toUpperCase()}`);
     

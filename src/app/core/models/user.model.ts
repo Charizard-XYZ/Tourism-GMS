@@ -1,7 +1,8 @@
-export type UserRole = 'citizen' | 'officer' | 'admin';
+export type UserRole = 'tourist' | 'officer' | 'admin';
 
 export interface User {
   uid: string;
+  userCode?: string;
   email: string;
   displayName: string;
   role: UserRole;
@@ -12,10 +13,13 @@ export interface User {
   designation?: string;
   createdAt: string;
   isActive: boolean;
+  isRevoked?: boolean;
 }
 
 export interface RegisteredOfficer {
   id: string;
+  userCode?: string;
+  officerCode?: string;
   name: string;
   email: string;
   password?: string;
@@ -24,6 +28,7 @@ export interface RegisteredOfficer {
   departmentName: string;
   phone?: string;
   createdAt: string;
+  isActive?: boolean;
   isRevoked?: boolean;
 }
 

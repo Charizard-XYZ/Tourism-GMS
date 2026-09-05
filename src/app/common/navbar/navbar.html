@@ -28,34 +28,21 @@
           Home
         </a>
 
-        <!-- Citizen Links -->
-        <ng-container *ngIf="authService.isCitizen()">
+        <!-- Tourist Links -->
+        <ng-container *ngIf="authService.isTourist()">
           <a 
-            routerLink="/citizen/dashboard" 
+            routerLink="/tourist/dashboard" 
             routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
             class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
           >
             My Complaints
           </a>
           <a 
-            routerLink="/citizen/history" 
+            routerLink="/tourist/history" 
             routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
             class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
           >
             History
-          </a>
-          <a 
-            routerLink="/citizen/submit" 
-            class="px-3.5 py-2 rounded-lg text-xs xl:text-sm font-semibold bg-[#A0C8C3] text-slate-950 hover:bg-teal-300 transition shadow-sm flex items-center space-x-1 shrink-0"
-          >
-            <span>File Grievance</span>
-          </a>
-          <a 
-            routerLink="/citizen/profile" 
-            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
-            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
-          >
-            My Profile
           </a>
         </ng-container>
 
@@ -74,13 +61,6 @@
             class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
           >
             Assigned Cases
-          </a>
-          <a 
-            routerLink="/officer/profile" 
-            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
-            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
-          >
-            My Profile
           </a>
         </ng-container>
 
@@ -121,54 +101,34 @@
           >
             Reports
           </a>
-          <a 
-            routerLink="/admin/profile" 
-            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
-            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
-          >
-            My Profile
-          </a>
         </ng-container>
       </nav>
 
       <!-- Right Utilities: Role Switcher & Profile -->
       <div class="flex items-center space-x-3 shrink-0">
 
-        <!-- User Profile Dropdown (When Authenticated) -->
-        <div *ngIf="authService.isAuthenticated()" class="relative">
-          <button 
-            (click)="toggleProfile()"
-            class="flex items-center space-x-2 p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 transition border border-slate-700"
+        <!-- User Profile Avatar Link (When Authenticated) -->
+        <div *ngIf="authService.isAuthenticated()" class="flex items-center">
+          <!-- Clicking Avatar / Profile Area Directly Opens Profile Page -->
+          <a 
+            [routerLink]="getProfileRoute()"
+            title="Open Profile"
+            class="flex items-center space-x-2 p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 transition border border-slate-700 cursor-pointer group"
           >
-            <div class="w-8 h-8 rounded-lg bg-[#A0C8C3] text-slate-950 font-bold flex items-center justify-center text-sm">
+            <div class="w-8 h-8 rounded-lg bg-[#A0C8C3] text-slate-950 font-bold flex items-center justify-center text-sm group-hover:scale-105 transition">
               {{ authService.currentUser()?.displayName?.charAt(0) || 'U' }}
             </div>
-            <div class="text-left hidden sm:block pr-1">
+            <div class="text-left hidden sm:block pr-2">
               <p class="text-xs font-bold text-white truncate max-w-[120px]">{{ authService.currentUser()?.displayName }}</p>
               <span [ngClass]="{
-                'bg-emerald-500/20 text-emerald-300': authService.isCitizen(),
+                'bg-emerald-500/20 text-emerald-300': authService.isTourist(),
                 'bg-amber-500/20 text-amber-300': authService.isOfficer(),
                 'bg-rose-500/20 text-rose-300': authService.isAdmin()
               }" class="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded">
-                {{ authService.userRole() }}
+                {{ authService.isTourist() ? 'TOURIST' : (authService.userRole() | uppercase) }}
               </span>
             </div>
-          </button>
-
-          <!-- User Profile Dropdown Card -->
-          <div *ngIf="isProfileOpen()" class="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl text-slate-900 z-50 border border-slate-100 p-3 animate-fade-in">
-            <div class="px-3 py-2 bg-slate-50 rounded-xl mb-2">
-              <p class="text-xs text-slate-500">Currently logged in as:</p>
-              <p class="font-bold text-sm text-slate-800 truncate">{{ authService.currentUser()?.displayName }}</p>
-              <p class="text-[11px] font-mono text-slate-500 truncate">{{ authService.currentUser()?.email }}</p>
-            </div>
-
-            <div class="border-t border-slate-100 mt-2 pt-2 space-y-1">
-              <button (click)="logout()" class="w-full text-center py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition font-medium">
-                Logout
-              </button>
-            </div>
-          </div>
+          </a>
         </div>
 
         <!-- Sign In / Login Button (When Logged Out) -->
@@ -184,9 +144,12 @@
         <button 
           *ngIf="authService.isAuthenticated()"
           (click)="toggleMobileMenu()" 
-          class="lg:hidden p-2 text-slate-300 hover:text-white rounded-lg text-xl"
+          aria-label="Toggle mobile menu"
+          class="lg:hidden p-2 text-slate-300 hover:text-white rounded-lg transition hover:bg-slate-800"
         >
-          ☰
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
         </button>
       </div>
     </div>
@@ -194,21 +157,18 @@
 
   <!-- Mobile & Tablet Navigation Drawer -->
   <div *ngIf="authService.isAuthenticated() && isMobileMenuOpen()" class="lg:hidden bg-slate-900 border-b border-slate-800 px-4 py-4 space-y-2 animate-fade-in">
-    <a *ngIf="authService.isAuthenticated()" [routerLink]="getHomeRoute()" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-200 hover:bg-slate-800">Home</a>
+    <a [routerLink]="getHomeRoute()" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-200 hover:bg-slate-800">Home</a>
     
-    <!-- Citizen Links -->
-    <ng-container *ngIf="authService.isCitizen()">
-      <a routerLink="/citizen/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">My Complaints</a>
-      <a routerLink="/citizen/history" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">History</a>
-      <a routerLink="/citizen/profile" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">My Profile</a>
-      <a routerLink="/citizen/submit" (click)="toggleMobileMenu()" class="block px-3 py-2.5 rounded-lg text-sm font-extrabold bg-[#A0C8C3] text-slate-950">File Grievance</a>
+    <!-- Tourist Links -->
+    <ng-container *ngIf="authService.isTourist()">
+      <a routerLink="/tourist/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">My Complaints</a>
+      <a routerLink="/tourist/history" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">History</a>
     </ng-container>
 
     <!-- Officer Links -->
     <ng-container *ngIf="authService.isOfficer()">
       <a routerLink="/officer/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Officer Queue</a>
       <a routerLink="/officer/grievances" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Assigned Cases</a>
-      <a routerLink="/officer/profile" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">My Profile</a>
     </ng-container>
 
     <!-- Admin Links -->
@@ -218,83 +178,17 @@
       <a routerLink="/admin/officers" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Officers</a>
       <a routerLink="/admin/grievances" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Grievance Desk</a>
       <a routerLink="/admin/reports" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Reports</a>
-      <a routerLink="/admin/profile" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">My Profile</a>
     </ng-container>
+
+    <div class="border-t border-slate-800 pt-2 space-y-1">
+      <button (click)="logout()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-bold text-rose-400 hover:bg-slate-800 flex items-center space-x-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        <span>Logout</span>
+      </button>
+    </div>
   </div>
 </header>
-
-<!-- Edit Profile Modal -->
-<div *ngIf="authService.isCitizen() && isEditProfileOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-  <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in text-slate-900">
-    <div class="flex justify-between items-center border-b pb-3">
-      <h3 class="font-extrabold text-base text-slate-900">Edit Profile Details</h3>
-      <button (click)="isEditProfileOpen.set(false)" class="text-slate-400 hover:text-slate-600 font-bold">✕</button>
-    </div>
-
-    <form (submit)="saveProfile()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="space-y-4">
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Full Name *</label>
-        <input 
-          type="text" 
-          [(ngModel)]="editForm.name" 
-          name="prof_full_name" 
-          required 
-          autocomplete="one-time-code"
-          autocorrect="off"
-          autocapitalize="off"
-          spellcheck="false"
-          data-lpignore="true"
-          placeholder="Enter full name" 
-          class="w-full px-4 py-2.5 border rounded-xl text-xs font-bold" 
-        />
-        <p *ngIf="hasSubmitted() && !editForm.name.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
-        <p *ngIf="hasSubmitted() && editForm.name.trim() && isNameNumericInvalid(editForm.name)" class="text-[11px] text-rose-600 font-bold mt-1">Names can not be in number</p>
-      </div>
-
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email Address *</label>
-        <input 
-          type="text" 
-          [(ngModel)]="editForm.email" 
-          name="prof_email_addr" 
-          required 
-          autocomplete="one-time-code"
-          autocorrect="off"
-          autocapitalize="off"
-          spellcheck="false"
-          data-lpignore="true"
-          placeholder="example@gmail.com" 
-          class="w-full px-4 py-2.5 border rounded-xl text-xs" 
-        />
-        <p *ngIf="hasSubmitted() && !editForm.email.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
-        <p *ngIf="hasSubmitted() && editForm.email.trim() && !isEmailValid(editForm.email)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format. Must be in format: username@gmail.com</p>
-      </div>
-
-      <div>
-        <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contact Mobile Number *</label>
-        <input 
-          type="text" 
-          [(ngModel)]="editForm.phone" 
-          name="prof_phone_num" 
-          required 
-          autocomplete="one-time-code"
-          autocorrect="off"
-          autocapitalize="off"
-          spellcheck="false"
-          data-lpignore="true"
-          placeholder="Enter mobile number" 
-          class="w-full px-4 py-2.5 border rounded-xl text-xs font-mono" 
-        />
-        <p *ngIf="hasSubmitted() && !editForm.phone.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
-        <p *ngIf="hasSubmitted() && editForm.phone.trim() && isPhoneTextInvalid(editForm.phone)" class="text-[11px] text-rose-600 font-bold mt-1">Enter phone number</p>
-      </div>
-
-      <div class="flex space-x-2 pt-3 border-t">
-        <button type="button" (click)="isEditProfileOpen.set(false)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
-        <button type="submit" class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 transition">Save Profile</button>
-      </div>
-    </form>
-  </div>
-</div>
 
 <app-toast [message]="toastMessage()" (dismiss)="toastMessage.set(null)"></app-toast>

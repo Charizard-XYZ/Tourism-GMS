@@ -15,6 +15,13 @@ export const roleGuard = (allowedRoles: UserRole[]): CanActivateFn => {
       return false;
     }
 
+    const user = authService.currentUser();
+    if (user?.isRevoked) {
+      await authService.logout();
+      router.navigate(['/auth/login']);
+      return false;
+    }
+
     const role = authService.userRole();
     if (role && allowedRoles.includes(role)) {
       return true;
@@ -28,7 +35,7 @@ export const roleGuard = (allowedRoles: UserRole[]): CanActivateFn => {
 
 export const adminGuard: CanActivateFn = roleGuard(['admin']);
 export const officerGuard: CanActivateFn = roleGuard(['officer', 'admin']);
-export const citizenGuard: CanActivateFn = roleGuard(['citizen', 'admin']);
+export const touristGuard: CanActivateFn = roleGuard(['tourist', 'admin']);
 
 export const guestGuard: CanActivateFn = async () => {
   const authService = inject(AuthService);

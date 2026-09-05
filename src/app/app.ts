@@ -22,7 +22,7 @@ export class App implements OnInit {
           const targetUrl = event.url.split('?')[0];
           if (targetUrl === '/' || targetUrl === '' || targetUrl === '/auth/login' || targetUrl === '/auth/register') {
             const role = this.authService.userRole();
-            const homeRoute = role === 'admin' ? '/admin/dashboard' : (role === 'officer' ? '/officer/dashboard' : '/citizen/dashboard');
+            const homeRoute = role === 'admin' ? '/admin/dashboard' : (role === 'officer' ? '/officer/dashboard' : '/tourist/dashboard');
             this.router.navigate([homeRoute], { replaceUrl: true });
           }
         }
@@ -37,7 +37,7 @@ export class App implements OnInit {
       if (currentUrl === '/' || currentUrl === '' || currentUrl === '/auth/login' || currentUrl === '/auth/register') {
         window.history.pushState(null, '', window.location.href);
         const role = this.authService.userRole();
-        const homeRoute = role === 'admin' ? '/admin/dashboard' : (role === 'officer' ? '/officer/dashboard' : '/citizen/dashboard');
+        const homeRoute = role === 'admin' ? '/admin/dashboard' : (role === 'officer' ? '/officer/dashboard' : '/tourist/dashboard');
         this.router.navigate([homeRoute], { replaceUrl: true });
       }
     }

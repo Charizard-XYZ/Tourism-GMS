@@ -23,8 +23,8 @@ service cloud.firestore {
       return isAuthenticated() && getUserData().role == 'officer';
     }
 
-    function isCitizen() {
-      return isAuthenticated() && getUserData().role == 'citizen';
+    function isTourist() {
+      return isAuthenticated() && getUserData().role == 'tourist';
     }
 
     // Users Collection: users/{uid}
@@ -52,10 +52,12 @@ service cloud.firestore {
     // Grievances Collection: grievances/{grievanceId}
     match /grievances/{grievanceId} {
       allow read: if isAuthenticated();
-      // Citizens can submit grievances owned by their UID
-      allow create: if isAuthenticated() && request.resource.data.citizenId == request.auth.uid;
-      // Officers and Admins can update status, assignment, resolution details
-      allow update: if isAdmin() || isOfficer() || (isCitizen() && resource.data.citizenId == request.auth.uid);
+      // Tourists can submit grievances owned by their UID
+      allow create: if isAuthenticated() && request.resource.data.touristId == request.auth.uid;
+      // Officers and Admins can update status, assignment, resolution details; tourists can update their own
+      allow update: if isAdmin() || isOfficer() || (
+        isTourist() && resource.data.touristId == request.auth.uid
+      );
       allow delete: if isAdmin();
     }
 
@@ -69,7 +71,7 @@ service cloud.firestore {
     // Feedback Collection: feedback/{feedbackId}
     match /feedback/{feedbackId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.resource.data.citizenId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.touristId == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 

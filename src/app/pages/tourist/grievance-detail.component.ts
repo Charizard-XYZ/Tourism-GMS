@@ -28,8 +28,11 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
         </div>
 
         <div class="flex items-center space-x-2">
-          <a routerLink="/citizen/dashboard" class="px-4 py-2 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800">
-            ← Back to Dashboard
+          <a routerLink="/tourist/dashboard" class="px-4 py-2 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 flex items-center space-x-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Back to Dashboard</span>
           </a>
         </div>
       </div>
@@ -77,7 +80,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
           <div *ngIf="grievance.resolutionDetails || (grievance.resolutionAttachments && grievance.resolutionAttachments.length > 0)" class="bg-emerald-50/80 p-6 sm:p-8 rounded-3xl border border-emerald-200 shadow-sm space-y-4">
             <div class="flex justify-between items-center border-b border-emerald-200 pb-3">
               <h3 class="font-extrabold text-emerald-900 text-lg">
-                Official Resolution Report & Officer Attachment Proof
+                Official Report & Officer Attachment Proof
               </h3>
               <span *ngIf="grievance.resolvedAt" class="text-xs font-bold text-emerald-700">Resolved on {{ grievance.resolvedAt | date:'dd/MM/yyyy' }}</span>
             </div>
@@ -209,6 +212,25 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
             </div>
           </div>
 
+          <!-- Cancel Grievance Action Box -->
+          <div *ngIf="canCancelGrievance()" class="bg-white p-6 rounded-3xl border border-rose-200 shadow-sm space-y-3">
+            <h4 class="font-bold text-xs text-rose-700 uppercase">Cancel Grievance</h4>
+            <p class="text-xs text-slate-500">If you no longer need this grievance to be processed, you can cancel it. This action can be undone by contacting the Admin.</p>
+            <button 
+              (click)="confirmCancelModal.set(true)" 
+              [disabled]="isCancelling"
+              class="w-full py-2.5 bg-rose-600 text-white rounded-xl font-bold text-xs hover:bg-rose-700 transition disabled:opacity-50"
+            >
+              {{ isCancelling ? 'Cancelling...' : 'Cancel This Grievance' }}
+            </button>
+          </div>
+
+          <!-- Cancelled State Banner -->
+          <div *ngIf="grievance.status === 'cancelled'" class="bg-rose-50 p-6 rounded-3xl border border-rose-200 shadow-sm text-center space-y-2">
+            <p class="text-rose-800 font-bold text-sm">This grievance has been cancelled.</p>
+            <p class="text-xs text-slate-500">Contact the Admin if you wish to reinstate this grievance.</p>
+          </div>
+
         </div>
 
       </div>
@@ -254,6 +276,32 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
         </div>
       </div>
 
+      <!-- Cancel Grievance Confirmation Modal -->
+      <div *ngIf="confirmCancelModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+          <div class="flex justify-between items-center border-b pb-3">
+            <h3 class="font-bold text-base text-slate-900">Cancel Grievance Confirmation</h3>
+            <button (click)="confirmCancelModal.set(false)" aria-label="Close dialog" class="text-slate-400 hover:text-slate-600 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs text-slate-600">Are you sure you want to cancel this grievance? This will stop further processing.</p>
+          <div class="flex space-x-2 pt-3 border-t">
+            <button (click)="confirmCancelModal.set(false)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">
+              Go Back
+            </button>
+            <button 
+              (click)="executeCancelGrievance()" 
+              class="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm"
+            >
+              Yes, Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
   `
 })
@@ -264,6 +312,14 @@ export class GrievanceDetailComponent implements OnInit {
   authService = inject(AuthService);
 
   grievance?: Grievance;
+  isLoading = false;
+  isCancelling = false;
+  confirmCancelModal = signal<boolean>(false);
+
+  async executeCancelGrievance() {
+    this.confirmCancelModal.set(false);
+    await this.cancelGrievance();
+  }
 
   get departmentHelpline(): string {
     if (!this.grievance) return '—';
@@ -282,10 +338,45 @@ export class GrievanceDetailComponent implements OnInit {
   isReopenModalOpen = false;
   reopenReason = '';
 
-  ngOnInit() {
+  async ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
+      // Try local cache first
       this.grievance = this.grievanceService.getGrievanceById(id);
+
+      // If not in memory (e.g. direct URL refresh), fetch from backend
+      if (!this.grievance) {
+        this.isLoading = true;
+        try {
+          const fetched = await this.grievanceService.fetchGrievanceById(id);
+          if (fetched) {
+            this.grievance = fetched;
+          }
+        } catch (e) {
+          console.warn('Failed to load grievance on direct navigation:', e);
+        } finally {
+          this.isLoading = false;
+        }
+      }
+    }
+  }
+
+  canCancelGrievance(): boolean {
+    if (!this.grievance) return false;
+    const status = this.grievance.status;
+    return status !== 'cancelled' && status !== 'closed' && status !== 'resolved';
+  }
+
+  async cancelGrievance() {
+    if (!this.grievance || this.isCancelling) return;
+    this.isCancelling = true;
+    try {
+      await this.grievanceService.cancelGrievance(this.grievance.id);
+      this.grievance = this.grievanceService.getGrievanceById(this.grievance.id);
+    } catch (e: any) {
+      console.error('Cancel grievance error:', e);
+    } finally {
+      this.isCancelling = false;
     }
   }
 

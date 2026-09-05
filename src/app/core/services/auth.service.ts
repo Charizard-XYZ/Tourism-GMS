@@ -9,7 +9,9 @@ import {
   updateEmail,
   signOut,
   onAuthStateChanged,
-  User as FirebaseUser
+  User as FirebaseUser,
+  EmailAuthProvider,
+  reauthenticateWithCredential
 } from 'firebase/auth';
 import { FirebaseService } from './firebase.service';
 import { User, UserRole, RegisteredOfficer, formatPhoneNumber } from '../models/user.model';
@@ -29,7 +31,7 @@ export class AuthService {
   readonly userRole = computed<UserRole | null>(() => this.currentUser()?.role || null);
   readonly isAuthenticated = computed(() => !!this.currentUser());
   readonly registeredOfficers = signal<RegisteredOfficer[]>([]);
-  readonly registeredCitizens = signal<{ id: string; name: string; email: string; phone?: string; createdAt: string }[]>([]);
+  readonly registeredTourists = signal<{ id: string; userCode?: string; name: string; email: string; phone?: string; createdAt: string }[]>([]);
 
   constructor() {
     this.initAuthListener();
@@ -44,6 +46,7 @@ export class AuthService {
             this.currentUser.set(profile);
             if (profile.role === 'admin') {
               this.loadOfficersFromBackend();
+              this.loadTouristsFromBackend();
             }
           } else {
             console.warn(`No Firestore user profile found for UID: ${fbUser.uid}. Denying fallback access.`);
@@ -96,6 +99,7 @@ export class AuthService {
           const normalizedRole = (String(u.role || '').trim().toLowerCase()) as UserRole;
           return {
             uid: u.uid || uid,
+            userCode: u.userCode || '',
             email: u.email,
             displayName: u.fullName || u.displayName || 'User',
             role: normalizedRole,
@@ -124,12 +128,15 @@ export class AuthService {
       if (res && res.success && Array.isArray(res.officers)) {
         const formatted: RegisteredOfficer[] = res.officers.map(o => ({
           id: o.id || o.uid,
+          userCode: o.userCode || o.officerCode || '',
+          officerCode: o.officerCode || o.userCode || '',
           name: o.fullName || o.name,
           email: o.email,
           departmentId: o.departmentId || '',
           departmentName: o.departmentName || 'Unassigned',
           designation: o.designation || 'Officer',
           phone: o.phoneNumber || o.phone || '',
+          isActive: o.isActive !== false,
           isRevoked: o.isRevoked || false,
           createdAt: o.createdAt || new Date().toISOString()
         }));
@@ -137,6 +144,27 @@ export class AuthService {
       }
     } catch (e) {
       console.warn('Failed to load officers from backend:', e);
+    }
+  }
+
+  async loadTouristsFromBackend(): Promise<void> {
+    try {
+      const res = await firstValueFrom(this.http.get<{ success: boolean; users: any[] }>(`${this.apiUrl}/users`));
+      if (res && res.success && Array.isArray(res.users)) {
+        const tourists = res.users
+          .filter(u => u.role === 'tourist')
+          .map(c => ({
+            id: c.uid || c.id,
+            userCode: c.userCode || '',
+            name: c.fullName || c.displayName || 'Tourist',
+            email: c.email || '',
+            phone: c.phoneNumber || c.phone || '',
+            createdAt: c.createdAt || ''
+          }));
+        this.registeredTourists.set(tourists);
+      }
+    } catch (e) {
+      console.warn('Failed to load tourists from backend:', e);
     }
   }
 
@@ -163,27 +191,32 @@ export class AuthService {
 
       if (!user) {
         await signOut(this.firebaseService.auth);
-        throw new Error('User profile document not found in database.');
+        throw new Error(`Access Denied: Account "${cleanEmail}" is not registered.`);
       }
 
       // Verify Role Authorization against backend Firestore role (case-insensitive)
+      // Never reveal the account's actual registered role on role mismatch
       const userRoleNormalized = String(user.role || '').trim().toLowerCase();
       const requestedRoleNormalized = String(role || '').trim().toLowerCase();
 
       if (userRoleNormalized !== requestedRoleNormalized) {
         await signOut(this.firebaseService.auth);
-        throw new Error(`Access Denied: Account "${cleanEmail}" is registered as a ${user.role.toUpperCase()}, not ${role.toUpperCase()}.`);
+        throw new Error(`Access Denied: Account "${cleanEmail}" is not registered.`);
       }
 
-      if (!user.isActive) {
+      // Prevent revoked or inactive accounts from logging in
+      if (user.isRevoked || !user.isActive) {
         await signOut(this.firebaseService.auth);
-        throw new Error(`Access Denied: Account "${cleanEmail}" has been deactivated.`);
+        throw new Error(`Access Denied: Account "${cleanEmail}" is not registered.`);
       }
 
       this.currentUser.set(user);
       return true;
     } catch (error: any) {
       console.error('Login error:', error);
+      if (error.code === 'auth/user-disabled') {
+        throw new Error(`Access Denied: Account "${cleanEmail}" is not registered.`);
+      }
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         throw new Error('Access Denied: Invalid email or password.');
       }
@@ -192,7 +225,7 @@ export class AuthService {
   }
 
   /**
-   * User Registration (Tourist / Citizen)
+   * User Registration (Tourist)
    */
   async register(name: string, email: string, phone: string, password?: string): Promise<boolean> {
     const cleanEmail = email.trim().toLowerCase();
@@ -205,10 +238,10 @@ export class AuthService {
       const uid = credential.user.uid;
       console.log(`[REGISTER] Step 2: Firebase Auth user created. UID=${uid}. currentUser=${this.firebaseService.auth.currentUser ? 'YES' : 'NULL'}`);
 
-      // 2. Register Citizen Profile in Firestore via Express API
+      // 2. Register Tourist Profile in Firestore via Express API
       const formattedPhone = formatPhoneNumber(phone);
-      console.log(`[REGISTER] Step 3: Sending POST /api/auth/register-citizen...`);
-      const res = await firstValueFrom(this.http.post<{ success: boolean; user: any }>(`${this.apiUrl}/auth/register-citizen`, {
+      console.log(`[REGISTER] Step 3: Sending POST /api/auth/register-tourist...`);
+      const res = await firstValueFrom(this.http.post<{ success: boolean; user: any }>(`${this.apiUrl}/auth/register-tourist`, {
         fullName: name.trim(),
         email: cleanEmail,
         phoneNumber: formattedPhone
@@ -217,14 +250,15 @@ export class AuthService {
 
       if (!res || !res.success || !res.user) {
         await signOut(this.firebaseService.auth);
-        throw new Error('Failed to create citizen profile in database.');
+        throw new Error('Failed to create tourist profile in database.');
       }
 
       const newUser: User = {
         uid: res.user.uid || uid,
+        userCode: res.user.userCode || '',
         email: res.user.email || cleanEmail,
         displayName: res.user.fullName || name.trim(),
-        role: 'citizen',
+        role: 'tourist',
         phoneNumber: res.user.phoneNumber || formattedPhone,
         createdAt: res.user.createdAt || new Date().toISOString(),
         isActive: true
@@ -269,12 +303,15 @@ export class AuthService {
 
     const newOfficer: RegisteredOfficer = {
       id: res.officer.id || res.officer.uid,
+      userCode: res.officer.userCode || '',
+      officerCode: res.officer.officerCode || res.officer.userCode || '',
       name: officer.name,
       email: cleanEmail,
       departmentId: officer.departmentId,
       departmentName: officer.departmentName,
       designation: officer.designation,
       phone: formattedPhone,
+      isActive: true,
       isRevoked: false,
       createdAt: new Date().toISOString()
     };
@@ -345,6 +382,23 @@ export class AuthService {
   }
 
   /**
+   * Verify currently logged-in Admin's password via Firebase Auth re-authentication
+   */
+  async verifyAdminPassword(password: string): Promise<boolean> {
+    const user = this.firebaseService.auth.currentUser;
+    if (!user || !user.email) {
+      throw new Error('No active administrator session found.');
+    }
+    try {
+      const credential = EmailAuthProvider.credential(user.email, password.trim());
+      await reauthenticateWithCredential(user, credential);
+      return true;
+    } catch (err: any) {
+      return false;
+    }
+  }
+
+  /**
    * Password Reset Email
    */
   async sendPasswordResetEmail(email: string): Promise<void> {
@@ -370,12 +424,18 @@ export class AuthService {
    * Logout
    */
   async logout(): Promise<void> {
-    await signOut(this.firebaseService.auth);
+    try {
+      await signOut(this.firebaseService.auth);
+    } catch (e) {
+      console.warn('SignOut error warning:', e);
+    }
     this.currentUser.set(null);
+    this.registeredOfficers.set([]);
+    this.registeredTourists.set([]);
   }
 
-  isCitizen(): boolean {
-    return this.isAuthenticated() && this.userRole() === 'citizen';
+  isTourist(): boolean {
+    return this.isAuthenticated() && this.userRole() === 'tourist';
   }
 
   isOfficer(): boolean {

@@ -3,14 +3,16 @@ import { adminAuth, db } from '../config/firebase-admin';
 
 export interface AuthenticatedUser {
   uid: string;
+  userCode?: string;
   email: string;
-  role: 'admin' | 'officer' | 'citizen';
+  role: 'admin' | 'officer' | 'tourist';
   displayName?: string;
   departmentId?: string;
   departmentName?: string;
   designation?: string;
   phoneNumber?: string;
   isActive?: boolean;
+  isRevoked?: boolean;
   createdAt?: string;
 }
 
@@ -108,12 +110,12 @@ export async function authenticateFirebaseToken(req: AuthenticatedRequest, res: 
     if (!docExists) {
       // Special case: registration endpoints need to pass through because
       // the document doesn't exist YET — it will be created by the route handler
-      const isRegistration = (req.originalUrl || req.path || '').includes('/register-citizen');
+      const isRegistration = (req.originalUrl || req.path || '').includes('/register-tourist');
       if (isRegistration) {
         req.user = {
           uid,
           email,
-          role: 'citizen',
+          role: 'tourist',
           displayName: decodedToken.name || '',
           phoneNumber: '',
           isActive: true,
@@ -141,7 +143,7 @@ export async function authenticateFirebaseToken(req: AuthenticatedRequest, res: 
       return;
     }
 
-    // Read role from Firestore document — NO default citizen fallback
+    // Read role from Firestore document — NO default tourist fallback
     const rawRole = userData['role'];
     if (!rawRole || typeof rawRole !== 'string') {
       console.error(`[AUTH ERROR] User ${uid} has invalid/missing role field: ${rawRole}`);
@@ -152,8 +154,8 @@ export async function authenticateFirebaseToken(req: AuthenticatedRequest, res: 
       return;
     }
 
-    const normalizedRole = rawRole.trim().toLowerCase() as 'admin' | 'officer' | 'citizen';
-    if (!['admin', 'officer', 'citizen'].includes(normalizedRole)) {
+    const normalizedRole = rawRole.trim().toLowerCase() as 'admin' | 'officer' | 'tourist';
+    if (!['admin', 'officer', 'tourist'].includes(normalizedRole)) {
       console.error(`[AUTH ERROR] User ${uid} has unrecognized role: ${normalizedRole}`);
       res.status(400).json({
         success: false,
@@ -162,9 +164,19 @@ export async function authenticateFirebaseToken(req: AuthenticatedRequest, res: 
       return;
     }
 
+    // Reject revoked accounts immediately
+    if (userData['isRevoked'] === true) {
+      res.status(403).json({
+        success: false,
+        message: 'Account access has been revoked.'
+      });
+      return;
+    }
+
     // Build authenticated user from Firestore data — NO email.split('@') for displayName
     req.user = {
       uid: userData['uid'] || uid,
+      userCode: userData['userCode'] || '',
       email: userData['email'] || email,
       role: normalizedRole,
       displayName: userData['fullName'] || userData['displayName'] || decodedToken.name || '',
@@ -173,6 +185,7 @@ export async function authenticateFirebaseToken(req: AuthenticatedRequest, res: 
       designation: userData['designation'] || '',
       phoneNumber: userData['phoneNumber'] || userData['phone'] || '',
       isActive: userData['isActive'] !== false,
+      isRevoked: userData['isRevoked'] === true,
       createdAt: userData['createdAt'] || ''
     };
 

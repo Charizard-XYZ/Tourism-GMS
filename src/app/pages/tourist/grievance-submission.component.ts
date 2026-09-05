@@ -7,6 +7,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { DepartmentService } from '../../core/services/department.service';
 import { GrievanceCategory } from '../../core/models/complaint.model';
 import { ToastComponent } from '../../common/components/toast.component';
+import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
 
 @Component({
   selector: 'app-grievance-submission',
@@ -32,17 +33,19 @@ import { ToastComponent } from '../../common/components/toast.component';
 
         <form (submit)="onSubmit()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="space-y-6">
           
-          <!-- Category Grid (Dynamically linked with Active Admin Created Departments) -->
+          <!-- Category / Department (Only Active Admin Created Departments) -->
           <div>
-            <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Department Category *</label>
-            <select [(ngModel)]="category" name="category" required class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3]">
-              <option *ngFor="let d of activeDepartments()" [value]="d.name">
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Target Department *</label>
+            <div *ngIf="activeDepartments().length === 0" class="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-semibold mb-2">
+              No active departments are currently available to accept grievances. Please check back later.
+            </div>
+            <select [(ngModel)]="departmentId" name="departmentId" required [disabled]="activeDepartments().length === 0" class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3] bg-white">
+              <option value="" disabled>-- Select Active Department --</option>
+              <option *ngFor="let d of activeDepartments()" [value]="d.id">
                 {{ d.name }} ({{ d.code }})
               </option>
-              <option *ngIf="activeDepartments().length === 0" value="General Tourism">
-                --SELECT--
-              </option>
             </select>
+            <p *ngIf="hasSubmitted && !departmentId.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please select an active department.</p>
           </div>
 
           <!-- Title -->
@@ -50,7 +53,8 @@ import { ToastComponent } from '../../common/components/toast.component';
             <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Grievance Title *</label>
             <input 
               type="text" 
-              [(ngModel)]="title" 
+              [ngModel]="title" 
+              (ngModelChange)="onTitleChange($event)"
               name="grv_title_summary" 
               required 
               autocomplete="one-time-code"
@@ -99,24 +103,19 @@ import { ToastComponent } from '../../common/components/toast.component';
               placeholder="Enter location"
               class="w-full px-4 py-3 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-[#A0C8C3]"
             />
-            <p *ngIf="hasSubmitted && !location.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please enter the exact location or address.</p>
+            <p *ngIf="hasSubmitted && !location.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please specify the location.</p>
           </div>
 
-          <!-- Submit Action Button -->
-          <div class="pt-4 flex justify-end space-x-4">
-            <button 
-              type="button" 
-              (click)="router.navigate(['/citizen/dashboard'])"
-              class="px-6 py-3 bg-slate-100 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200"
-            >
+          <div class="pt-4 border-t border-slate-100 flex justify-end space-x-3">
+            <a routerLink="/tourist/dashboard" class="px-6 py-3.5 bg-slate-100 text-slate-700 font-bold text-sm rounded-xl hover:bg-slate-200 transition">
               Cancel
-            </button>
+            </a>
             <button 
               type="submit" 
-              [disabled]="isSubmitting()"
-              class="px-8 py-3.5 bg-[#0F172A] text-white rounded-xl text-sm font-extrabold hover:bg-slate-800 transition shadow-xl"
+              [disabled]="isSubmitting() || activeDepartments().length === 0"
+              class="px-8 py-3.5 bg-[#0F172A] text-white font-extrabold text-sm rounded-xl hover:bg-slate-800 transition shadow-lg disabled:opacity-50"
             >
-              {{ isSubmitting() ? 'Submitting Grievance...' : 'Submit Official Grievance →' }}
+              {{ isSubmitting() ? 'Submitting Grievance...' : 'Submit Official Grievance' }}
             </button>
           </div>
 
@@ -135,11 +134,15 @@ export class GrievanceSubmissionComponent {
   authService = inject(AuthService);
   router = inject(Router);
 
-  category: string = '';
+  departmentId: string = '';
   title = '';
   description = '';
   location = '';
   hasSubmitted = false;
+
+  onTitleChange(val: string) {
+    this.title = capitalizeFirstChar(val);
+  }
 
   isSubmitting = signal<boolean>(false);
   toastMessage = signal<string | null>(null);
@@ -151,46 +154,57 @@ export class GrievanceSubmissionComponent {
   constructor() {
     const depts = this.activeDepartments();
     if (depts.length > 0) {
-      this.category = depts[0].name;
-    } else {
-      this.category = 'General Tourism';
+      this.departmentId = depts[0].id;
     }
   }
 
   async onSubmit() {
     this.hasSubmitted = true;
-    if (!this.title.trim() || !this.description.trim() || !this.location.trim()) {
+    if (!this.departmentId.trim() || !this.title.trim() || !this.description.trim() || !this.location.trim()) {
       this.toastMessage.set('Please fill out all required fields.');
+      return;
+    }
+
+    const matchedDept = this.departmentService.departments().find(d => d.id === this.departmentId && d.isActive);
+    if (!matchedDept) {
+      this.toastMessage.set('Selected department is inactive or not found. Please select an active department.');
       return;
     }
 
     this.isSubmitting.set(true);
     const user = this.authService.currentUser();
-    if (!user) return;
+    if (!user) {
+      this.isSubmitting.set(false);
+      this.toastMessage.set('Authentication session missing. Please sign in again.');
+      return;
+    }
 
-    const selectedCategory = this.category || (this.activeDepartments()[0]?.name || 'General Tourism');
-    const matchedDept = this.departmentService.departments().find(d => d.name === selectedCategory);
+    try {
+      const newGrievance = await this.grievanceService.submitGrievance({
+        title: this.title.trim(),
+        description: this.description.trim(),
+        category: matchedDept.name as GrievanceCategory,
+        departmentId: matchedDept.id,
+        departmentName: matchedDept.name,
+        location: this.location.trim(),
+        touristLocationName: 'Central Region',
+        touristId: user.uid,
+        touristName: user.displayName,
+        touristEmail: user.email,
+        touristPhone: user.phoneNumber,
+        attachments: []
+      });
 
-    const newGrievance = await this.grievanceService.submitGrievance({
-      title: this.title,
-      description: this.description,
-      category: selectedCategory as GrievanceCategory,
-      departmentId: matchedDept?.id || 'dept-001',
-      departmentName: matchedDept?.name || selectedCategory,
-      location: this.location,
-      touristLocationName: 'Central Region',
-      citizenId: user.uid,
-      citizenName: user.displayName,
-      citizenEmail: user.email,
-      citizenPhone: user.phoneNumber,
-      attachments: []
-    });
+      this.isSubmitting.set(false);
+      const code = (newGrievance as any).grievanceCode || newGrievance.trackingCode;
+      this.toastMessage.set(`Grievance ${code} successfully lodged!`);
 
-    this.isSubmitting.set(false);
-    this.toastMessage.set(`Grievance ${newGrievance.trackingCode} successfully lodged!`);
-
-    setTimeout(() => {
-      this.router.navigate(['/citizen/grievance', newGrievance.id]);
-    }, 1200);
+      setTimeout(() => {
+        this.router.navigate(['/tourist/dashboard']);
+      }, 1500);
+    } catch (err: any) {
+      this.isSubmitting.set(false);
+      this.toastMessage.set(err.message || 'Failed to lodge grievance.');
+    }
   }
 }

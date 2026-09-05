@@ -1,12 +1,14 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { DepartmentService } from '../../core/services/department.service';
 import { AuthService } from '../../core/services/auth.service';
 import { StatusBadgeComponent } from '../../common/components/status-badge.component';
 import { ToastComponent } from '../../common/components/toast.component';
 import { Grievance } from '../../core/models/complaint.model';
+import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
 
 @Component({
   selector: 'app-grievance-assignment',
@@ -24,17 +26,23 @@ import { Grievance } from '../../core/models/complaint.model';
 
       <!-- Search & Redressal Lifecycle Filter Bar -->
       <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs grid sm:grid-cols-3 gap-4">
-        <input 
-          type="text" 
-          [(ngModel)]="searchKeyword" 
-          autocomplete="off"
-          autocorrect="off"
-          autocapitalize="off"
-          spellcheck="false"
-          data-lpignore="true"
-          placeholder="Search by Code, Title, Officer Name..." 
-          class="px-4 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]"
-        />
+        <div class="relative">
+          <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input 
+            type="text" 
+            [(ngModel)]="searchKeyword" 
+            (ngModelChange)="onSearchChange($event)"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            data-lpignore="true"
+            placeholder="Search by Code, Title, Officer Name..." 
+            class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]"
+          />
+        </div>
 
         <select [(ngModel)]="departmentFilter" class="px-4 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]">
           <option value="ALL">All Departments</option>
@@ -45,10 +53,13 @@ import { Grievance } from '../../core/models/complaint.model';
 
         <select [(ngModel)]="lifecycleFilter" class="px-4 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]">
           <option value="ALL">All Redressal Lifecycle</option>
+          <option value="submitted">New / Pending Assignment</option>
+          <option value="assigned">Assigned to Officer</option>
           <option value="in_progress">Under Inquiry / In Progress</option>
-          <option value="resolved">Resolution Complete</option>
+          <option value="resolved">Complete</option>
           <option value="closed">Ticket Closed</option>
           <option value="reopened">Escalated / Reopened</option>
+          <option value="cancelled">Cancelled</option>
         </select>
       </div>
 
@@ -92,8 +103,8 @@ import { Grievance } from '../../core/models/complaint.model';
                 </div>
               </td>
               <td class="p-4 text-right space-x-2">
-                <button (click)="openCommentModal(g)" class="px-3.5 py-1.5 bg-slate-900 text-white rounded-lg font-extrabold text-xs hover:bg-slate-800 transition shadow-sm">
-                  Comments & Discussion ({{ grievanceService.getCommentsForGrievance(g.id).length }})
+                <button (click)="openCommentModal(g)" class="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-extrabold text-xs hover:bg-slate-800 transition shadow-sm">
+                  Comments ({{ grievanceService.getCommentsForGrievance(g.id).length }})
                 </button>
               </td>
             </tr>
@@ -107,6 +118,77 @@ import { Grievance } from '../../core/models/complaint.model';
         </table>
       </div>
 
+      <!-- Action Required: Unassigned Grievance Tickets -->
+      <div *ngIf="getUnassignedActionRequired().length > 0" class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 bg-rose-100 text-rose-700 rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0">
+              <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-base font-extrabold text-slate-900">Unassigned Grievance Tickets</h2>
+              <p class="text-xs text-slate-500">Overview of active grievances pending officer allocation grouped by department category</p>
+            </div>
+          </div>
+          <span class="px-3 py-1 bg-rose-100 text-rose-800 font-extrabold text-xs rounded-full self-start sm:self-auto">
+            {{ getUnassignedActionRequired().length }} Total Unassigned
+          </span>
+        </div>
+
+        <!-- Department Category Groups in One Card -->
+        <div class="space-y-4">
+          <div *ngFor="let group of getUnassignedByDepartmentGroup()" class="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden">
+            <div class="p-3.5 bg-slate-100 flex items-center justify-between border-b border-slate-200">
+              <div class="flex items-center space-x-2">
+                <span class="font-extrabold text-xs text-slate-900">{{ group.departmentName }}</span>
+                <span *ngIf="group.isDeleted" class="px-2 py-0.5 bg-rose-200 text-rose-800 text-[10px] font-bold rounded">
+                  Department Not Found / Deleted
+                </span>
+              </div>
+              <span class="px-2.5 py-0.5 bg-white border border-slate-300 text-slate-700 text-xs font-bold rounded-lg shadow-xs">
+                {{ group.grievances.length }} Unassigned Ticket{{ group.grievances.length === 1 ? '' : 's' }}
+              </span>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="text-slate-500 uppercase text-[10px] font-bold border-b border-slate-200">
+                  <tr>
+                    <th class="p-3">Grievance Code</th>
+                    <th class="p-3">Title</th>
+                    <th class="p-3">Tourist</th>
+                    <th class="p-3">Location</th>
+                    <th class="p-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200/60 font-medium">
+                  <tr *ngFor="let g of group.grievances" class="hover:bg-white/80 transition">
+                    <td class="p-3 font-mono font-bold text-slate-800">{{ g.grievanceCode || g.trackingCode }}</td>
+                    <td class="p-3 font-bold text-slate-900 max-w-xs truncate">{{ g.title }}</td>
+                    <td class="p-3 text-slate-600">{{ g.touristName || 'Tourist' }}</td>
+                    <td class="p-3 text-slate-500">{{ g.location }}</td>
+                    <td class="p-3">
+                      <app-status-badge [status]="g.status"></app-status-badge>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State if No Unassigned Tickets Exist -->
+      <div *ngIf="getUnassignedActionRequired().length === 0" class="bg-white rounded-3xl p-6 border border-slate-200 text-center text-slate-400 text-xs shadow-xs">
+        <svg class="w-8 h-8 text-emerald-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <p class="font-bold text-slate-700">All active grievances are assigned to departmental officers.</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">No unassigned tickets require immediate allocation.</p>
+      </div>
+
       <!-- Admin Grievance Comments & Discussion Modal -->
       <div *ngIf="commentModalGrievance" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
         <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto animate-fade-in">
@@ -115,7 +197,11 @@ import { Grievance } from '../../core/models/complaint.model';
               <span class="text-[10px] font-mono font-bold text-slate-500">{{ commentModalGrievance.trackingCode }}</span>
               <h3 class="font-bold text-base text-slate-900">Admin Case Discussion & Comments</h3>
             </div>
-            <button (click)="commentModalGrievance = null" class="text-slate-400 hover:text-slate-600 font-bold text-xl">✕</button>
+            <button (click)="commentModalGrievance = null" class="text-slate-400 hover:text-slate-600 p-1">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
           </div>
 
           <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
@@ -136,7 +222,7 @@ import { Grievance } from '../../core/models/complaint.model';
 
           <!-- Display Official Resolution Report & Uploaded Proof Files for Admin -->
           <div *ngIf="commentModalGrievance.resolutionDetails || (commentModalGrievance.resolutionAttachments && commentModalGrievance.resolutionAttachments.length > 0)" class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
-            <h4 class="text-xs font-extrabold text-emerald-900 uppercase">Official Resolution Report & Uploaded Proof File</h4>
+            <h4 class="text-xs font-extrabold text-emerald-900 uppercase">Official Report & Uploaded Proof File</h4>
             <p *ngIf="commentModalGrievance.resolutionDetails" class="text-xs text-emerald-950 leading-relaxed whitespace-pre-line">{{ commentModalGrievance.resolutionDetails }}</p>
 
             <div *ngIf="commentModalGrievance.resolutionAttachments && commentModalGrievance.resolutionAttachments.length > 0" class="pt-1">
@@ -163,43 +249,107 @@ import { Grievance } from '../../core/models/complaint.model';
               <p class="text-slate-700 leading-snug">{{ c.commentText }}</p>
             </div>
 
-            <div *ngIf="grievanceService.getCommentsForGrievance(commentModalGrievance.id).length === 0" class="text-xs text-slate-400 italic p-3 bg-slate-50 rounded-xl">
-              No comments or notes posted yet for this grievance.
+            <div *ngIf="grievanceService.getCommentsForGrievance(commentModalGrievance.id).length === 0" class="text-xs text-slate-400 italic text-center p-4">
+              No comments or progress logs recorded yet.
             </div>
           </div>
 
-          <!-- Post Comment Box -->
-          <div class="pt-3 border-t space-y-3">
-            <label class="block text-xs font-bold text-slate-700 uppercase">Add Executive Remark / Comment</label>
+          <!-- Add Note Box -->
+          <div class="pt-3 border-t space-y-2">
             <textarea 
               [(ngModel)]="adminCommentText" 
-              rows="3" 
+              rows="2" 
               autocomplete="off"
               autocorrect="off"
               autocapitalize="off"
               spellcheck="false"
               data-lpignore="true"
-              placeholder="Write a message..." 
-              class="w-full px-3 py-2 border rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]"
+              placeholder="Write an administrative guidance note or update for this case..." 
+              class="w-full px-3 py-2 border rounded-xl text-xs"
             ></textarea>
+            
+            <div class="flex justify-between items-center">
+              <label class="flex items-center space-x-2 text-xs text-slate-600 font-semibold cursor-pointer">
+                <input type="checkbox" [(ngModel)]="isAdminInternalOnly" class="rounded text-teal-600" />
+                <span>Mark as Internal Staff Note</span>
+              </label>
 
-            <div class="flex items-center space-x-2">
-              <input type="checkbox" id="adminInternalCheck" [(ngModel)]="isAdminInternalOnly" class="rounded text-teal-700 focus:ring-teal-500" />
-              <label for="adminInternalCheck" class="text-xs text-slate-600 font-medium">Internal Note (Visible to Officers & Admin only)</label>
-            </div>
-
-            <div class="flex space-x-2 pt-2">
-              <button (click)="commentModalGrievance = null" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">Close</button>
               <button 
                 (click)="postAdminComment()" 
                 [disabled]="!adminCommentText.trim()" 
-                class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 transition"
+                class="px-4 py-2 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 transition shadow-xs"
               >
                 Post Comment
               </button>
             </div>
           </div>
+        </div>
+      </div>
 
+      <!-- Assign Officer Modal -->
+      <div *ngIf="selectedGrievance" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <span class="text-[10px] font-mono font-bold text-slate-500">{{ selectedGrievance.trackingCode }}</span>
+              <h3 class="font-bold text-base text-slate-900">Assign / Reassign Officer</h3>
+            </div>
+            <button (click)="selectedGrievance = null" class="text-slate-400 hover:text-slate-600 p-1">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">Target Department</label>
+              <select [(ngModel)]="targetDeptId" (change)="onDepartmentChange()" class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#A0C8C3]">
+                <option *ngFor="let d of departmentService.departments()" [value]="d.id">
+                  {{ d.name }} ({{ d.code }})
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 uppercase mb-1">Assigned Officer</label>
+              <select [(ngModel)]="targetOfficerId" class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#A0C8C3]">
+                <option *ngFor="let o of getOfficersForTargetDept()" [value]="o.id">
+                  {{ o.name }} ({{ o.email }})
+                </option>
+              </select>
+
+              <!-- Warning and Register Officer navigation when no officer is available -->
+              <div *ngIf="getOfficersForTargetDept().length === 0" class="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs space-y-2">
+                <p class="text-amber-800 font-medium">
+                  No active officers found for this department. Please assign or register an officer for this department first.
+                </p>
+                <button 
+                  type="button"
+                  (click)="navigateToRegisterOfficer()" 
+                  class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-[#0F172A] text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition shadow-xs"
+                >
+                  <span>Register Officer</span>
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end space-x-2 pt-4 border-t">
+            <button (click)="selectedGrievance = null" class="px-4 py-2 border border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50">
+              Cancel
+            </button>
+            <button 
+              (click)="confirmAssignment()" 
+              [disabled]="!targetOfficerId"
+              class="px-5 py-2 bg-[#0F172A] text-white rounded-xl font-bold hover:bg-slate-800 disabled:opacity-50 transition shadow-sm"
+            >
+              Confirm Assignment
+            </button>
+          </div>
         </div>
       </div>
 
@@ -208,7 +358,9 @@ import { Grievance } from '../../core/models/complaint.model';
     </div>
   `
 })
-export class GrievanceAssignmentComponent {
+export class GrievanceAssignmentComponent implements OnInit {
+  route = inject(ActivatedRoute);
+  router = inject(Router);
   grievanceService = inject(GrievanceService);
   departmentService = inject(DepartmentService);
   authService = inject(AuthService);
@@ -225,6 +377,23 @@ export class GrievanceAssignmentComponent {
   searchKeyword = '';
   departmentFilter = 'ALL';
   lifecycleFilter = 'ALL';
+
+  onSearchChange(val: string) {
+    this.searchKeyword = capitalizeFirstChar(val);
+  }
+
+  navigateToRegisterOfficer() {
+    this.selectedGrievance = null;
+    this.router.navigate(['/admin/officers']);
+  }
+
+  async ngOnInit() {
+    const searchParam = this.route.snapshot.queryParamMap.get('search');
+    if (searchParam) {
+      this.searchKeyword = searchParam;
+    }
+    await this.grievanceService.loadGrievancesFromBackend();
+  }
 
   isGrievanceAssignedToValidDeptAndOfficer(g: Grievance): boolean {
     const depts = this.departmentService.departments();
@@ -262,15 +431,14 @@ export class GrievanceAssignmentComponent {
 
   filteredGrievances(): Grievance[] {
     return this.grievanceService.grievances().filter(g => {
-      const isValidAssignment = this.isGrievanceAssignedToValidDeptAndOfficer(g);
-      if (!isValidAssignment) return false;
-
       const keyword = this.searchKeyword.toLowerCase().trim();
       const matchesSearch = !keyword ||
         g.trackingCode.toLowerCase().includes(keyword) ||
+        ((g as any).grievanceCode && (g as any).grievanceCode.toLowerCase().includes(keyword)) ||
         g.title.toLowerCase().includes(keyword) ||
         (!!g.assignedOfficerName && g.assignedOfficerName.toLowerCase().includes(keyword)) ||
-        g.location.toLowerCase().includes(keyword);
+        g.location.toLowerCase().includes(keyword) ||
+        (!!g.touristName && g.touristName.toLowerCase().includes(keyword));
 
       const matchesDept = this.departmentFilter === 'ALL' ||
         g.departmentId === this.departmentFilter ||
@@ -281,6 +449,31 @@ export class GrievanceAssignmentComponent {
 
       return matchesSearch && matchesDept && matchesLifecycle;
     });
+  }
+
+  /** Returns all unsolved grievances with no assigned officer */
+  getUnassignedActionRequired(): Grievance[] {
+    const unsolvedStatuses = ['submitted', 'assigned', 'in_progress', 'reopened'];
+    return this.grievanceService.grievances().filter(g =>
+      unsolvedStatuses.includes(g.status) && !g.assignedOfficerId
+    );
+  }
+
+  /** Groups unassigned cases by their department category into single card structure */
+  getUnassignedByDepartmentGroup(): { departmentName: string; isDeleted: boolean; grievances: Grievance[] }[] {
+    const unassigned = this.getUnassignedActionRequired();
+    const groups: Record<string, { departmentName: string; isDeleted: boolean; grievances: Grievance[] }> = {};
+
+    for (const g of unassigned) {
+      const isDeleted = (g as any).departmentDeleted === true;
+      const deptName = (g as any).originalDepartmentName || g.departmentName || g.category || 'General Tourism';
+      if (!groups[deptName]) {
+        groups[deptName] = { departmentName: deptName, isDeleted, grievances: [] };
+      }
+      groups[deptName].grievances.push(g);
+    }
+
+    return Object.values(groups);
   }
 
   openAssignModal(g: Grievance) {

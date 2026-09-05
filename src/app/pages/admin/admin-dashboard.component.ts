@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
@@ -39,26 +39,42 @@ import { ToastComponent } from '../../common/components/toast.component';
         </div>
       </div>
 
-      <!-- High-Level KPI Summary Cards -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Complaints</span>
-          <p class="text-3xl font-extrabold text-slate-900">{{ metrics().totalComplaints }}</p>
+      <!-- Grievance Overview Section -->
+      <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-2">
+          <div>
+            <h2 class="text-lg font-extrabold text-slate-900">Grievance Overview</h2>
+            <p class="text-xs text-slate-500">Live system-wide operational status and grievance lifecycle distribution</p>
+          </div>
+          <span class="px-3 py-1 bg-teal-50 text-teal-800 text-xs font-bold rounded-xl self-start sm:self-auto">
+            {{ grievanceService.grievances().length }} Total Records
+          </span>
         </div>
 
-        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-          <span class="text-xs font-bold text-amber-800 uppercase tracking-wider">Unassigned / Pending</span>
-          <p class="text-3xl font-extrabold text-amber-900">{{ metrics().pending }}</p>
-        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
+            <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Assigned / Active</span>
+            <p class="text-3xl font-extrabold text-slate-900">{{ grievanceOverviewStats().active }}</p>
+            <p class="text-[11px] text-slate-400">Cases assigned to officers</p>
+          </div>
 
-        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-          <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">Under Investigation</span>
-          <p class="text-3xl font-extrabold text-blue-700">{{ metrics().inProgress }}</p>
-        </div>
+          <div class="p-5 bg-amber-50/60 rounded-2xl border border-amber-200 space-y-1">
+            <span class="text-[10px] font-extrabold text-amber-700 uppercase tracking-wider">In Investigation</span>
+            <p class="text-3xl font-extrabold text-amber-800">{{ grievanceOverviewStats().inProgress }}</p>
+            <p class="text-[11px] text-amber-600">Active inquiry underway</p>
+          </div>
 
-        <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-          <span class="text-xs font-bold text-emerald-800 uppercase tracking-wider">Resolved Cases</span>
-          <p class="text-3xl font-extrabold text-emerald-900">{{ metrics().resolved }}</p>
+          <div class="p-5 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-1">
+            <span class="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider">Resolved / Closed</span>
+            <p class="text-3xl font-extrabold text-emerald-800">{{ grievanceOverviewStats().resolved }}</p>
+            <p class="text-[11px] text-emerald-600">Successfully completed</p>
+          </div>
+
+          <div class="p-5 bg-rose-50/60 rounded-2xl border border-rose-200 space-y-1">
+            <span class="text-[10px] font-extrabold text-rose-700 uppercase tracking-wider">Reopened / Escalated</span>
+            <p class="text-3xl font-extrabold text-rose-800">{{ grievanceOverviewStats().reopened }}</p>
+            <p class="text-[11px] text-rose-600">Follow-up action required</p>
+          </div>
         </div>
       </div>
 
@@ -82,7 +98,7 @@ import { ToastComponent } from '../../common/components/toast.component';
                   <span class="font-mono text-xs font-bold text-slate-700">{{ g.trackingCode }}</span>
                   <span class="px-2 py-0.5 bg-amber-200 text-amber-900 text-[10px] font-extrabold uppercase rounded">Unassigned</span>
                 </div>
-                <p class="text-xs text-slate-600">Department: <strong class="text-teal-800 font-bold">{{ g.departmentName || g.category }}</strong> | Tourist: {{ g.citizenName }} | Location: {{ g.location }}</p>
+                <p class="text-xs text-slate-600">Department: <strong class="text-teal-800 font-bold">{{ g.departmentName || g.category }}</strong> | Tourist: {{ g.touristName || 'Tourist' }} | Location: {{ g.location }}</p>
                 
                 <!-- Tourist Attached Files for Admin -->
                 <div *ngIf="g.attachments && g.attachments.length > 0" class="pt-2 flex flex-wrap gap-2">
@@ -105,7 +121,7 @@ import { ToastComponent } from '../../common/components/toast.component';
 
         <!-- Departmental Overview Breakdown Matrix -->
         <div class="lg:col-span-12 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-          <h3 class="font-extrabold text-slate-900 text-lg border-b pb-3">Departmental Grievance Resolution Overview</h3>
+          <h3 class="font-extrabold text-slate-900 text-lg border-b pb-3">Departmental Grievance Overview</h3>
 
           <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div *ngFor="let d of reportsService.getDepartmentBreakdown()" class="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
@@ -135,7 +151,7 @@ import { ToastComponent } from '../../common/components/toast.component';
     </div>
   `
 })
-export class AdminDashboardComponent {
+export class AdminDashboardComponent implements OnInit {
   grievanceService = inject(GrievanceService);
   departmentService = inject(DepartmentService);
   reportsService = inject(ReportsService);
@@ -144,7 +160,21 @@ export class AdminDashboardComponent {
 
   toastMessage = signal<string | null>(null);
 
+  async ngOnInit(): Promise<void> {
+    await this.grievanceService.loadGrievancesFromBackend();
+  }
+
   metrics = () => this.reportsService.getOverallMetrics();
+
+  grievanceOverviewStats = computed(() => {
+    const list = this.grievanceService.grievances();
+    return {
+      active: list.filter(g => g.status === 'assigned' || g.status === 'submitted').length,
+      inProgress: list.filter(g => g.status === 'in_progress').length,
+      resolved: list.filter(g => g.status === 'resolved' || g.status === 'closed').length,
+      reopened: list.filter(g => g.status === 'reopened').length
+    };
+  });
 
   unassignedGrievances = computed(() => {
     const allGrievances = this.grievanceService.grievances();
@@ -233,11 +263,11 @@ export class AdminDashboardComponent {
     );
 
     if (deptActiveOfficers.length === 0) {
-      this.toastMessage.set(`please assign officer`);
+      this.toastMessage.set(`Please assign an officer to ${targetDept.name} first.`);
       this.router.navigate(['/admin/departments'], { queryParams: { deptId: targetDept.id } });
       return;
     }
 
-    this.router.navigate(['/admin/departments'], { queryParams: { deptId: targetDept.id } });
+    this.router.navigate(['/admin/grievances'], { queryParams: { search: g.trackingCode } });
   }
 }

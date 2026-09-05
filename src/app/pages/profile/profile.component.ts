@@ -1,6 +1,7 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { DepartmentService } from '../../core/services/department.service';
@@ -8,6 +9,7 @@ import { ReportsService } from '../../core/services/reports.service';
 import { ToastComponent } from '../../common/components/toast.component';
 import { Grievance } from '../../core/models/complaint.model';
 import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.model';
+import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
 
 @Component({
   selector: 'app-profile',
@@ -27,33 +29,44 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
               <div class="flex items-center space-x-2">
                 <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider"
                   [ngClass]="{
-                    'bg-amber-400 text-slate-950': user()?.role === 'citizen',
+                    'bg-amber-400 text-slate-950': user()?.role === 'tourist',
                     'bg-blue-400 text-slate-950': user()?.role === 'officer',
                     'bg-purple-400 text-slate-950': user()?.role === 'admin'
                   }">
                   {{ getRoleBadgeLabel() }}
                 </span>
-                <span class="text-xs text-slate-300 font-mono">{{ user()?.uid }}</span>
+                <span *ngIf="user()?.userCode" class="px-2.5 py-0.5 bg-teal-400/20 text-teal-300 font-mono text-xs font-bold rounded-md">
+                  {{ user()?.userCode }}
+                </span>
               </div>
               <h1 class="text-xl sm:text-3xl font-extrabold text-white mt-1">{{ user()?.displayName }}</h1>
               <p class="text-xs sm:text-sm text-slate-300">{{ user()?.email }} • {{ user()?.phoneNumber || 'No phone' }}</p>
             </div>
           </div>
 
-          <div class="flex items-center space-x-3">
+          <div class="flex flex-wrap items-center gap-2">
             <button 
-              (click)="activeTab = 'overview'"
+              (click)="switchTab('overview')"
               [class.bg-teal-600]="activeTab === 'overview'"
               [class.bg-slate-800]="activeTab !== 'overview'"
               class="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition hover:bg-teal-700 shadow-md">
               Overview & Analytics
             </button>
             <button 
-              (click)="activeTab = 'settings'"
+              (click)="switchTab('settings')"
               [class.bg-teal-600]="activeTab === 'settings'"
               [class.bg-slate-800]="activeTab !== 'settings'"
               class="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition hover:bg-teal-700 shadow-md">
               Edit Details & Password
+            </button>
+            <button 
+              (click)="confirmLogout()"
+              title="Log out of account"
+              class="px-4 py-2.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center space-x-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Logout</span>
             </button>
           </div>
         </div>
@@ -63,23 +76,23 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
       <div *ngIf="activeTab === 'overview'" class="space-y-8">
 
         <!-- Role 1: TOURIST PROFILE STATISTICS -->
-        <div *ngIf="authService.isCitizen()" class="space-y-8">
+        <div *ngIf="authService.isTourist()" class="space-y-8">
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2">
               <span class="text-slate-400 font-bold text-xs uppercase">Total Filed Grievances</span>
-              <div class="text-3xl font-black text-slate-900">{{ citizenMetrics().filed }}</div>
+              <div class="text-3xl font-black text-slate-900">{{ touristMetrics().filed }}</div>
               <p class="text-[11px] text-slate-500">Complaints registered by you</p>
             </div>
 
             <div class="bg-white p-6 rounded-3xl border border-emerald-200 bg-emerald-50/40 shadow-sm space-y-2">
               <span class="text-emerald-700 font-bold text-xs uppercase">Solved Grievances</span>
-              <div class="text-3xl font-black text-emerald-800">{{ citizenMetrics().solved }}</div>
+              <div class="text-3xl font-black text-emerald-800">{{ touristMetrics().solved }}</div>
               <p class="text-[11px] text-emerald-600 font-medium">Successfully resolved & closed</p>
             </div>
 
             <div class="bg-white p-6 rounded-3xl border border-rose-200 bg-rose-50/40 shadow-sm space-y-2">
               <span class="text-rose-700 font-bold text-xs uppercase">Reopened Grievances</span>
-              <div class="text-3xl font-black text-rose-800">{{ citizenMetrics().reopened }}</div>
+              <div class="text-3xl font-black text-rose-800">{{ touristMetrics().reopened }}</div>
               <p class="text-[11px] text-rose-600 font-medium">Re-submitted for investigation</p>
             </div>
           </div>
@@ -91,14 +104,14 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
                 <h3 class="font-extrabold text-slate-900 text-lg">Solved Grievances & Officer Attachment Proof</h3>
                 <p class="text-xs text-slate-500">Official resolution reports and proof documents attached by department officers</p>
               </div>
-              <span class="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl">{{ citizenSolvedGrievances().length }} Solved</span>
+              <span class="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl">{{ touristSolvedGrievances().length }} Solved</span>
             </div>
 
-            <div *ngIf="citizenSolvedGrievances().length === 0" class="p-8 text-center text-slate-400 text-xs italic bg-slate-50 rounded-2xl">
+            <div *ngIf="touristSolvedGrievances().length === 0" class="p-8 text-center text-slate-400 text-xs italic bg-slate-50 rounded-2xl">
               No solved grievances found yet. When officers resolve your filed complaints, uploaded resolution documents will appear here.
             </div>
 
-            <div *ngFor="let g of citizenSolvedGrievances()" class="p-5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-4">
+            <div *ngFor="let g of touristSolvedGrievances()" class="p-5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-4">
               <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
                 <div class="flex items-center space-x-2">
                   <span class="font-mono text-xs font-bold text-slate-700 bg-slate-200 px-2 py-0.5 rounded">{{ g.trackingCode }}</span>
@@ -187,42 +200,15 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
           </div>
         </div>
 
-        <!-- Role 3: ADMIN PROFILE STATISTICS -->
+        <!-- Role 3: ADMIN PROFILE -->
         <div *ngIf="authService.isAdmin()" class="space-y-8">
-          <div class="grid grid-cols-1 sm:grid-cols-5 gap-4">
-            <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span class="text-slate-400 font-bold text-[11px] uppercase">Assigned</span>
-              <div class="text-2xl font-black text-slate-900">{{ adminMetrics().assigned }}</div>
-            </div>
-
-            <div class="bg-white p-5 rounded-3xl border border-amber-200 bg-amber-50/40 shadow-sm space-y-2">
-              <span class="text-amber-700 font-bold text-[11px] uppercase">Pending</span>
-              <div class="text-2xl font-black text-amber-800">{{ adminMetrics().pending }}</div>
-            </div>
-
-            <div class="bg-white p-5 rounded-3xl border border-emerald-200 bg-emerald-50/40 shadow-sm space-y-2">
-              <span class="text-emerald-700 font-bold text-[11px] uppercase">Solved</span>
-              <div class="text-2xl font-black text-emerald-800">{{ adminMetrics().solved }}</div>
-            </div>
-
-            <div class="bg-white p-5 rounded-3xl border border-rose-200 bg-rose-50/40 shadow-sm space-y-2">
-              <span class="text-rose-700 font-bold text-[11px] uppercase">Reopened</span>
-              <div class="text-2xl font-black text-rose-800">{{ adminMetrics().reopened }}</div>
-            </div>
-
-            <div class="bg-white p-5 rounded-3xl border border-purple-200 bg-purple-50/40 shadow-sm space-y-2">
-              <span class="text-purple-700 font-bold text-[11px] uppercase">Unassigned</span>
-              <div class="text-2xl font-black text-purple-800">{{ adminMetrics().unassigned }}</div>
-            </div>
-          </div>
-
           <!-- Roster Overview Card -->
           <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
             <h3 class="font-extrabold text-slate-900 text-lg border-b pb-3">System Roster Overview</h3>
             <div class="grid sm:grid-cols-3 gap-4 text-xs">
               <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
                 <span class="text-slate-400 font-bold">Registered Tourists</span>
-                <p class="text-2xl font-black text-slate-900">{{ authService.registeredCitizens().length }}</p>
+                <p class="text-2xl font-black text-slate-900">{{ authService.registeredTourists().length }}</p>
               </div>
               <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
                 <span class="text-slate-400 font-bold">Registered Officers</span>
@@ -236,23 +222,105 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
           </div>
         </div>
 
-      </div>
+        <!-- Grievance Overview Card below User Details for All Roles -->
+        <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-2">
+              <div>
+                <h3 class="font-extrabold text-slate-900 text-lg">Grievance Overview</h3>
+                <p class="text-xs text-slate-500">Live operational status and recent activity across your tickets</p>
+              </div>
+              <span class="px-3 py-1 bg-teal-50 text-teal-800 text-xs font-bold rounded-xl self-start sm:self-auto">
+                {{ userGrievanceList().length }} Total Records
+              </span>
+            </div>
+
+            <!-- Role-based status breakdown cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
+                <span class="text-[10px] font-extrabold text-slate-500 uppercase">Assigned / Active</span>
+                <p class="text-2xl font-black text-slate-900">{{ grievanceOverviewStats().active }}</p>
+              </div>
+              <div class="p-4 bg-amber-50/60 rounded-2xl border border-amber-200 space-y-1">
+                <span class="text-[10px] font-extrabold text-amber-700 uppercase">In Investigation</span>
+                <p class="text-2xl font-black text-amber-800">{{ grievanceOverviewStats().inProgress }}</p>
+              </div>
+              <div class="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-1">
+                <span class="text-[10px] font-extrabold text-emerald-700 uppercase">Resolved / Closed</span>
+                <p class="text-2xl font-black text-emerald-800">{{ grievanceOverviewStats().resolved }}</p>
+              </div>
+              <div class="p-4 bg-rose-50/60 rounded-2xl border border-rose-200 space-y-1">
+                <span class="text-[10px] font-extrabold text-rose-700 uppercase">Reopened / Escalated</span>
+                <p class="text-2xl font-black text-rose-800">{{ grievanceOverviewStats().reopened }}</p>
+              </div>
+            </div>
+
+            <!-- Recent Grievance Activity Log -->
+            <div class="space-y-3">
+              <h4 class="font-bold text-xs uppercase tracking-wider text-slate-700">Recent Grievance Logs</h4>
+              <div *ngIf="userGrievanceList().length === 0" class="p-8 text-center text-slate-400 text-xs italic bg-slate-50 rounded-2xl">
+                No grievance activity records found for this account.
+              </div>
+              <div *ngIf="userGrievanceList().length > 0" class="overflow-x-auto border border-slate-200 rounded-2xl">
+                <table class="w-full text-left text-xs">
+                  <thead class="bg-slate-900 text-white uppercase text-[10px] font-bold">
+                    <tr>
+                      <th class="p-3">Grievance Code</th>
+                      <th class="p-3">Title</th>
+                      <th class="p-3">Department</th>
+                      <th class="p-3">Date</th>
+                      <th class="p-3 text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 font-medium">
+                    <tr *ngFor="let g of userGrievanceList().slice(0, 5)" class="hover:bg-slate-50">
+                      <td class="p-3 font-mono font-bold text-teal-800">{{ g.grievanceCode || g.trackingCode }}</td>
+                      <td class="p-3 font-bold text-slate-900 truncate max-w-[200px]">{{ g.title }}</td>
+                      <td class="p-3 text-slate-600">{{ g.departmentName || g.category }}</td>
+                      <td class="p-3 text-slate-500">{{ g.createdAt | date:'dd/MM/yyyy' }}</td>
+                      <td class="p-3 text-right">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase"
+                          [ngClass]="{
+                            'bg-emerald-100 text-emerald-800': g.status === 'resolved' || g.status === 'closed',
+                            'bg-amber-100 text-amber-800': g.status === 'in_progress' || g.status === 'assigned',
+                            'bg-rose-100 text-rose-800': g.status === 'reopened',
+                            'bg-slate-100 text-slate-700': g.status === 'submitted'
+                          }">
+                          {{ g.status }}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
 
       <!-- Settings Tab View: EDIT DETAILS & INTEGRATED PASSWORD CHANGE -->
       <div *ngIf="activeTab === 'settings'" class="max-w-2xl mx-auto w-full">
         
         <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
-          <div class="border-b pb-3">
-            <h3 class="font-extrabold text-slate-900 text-lg">Edit Personal Information</h3>
-            <p class="text-xs text-slate-500">Update your account full name, email address, phone number, or password</p>
+          <div class="flex items-center justify-between border-b pb-3">
+            <div>
+              <h3 class="font-extrabold text-slate-900 text-lg">Edit Personal Information</h3>
+              <p class="text-xs text-slate-500">Update your account full name, email address, phone number, or password</p>
+            </div>
+            <button 
+              type="button" 
+              (click)="cancelSettings()" 
+              class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+              Discard Changes
+            </button>
           </div>
 
-          <form (submit)="saveProfileDetails()" class="space-y-5">
+          <form (submit)="promptSaveProfile()" class="space-y-5">
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Full Name *</label>
               <input 
                 type="text" 
-                [(ngModel)]="editForm.name" 
+                [ngModel]="editForm.name" 
+                (ngModelChange)="onNameChange($event)"
                 name="profile_name"
                 class="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3] focus:outline-none"
               />
@@ -331,8 +399,11 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
                   <p *ngIf="previousPasswordError" class="text-[11px] text-rose-600 font-bold mt-1">
                     {{ previousPasswordError }}
                   </p>
-                  <p *ngIf="isPreviousPasswordVerified" class="text-[11px] text-emerald-700 font-bold mt-1">
-                    ✓ Previous password verified successfully! New password fields unlocked below.
+                  <p *ngIf="isPreviousPasswordVerified" class="text-[11px] text-emerald-700 font-bold mt-1 flex items-center space-x-1">
+                    <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Previous password verified successfully! New password fields unlocked below.</span>
                   </p>
                 </div>
 
@@ -384,12 +455,48 @@ import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.mo
               </div>
             </div>
 
-            <button type="submit" class="w-full bg-[#0F172A] text-white py-3 rounded-xl font-bold text-xs hover:bg-slate-800 transition shadow-md">
-              Save Profile Changes
-            </button>
+            <div class="flex space-x-3 pt-2">
+              <button 
+                type="button" 
+                (click)="cancelSettings()" 
+                class="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl font-bold text-xs hover:bg-slate-200 transition">
+                Discard Changes
+              </button>
+              <button 
+                type="submit" 
+                class="flex-1 bg-[#0F172A] text-white py-3 rounded-xl font-bold text-xs hover:bg-slate-800 transition shadow-md">
+                Save Profile Changes
+              </button>
+            </div>
           </form>
         </div>
 
+      </div>
+
+      <!-- Action Confirmation Dialog -->
+      <div *ngIf="confirmationModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+          <div class="flex justify-between items-center border-b pb-3">
+            <h3 class="font-bold text-base text-slate-900">{{ confirmationModal()?.title }}</h3>
+            <button (click)="confirmationModal.set(null)" aria-label="Close dialog" class="text-slate-400 hover:text-slate-600 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs text-slate-600">{{ confirmationModal()?.message }}</p>
+          <div class="flex space-x-2 pt-3 border-t">
+            <button (click)="confirmationModal.set(null)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">
+              Cancel
+            </button>
+            <button 
+              (click)="executeConfirmedAction()" 
+              class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 transition shadow-sm"
+            >
+              {{ confirmationModal()?.confirmBtnText || 'Confirm' }}
+            </button>
+          </div>
+        </div>
       </div>
 
       <app-toast [message]="toastMessage()" (dismiss)="toastMessage.set(null)"></app-toast>
@@ -402,6 +509,7 @@ export class ProfileComponent {
   grievanceService = inject(GrievanceService);
   departmentService = inject(DepartmentService);
   reportsService = inject(ReportsService);
+  router = inject(Router);
 
   activeTab: 'overview' | 'settings' = 'overview';
   toastMessage = signal<string | null>(null);
@@ -414,6 +522,52 @@ export class ProfileComponent {
     phone: this.user()?.phoneNumber || ''
   };
 
+  onNameChange(val: string) {
+    this.editForm.name = capitalizeFirstChar(val);
+  }
+
+  resetEditForm() {
+    const u = this.user();
+    this.editForm = {
+      name: u?.displayName || '',
+      email: u?.email || '',
+      phone: u?.phoneNumber || ''
+    };
+    this.isChangingPassword = false;
+    this.previousPassword = '';
+    this.isPreviousPasswordVerified = false;
+    this.previousPasswordError = '';
+    this.newPassword = '';
+    this.confirmPassword = '';
+  }
+
+  switchTab(tab: 'overview' | 'settings') {
+    if (this.activeTab === 'settings' && tab !== 'settings') {
+      // Discard unsaved changes when navigating away from settings
+      this.resetEditForm();
+    }
+    this.activeTab = tab;
+  }
+
+  cancelSettings() {
+    this.resetEditForm();
+    this.activeTab = 'overview';
+    this.toastMessage.set('Unsaved profile changes discarded.');
+  }
+
+  confirmLogout() {
+    this.confirmationModal.set({
+      title: 'Confirm Logout',
+      message: 'Are you sure you want to log out of your account?',
+      confirmBtnText: 'Yes, Logout',
+      action: async () => {
+        await this.authService.logout();
+        this.grievanceService.clearState();
+        this.router.navigate(['/'], { replaceUrl: true });
+      }
+    });
+  }
+
   isChangingPassword = false;
   previousPassword = '';
   isPreviousPasswordVerified = false;
@@ -424,6 +578,12 @@ export class ProfileComponent {
   showPreviousPassword = signal<boolean>(false);
   showNewPassword = signal<boolean>(false);
   showConfirmPassword = signal<boolean>(false);
+
+  constructor() {
+    if (this.authService.isAdmin()) {
+      this.authService.loadTouristsFromBackend();
+    }
+  }
 
   toggleChangePassword() {
     this.isChangingPassword = !this.isChangingPassword;
@@ -461,7 +621,7 @@ export class ProfileComponent {
 
   getRoleBadgeLabel(): string {
     const r = this.user()?.role;
-    if (r === 'citizen') return 'Tourist';
+    if (r === 'tourist') return 'Tourist';
     if (r === 'officer') return 'Officer';
     if (r === 'admin') return 'Administrator';
     return 'User';
@@ -480,13 +640,13 @@ export class ProfileComponent {
   }
 
   // Tourist metrics & grievances
-  citizenMetrics = computed(() => {
+  touristMetrics = computed(() => {
     const u = this.user();
-    if (!u || u.role !== 'citizen') return { filed: 0, solved: 0, reopened: 0 };
+    if (!u || u.role !== 'tourist') return { filed: 0, solved: 0, reopened: 0 };
     const cleanEmail = u.email.toLowerCase().trim();
     const myGrievances = this.grievanceService.grievances().filter(g =>
-      (g.citizenEmail && g.citizenEmail.toLowerCase().trim() === cleanEmail) ||
-      (g.citizenId && g.citizenId === u.uid)
+      (g.touristEmail && g.touristEmail.toLowerCase().trim() === cleanEmail) ||
+      (g.touristId && g.touristId === u.uid)
     );
 
     return {
@@ -496,12 +656,13 @@ export class ProfileComponent {
     };
   });
 
-  citizenSolvedGrievances = computed(() => {
+  touristSolvedGrievances = computed(() => {
     const u = this.user();
-    if (!u || u.role !== 'citizen') return [];
+    if (!u || u.role !== 'tourist') return [];
     const cleanEmail = u.email.toLowerCase().trim();
     return this.grievanceService.grievances().filter(g =>
-      ((g.citizenEmail && g.citizenEmail.toLowerCase().trim() === cleanEmail) || (g.citizenId && g.citizenId === u.uid)) &&
+      ((g.touristEmail && g.touristEmail.toLowerCase().trim() === cleanEmail) ||
+       (g.touristId && g.touristId === u.uid)) &&
       (g.status === 'resolved' || g.status === 'closed')
     );
   });
@@ -552,7 +713,48 @@ export class ProfileComponent {
     };
   });
 
-  async saveProfileDetails() {
+  // Grievance overview computed properties (applicable to all logged-in roles)
+  userGrievanceList = computed(() => {
+    const u = this.user();
+    if (!u) return [];
+    const all = this.grievanceService.grievances();
+    if (u.role === 'tourist') {
+      const cleanEmail = u.email.toLowerCase().trim();
+      return all.filter(g =>
+        (g.touristEmail && g.touristEmail.toLowerCase().trim() === cleanEmail) ||
+        (g.touristId && g.touristId === u.uid)
+      );
+    } else if (u.role === 'officer') {
+      const cleanEmail = u.email.toLowerCase().trim();
+      return all.filter(g =>
+        g.assignedOfficerId === u.uid ||
+        (g.assignedOfficerId && g.assignedOfficerId.toLowerCase().trim() === cleanEmail) ||
+        (g.assignedOfficerName && g.assignedOfficerName.toLowerCase().trim() === u.displayName.toLowerCase().trim())
+      );
+    } else {
+      // Admin: sees recent system grievances
+      return all;
+    }
+  });
+
+  grievanceOverviewStats = computed(() => {
+    const list = this.userGrievanceList();
+    return {
+      active: list.filter(g => g.status === 'assigned' || g.status === 'submitted').length,
+      inProgress: list.filter(g => g.status === 'in_progress').length,
+      resolved: list.filter(g => g.status === 'resolved' || g.status === 'closed').length,
+      reopened: list.filter(g => g.status === 'reopened').length
+    };
+  });
+
+  confirmationModal = signal<{
+    title: string;
+    message: string;
+    confirmBtnText: string;
+    action: () => Promise<void>;
+  } | null>(null);
+
+  promptSaveProfile() {
     if (!this.editForm.name.trim() || !this.editForm.email.trim() || !this.editForm.phone.trim()) {
       this.toastMessage.set('Please fill out all required profile fields.');
       return;
@@ -590,7 +792,28 @@ export class ProfileComponent {
         this.toastMessage.set('New password and confirm new password do not match.');
         return;
       }
+    }
 
+    this.confirmationModal.set({
+      title: 'Save Profile Changes',
+      message: 'Are you sure you want to save these changes?',
+      confirmBtnText: 'Yes, Save Changes',
+      action: async () => {
+        await this.executeSaveProfileDetails();
+      }
+    });
+  }
+
+  async executeConfirmedAction() {
+    const modal = this.confirmationModal();
+    this.confirmationModal.set(null);
+    if (modal && modal.action) {
+      await modal.action();
+    }
+  }
+
+  async executeSaveProfileDetails() {
+    if (this.isChangingPassword) {
       try {
         await this.authService.changeUserPassword(this.previousPassword, this.newPassword);
       } catch (err: any) {

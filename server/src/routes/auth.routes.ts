@@ -2,15 +2,15 @@ import { Router, Response } from 'express';
 import { db, adminAuth } from '../config/firebase-admin';
 import { authenticateFirebaseToken, AuthenticatedRequest } from '../middleware/auth.middleware';
 import { validateBody } from '../middleware/validate.middleware';
-import { registerCitizenSchema } from '../validators/schemas';
+import { registerTouristSchema } from '../validators/schemas';
+import { generateUniqueUserCode } from '../utils/user-code';
 
 const router = Router();
 
 /**
- * POST /api/auth/register-citizen
- * Save tourist/citizen profile in users/{uid} after Firebase Auth signup
+ * Handler to register tourist profile in users/{uid} after Firebase Auth signup
  */
-router.post('/register-citizen', authenticateFirebaseToken, validateBody(registerCitizenSchema), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+const handleTouristRegistration = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { uid, email } = req.user!;
     const { fullName, phoneNumber } = req.body;
@@ -20,40 +20,54 @@ router.post('/register-citizen', authenticateFirebaseToken, validateBody(registe
 
     if (existingDoc.exists) {
       const data = existingDoc.data()!;
+      let userCode = data['userCode'];
+      if (!userCode) {
+        userCode = await generateUniqueUserCode('tourist');
+        await userDocRef.update({ userCode, role: data['role'] || 'tourist' });
+      }
       res.status(200).json({
         success: true,
-        message: 'Citizen profile already exists',
-        user: { uid, ...data }
+        message: 'Tourist profile already exists',
+        user: { uid, ...data, role: data['role'] || 'tourist', userCode }
       });
       return;
     }
 
-    const newCitizenProfile = {
+    const userCode = await generateUniqueUserCode('tourist');
+
+    const newTouristProfile = {
       uid,
+      userCode,
       fullName,
       email: email.toLowerCase().trim(),
       phoneNumber: phoneNumber || '',
-      role: 'citizen',
+      role: 'tourist',
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    await userDocRef.set(newCitizenProfile);
+    await userDocRef.set(newTouristProfile);
 
     res.status(201).json({
       success: true,
-      message: 'Citizen registered successfully',
-      user: newCitizenProfile
+      message: 'Tourist registered successfully',
+      user: newTouristProfile
     });
   } catch (error: any) {
-    console.error('Error registering citizen profile:', error);
+    console.error('Error registering tourist profile:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error while creating citizen profile'
+      message: 'Internal server error while creating tourist profile'
     });
   }
-});
+};
+
+/**
+ * POST /api/auth/register-tourist
+ */
+router.post('/register-tourist', authenticateFirebaseToken, validateBody(registerTouristSchema), handleTouristRegistration);
+
 
 /**
  * GET /api/auth/me

@@ -14,7 +14,7 @@
       </h1>
 
       <p class="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl mx-auto">
-        The Department of Tourism & Civil Aviation ensures rapid, accountable grievance redressal for tourists, hotel guests, and citizens across transport, hospitality, aviation, and public safety.
+        The Department of Tourism & Civil Aviation ensures rapid, accountable grievance redressal for tourists, hotel guests, and visitors across transport, hospitality, aviation, and public safety.
       </p>
 
       <!-- LOGGED IN USER SECTION -->
@@ -35,7 +35,7 @@
               autocapitalize="off"
               spellcheck="false"
               data-lpignore="true"
-              placeholder="Enter Tracking Code (e.g. GMS-2026-8941)"
+              placeholder="Enter Tracking Code (e.g. GMS-XXXX-XXXXXX)"
               class="w-full px-4 py-3 bg-slate-950/80 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A0C8C3] text-sm font-mono"
             />
             <button 
@@ -53,16 +53,16 @@
 
         <!-- Quick CTA Buttons for Logged In Users -->
         <div class="flex flex-wrap gap-4 justify-center pt-2">
-          <ng-container *ngIf="authService.isCitizen()">
+          <ng-container *ngIf="authService.isTourist()">
             <a 
-              routerLink="/citizen/submit"
+              routerLink="/tourist/submit"
               class="bg-gradient-to-r from-[#A0C8C3] to-teal-400 text-slate-950 px-8 py-3.5 rounded-xl font-extrabold text-base hover:shadow-teal-500/20 hover:shadow-xl transition transform hover:-translate-y-0.5 flex items-center space-x-2"
             >
               <span>File New Grievance</span>
             </a>
 
             <a 
-              routerLink="/citizen/dashboard"
+              routerLink="/tourist/dashboard"
               class="bg-slate-800 text-slate-200 border border-slate-700 px-6 py-3.5 rounded-xl font-bold text-base hover:bg-slate-700 hover:text-white transition"
             >
               <span>Dashboard</span>
@@ -108,7 +108,7 @@
             </p>
             
             <p>
-              Once registered, tourists and citizens can lodge detailed grievances, attach inspection reports, track real-time resolution milestones, and communicate directly with assigned Officers.
+              Once registered, tourists can lodge detailed grievances, attach inspection reports, track real-time resolution milestones, and communicate directly with assigned Officers.
             </p>
           </div>
 

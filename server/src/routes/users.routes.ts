@@ -4,6 +4,7 @@ import { authenticateFirebaseToken, AuthenticatedRequest } from '../middleware/a
 import { authorizeRoles } from '../middleware/role.middleware';
 import { validateBody } from '../middleware/validate.middleware';
 import { updateProfileSchema } from '../validators/schemas';
+import { generateUniqueUserCode } from '../utils/user-code';
 
 const router = Router();
 
@@ -14,8 +15,22 @@ const router = Router();
 router.get('/me', authenticateFirebaseToken, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const user = req.user!;
+    let userCode = user.userCode;
+
+    // Backfill userCode for existing user if missing
+    if (!userCode) {
+      try {
+        userCode = await generateUniqueUserCode(user.role);
+        await db.collection('users').doc(user.uid).update({ userCode });
+        user.userCode = userCode;
+      } catch (backfillErr) {
+        console.warn(`[USERS/ME NOTICE] Could not backfill userCode for ${user.uid}:`, backfillErr);
+      }
+    }
+
     const responseUser = {
       uid: user.uid,
+      userCode: userCode || '',
       fullName: user.displayName || 'User',
       email: user.email,
       role: user.role,
@@ -68,6 +83,22 @@ router.put('/me', authenticateFirebaseToken, validateBody(updateProfileSchema), 
       console.warn('Firestore user update notice:', e);
     }
 
+    // Synchronize to officers/{uid} if user is an officer
+    if (req.user?.role === 'officer') {
+      try {
+        const officerUpdateData: Record<string, any> = { updatedAt: new Date().toISOString() };
+        if (fullName) officerUpdateData['fullName'] = fullName;
+        if (phoneNumber) {
+          officerUpdateData['phoneNumber'] = phoneNumber;
+          officerUpdateData['phone'] = phoneNumber;
+        }
+        if (updateData['email']) officerUpdateData['email'] = updateData['email'];
+        await db.collection('officers').doc(uid).set(officerUpdateData, { merge: true });
+      } catch (officerSyncErr) {
+        console.warn('Notice: error synchronizing officer profile:', officerSyncErr);
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully',
@@ -81,7 +112,7 @@ router.put('/me', authenticateFirebaseToken, validateBody(updateProfileSchema), 
 
 /**
  * GET /api/users
- * Admin list all users (Citizens / Officers)
+ * Admin list all users (Tourists / Officers)
  */
 router.get('/', authenticateFirebaseToken, authorizeRoles('admin'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
