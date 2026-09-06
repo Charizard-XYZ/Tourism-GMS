@@ -54,3 +54,4 @@ server/src/config/tourism-gms-firebase-adminsdk-fbsvc-56a698dd84.json
 *firebase-adminsdk*.json
 *serviceAccount*.json
 *service-account*.json
+server/dist/

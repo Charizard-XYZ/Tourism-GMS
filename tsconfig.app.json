@@ -3,6 +3,8 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
     "types": []
   },
   "include": [
