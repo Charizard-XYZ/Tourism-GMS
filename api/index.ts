@@ -1,6 +1,4 @@
 // Express application instance
-const app = require('../server/dist/index');
+import app from '../server/src/index';
 
-const handler = app.default || app;
-
-module.exports = handler;
+export default app;
