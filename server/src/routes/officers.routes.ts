@@ -181,6 +181,13 @@ router.post('/', authenticateFirebaseToken, authorizeRoles('admin'), validateBod
           updatedAt: new Date().toISOString()
         });
       }
+
+      // Automatically assign pending unassigned grievances for this department
+      try {
+        await autoAssignUnassignedGrievances(departmentId, departmentName);
+      } catch (assignErr) {
+        console.warn('Failed to auto-assign grievances for new officer:', assignErr);
+      }
     }
 
     res.status(201).json({
@@ -270,59 +277,8 @@ router.put('/:id', authenticateFirebaseToken, authorizeRoles('admin'), validateB
         }
       }
 
-      // 3. Redistribute unsolved cases (submitted, assigned, in_progress, reopened)
-      const officerGrievancesSnap = await db.collection('grievances').where('assignedOfficerId', '==', id).get();
-      const unsolvedGrievances = officerGrievancesSnap.docs.filter(gDoc => {
-        const s = gDoc.data()['status'];
-        return ['submitted', 'assigned', 'in_progress', 'reopened'].includes(s);
-      });
-
-      if (unsolvedGrievances.length > 0) {
-        let eligibleOfficers: any[] = [];
-        if (oldDeptId) {
-          // Look up active peers in officers collection
-          const peersSnap = await db.collection('officers')
-            .where('departmentId', '==', oldDeptId)
-            .get();
-          eligibleOfficers = peersSnap.docs
-            .filter(d => d.id !== id && !d.data()['isRevoked'] && d.data()['isActive'] !== false)
-            .map(d => ({ id: d.id, ...d.data() }));
-
-          // Fallback to users collection if officers collection had no peers
-          if (eligibleOfficers.length === 0) {
-            const userPeersSnap = await db.collection('users')
-              .where('departmentId', '==', oldDeptId)
-              .where('role', '==', 'officer')
-              .get();
-            eligibleOfficers = userPeersSnap.docs
-              .filter(d => d.id !== id && !d.data()['isRevoked'] && d.data()['isActive'] !== false)
-              .map(d => ({ id: d.id, ...d.data() }));
-          }
-        }
-
-        if (eligibleOfficers.length > 0) {
-          // Equally redistribute (round-robin)
-          for (let i = 0; i < unsolvedGrievances.length; i++) {
-            const assignedPeer = eligibleOfficers[i % eligibleOfficers.length];
-            await unsolvedGrievances[i].ref.update({
-              assignedOfficerId: assignedPeer.id,
-              assignedOfficerName: assignedPeer.fullName || assignedPeer.displayName || 'Officer',
-              status: 'assigned',
-              updatedAt: new Date().toISOString()
-            });
-          }
-        } else {
-          // No eligible active officer in department: move to Unassigned Grievance Tickets
-          for (const gDoc of unsolvedGrievances) {
-            await gDoc.ref.update({
-              assignedOfficerId: '',
-              assignedOfficerName: '',
-              status: 'submitted',
-              updatedAt: new Date().toISOString()
-            });
-          }
-        }
-      }
+      // 3. Redistribute active cases to peers in the same department
+      await redistributeOfficerActiveGrievances(id, oldDeptId);
     } else if (req.body.isRevoked === false) {
       // Unrevoke restores login using the same Auth UID/userCode
       await adminAuth.updateUser(id, { disabled: false });
@@ -336,8 +292,12 @@ router.put('/:id', authenticateFirebaseToken, authorizeRoles('admin'), validateB
       updates['departmentId'] = newDeptId;
       updates['departmentName'] = newDeptName;
 
-      // Remove from old department if changed
+      // When officer moves to another department or is unassigned:
+      // FIRST redistribute their active grievances in the old department to eligible peers in that old department!
       if (oldDeptId && oldDeptId !== newDeptId) {
+        await redistributeOfficerActiveGrievances(id, oldDeptId);
+
+        // Remove officer from old department's assignedOfficers array
         const oldDeptRef = db.collection('departments').doc(oldDeptId);
         const oldDeptDoc = await oldDeptRef.get();
         if (oldDeptDoc.exists) {
@@ -389,6 +349,15 @@ router.put('/:id', authenticateFirebaseToken, authorizeRoles('admin'), validateB
     const updatedOfficerDoc = await officerRef.get();
     const updatedData = updatedOfficerDoc.exists ? updatedOfficerDoc.data() : (await userRef.get()).data();
 
+    // If officer is active, not revoked, and assigned to a department, auto-assign any pending grievances of that department
+    if (updatedData && updatedData['isRevoked'] !== true && updatedData['isActive'] !== false && updatedData['departmentId']) {
+      try {
+        await autoAssignUnassignedGrievances(updatedData['departmentId'], updatedData['departmentName']);
+      } catch (assignErr) {
+        console.warn('Failed to auto-assign grievances after officer update:', assignErr);
+      }
+    }
+
     res.status(200).json({ success: true, message: 'Officer updated', officer: { id, ...updatedData } });
   } catch (error: any) {
     console.error('Error updating officer:', error);
@@ -432,54 +401,7 @@ router.delete('/:id', authenticateFirebaseToken, authorizeRoles('admin'), async 
       }
 
       // 2. Redistribute unsolved cases before deleting officer
-      const officerGrievancesSnap = await db.collection('grievances').where('assignedOfficerId', '==', id).get();
-      const unsolvedGrievances = officerGrievancesSnap.docs.filter(gDoc => {
-        const s = gDoc.data()['status'];
-        return ['submitted', 'assigned', 'in_progress', 'reopened'].includes(s);
-      });
-
-      if (unsolvedGrievances.length > 0) {
-        let eligibleOfficers: any[] = [];
-        if (deptId) {
-          const peersSnap = await db.collection('officers')
-            .where('departmentId', '==', deptId)
-            .get();
-          eligibleOfficers = peersSnap.docs
-            .filter(d => d.id !== id && !d.data()['isRevoked'] && d.data()['isActive'] !== false)
-            .map(d => ({ id: d.id, ...d.data() }));
-
-          if (eligibleOfficers.length === 0) {
-            const userPeersSnap = await db.collection('users')
-              .where('departmentId', '==', deptId)
-              .where('role', '==', 'officer')
-              .get();
-            eligibleOfficers = userPeersSnap.docs
-              .filter(d => d.id !== id && !d.data()['isRevoked'] && d.data()['isActive'] !== false)
-              .map(d => ({ id: d.id, ...d.data() }));
-          }
-        }
-
-        if (eligibleOfficers.length > 0) {
-          for (let i = 0; i < unsolvedGrievances.length; i++) {
-            const assignedPeer = eligibleOfficers[i % eligibleOfficers.length];
-            await unsolvedGrievances[i].ref.update({
-              assignedOfficerId: assignedPeer.id,
-              assignedOfficerName: assignedPeer.fullName || assignedPeer.displayName || 'Officer',
-              status: 'assigned',
-              updatedAt: new Date().toISOString()
-            });
-          }
-        } else {
-          for (const gDoc of unsolvedGrievances) {
-            await gDoc.ref.update({
-              assignedOfficerId: '',
-              assignedOfficerName: '',
-              status: 'submitted',
-              updatedAt: new Date().toISOString()
-            });
-          }
-        }
-      }
+      await redistributeOfficerActiveGrievances(id, deptId);
     }
 
     // 3. Delete Firebase Authentication account
@@ -501,5 +423,293 @@ router.delete('/:id', authenticateFirebaseToken, authorizeRoles('admin'), async 
     res.status(500).json({ success: false, message: 'Error deleting officer.' });
   }
 });
+
+/**
+ * Automatically assign unassigned grievances in a department when an eligible officer becomes available.
+ * Workload-balances among all eligible active officers in the department.
+ */
+export async function autoAssignUnassignedGrievances(targetDeptId: string, targetDeptName?: string): Promise<number> {
+  if (!targetDeptId && !targetDeptName) return 0;
+
+  // 1. Get eligible active officers for this department
+  const officersSnapshot = await db.collection('officers').get();
+  let officers = officersSnapshot.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+
+  const usersSnapshot = await db.collection('users').where('role', '==', 'officer').get();
+  const existingIds = new Set(officers.map((o: any) => o.id || o.uid));
+  for (const uDoc of usersSnapshot.docs) {
+    if (!existingIds.has(uDoc.id)) {
+      officers.push({ id: uDoc.id, ...uDoc.data() });
+    }
+  }
+
+  const cleanTargetDeptName = (targetDeptName || '').trim().toLowerCase();
+  const eligibleOfficers = officers.filter((o: any) => {
+    if (o.isActive === false || o.isRevoked === true) return false;
+    const oDeptId = o.departmentId;
+    const oDeptName = (o.departmentName || '').trim().toLowerCase();
+    return (targetDeptId && oDeptId === targetDeptId) ||
+           (cleanTargetDeptName && oDeptName && oDeptName !== 'unassigned' && oDeptName === cleanTargetDeptName);
+  });
+
+  if (eligibleOfficers.length === 0) return 0;
+
+  // 2. Fetch all unassigned grievances for this department
+  const grievancesSnapshot = await db.collection('grievances').get();
+  const unassignedGrievances = grievancesSnapshot.docs.filter((gDoc: any) => {
+    const data = gDoc.data();
+    if (data['status'] === 'resolved' || data['status'] === 'closed' || data['status'] === 'cancelled') {
+      return false;
+    }
+    const hasOfficer = !!data['assignedOfficerId'] && data['assignedOfficerId'].trim() !== '';
+    if (hasOfficer) return false;
+
+    const gDeptId = data['departmentId'];
+    const gDeptName = (data['departmentName'] || data['category'] || '').trim().toLowerCase();
+    return (targetDeptId && gDeptId === targetDeptId) ||
+           (cleanTargetDeptName && gDeptName === cleanTargetDeptName);
+  });
+
+  if (unassignedGrievances.length === 0) return 0;
+
+  // 3. Count workload on active officers
+  const activeGrievancesSnap = await db.collection('grievances')
+    .where('status', 'in', ['submitted', 'assigned', 'in_progress', 'reopened'])
+    .get();
+
+  const loadMap = new Map<string, number>();
+  for (const off of eligibleOfficers) {
+    loadMap.set(off.uid || off.id, 0);
+  }
+  for (const gDoc of activeGrievancesSnap.docs) {
+    const offId = gDoc.data()['assignedOfficerId'];
+    if (offId && loadMap.has(offId)) {
+      loadMap.set(offId, (loadMap.get(offId) || 0) + 1);
+    }
+  }
+
+  // 4. Assign each unassigned grievance to the officer with lowest workload
+  let assignedCount = 0;
+  for (const gDoc of unassignedGrievances) {
+    eligibleOfficers.sort((a: any, b: any) => {
+      const idA = a.uid || a.id;
+      const idB = b.uid || b.id;
+      const loadA = loadMap.get(idA) || 0;
+      const loadB = loadMap.get(idB) || 0;
+      if (loadA !== loadB) return loadA - loadB;
+      return (idA || '').localeCompare(idB || '');
+    });
+
+    const chosen = eligibleOfficers[0];
+    const chosenId = chosen.uid || chosen.id;
+    const chosenName = chosen.fullName || chosen.name || chosen.displayName || 'Officer';
+
+    await gDoc.ref.update({
+      assignedOfficerId: chosenId,
+      assignedOfficerName: chosenName,
+      status: 'assigned',
+      updatedAt: new Date().toISOString()
+    });
+
+    loadMap.set(chosenId, (loadMap.get(chosenId) || 0) + 1);
+    assignedCount++;
+  }
+
+  return assignedCount;
+}
+
+/**
+ * Redistributes active grievances currently assigned to an officer in a specific department.
+ * Active statuses: 'submitted', 'assigned', 'in_progress', 'reopened'.
+ * Resolved and closed cases are NEVER redistributed; their historical resolver info remains intact.
+ * Redistributes to eligible active peers in the SAME department using workload balancing.
+ * If no eligible peer exists in the department, marks them genuinely unassigned.
+ */
+export async function redistributeOfficerActiveGrievances(officerId: string, departmentId?: string): Promise<number> {
+  const officerGrievancesSnap = await db.collection('grievances').where('assignedOfficerId', '==', officerId).get();
+
+  const activeGrievances = officerGrievancesSnap.docs.filter((gDoc: any) => {
+    const data = gDoc.data();
+    const status = data['status'];
+    const isActive = ['submitted', 'assigned', 'in_progress', 'reopened'].includes(status);
+    if (!isActive) return false;
+    if (departmentId) {
+      return data['departmentId'] === departmentId;
+    }
+    return true;
+  });
+
+  if (activeGrievances.length === 0) return 0;
+
+  // Group grievances by departmentId to redistribute within each grievance's own department
+  const deptMap = new Map<string, any[]>();
+  for (const gDoc of activeGrievances) {
+    const dId = gDoc.data()['departmentId'] || departmentId || '';
+    if (!deptMap.has(dId)) deptMap.set(dId, []);
+    deptMap.get(dId)!.push(gDoc);
+  }
+
+  // Pre-fetch all active officers
+  const [officersSnap, usersSnap] = await Promise.all([
+    db.collection('officers').get(),
+    db.collection('users').where('role', '==', 'officer').get()
+  ]);
+
+  let allOfficers = officersSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+  const existingIds = new Set(allOfficers.map((o: any) => o.id || o.uid));
+  for (const uDoc of usersSnap.docs) {
+    if (!existingIds.has(uDoc.id)) {
+      allOfficers.push({ id: uDoc.id, ...uDoc.data() });
+    }
+  }
+
+  // Count active load across all active grievances
+  const activeAllSnap = await db.collection('grievances')
+    .where('status', 'in', ['submitted', 'assigned', 'in_progress', 'reopened'])
+    .get();
+
+  const loadMap = new Map<string, number>();
+  for (const off of allOfficers) {
+    loadMap.set(off.id || off.uid, 0);
+  }
+  for (const aDoc of activeAllSnap.docs) {
+    const offId = aDoc.data()['assignedOfficerId'];
+    if (offId && offId !== officerId && loadMap.has(offId)) {
+      loadMap.set(offId, (loadMap.get(offId) || 0) + 1);
+    }
+  }
+
+  let count = 0;
+  for (const [dId, grievances] of deptMap.entries()) {
+    // Find eligible peers in this department excluding the officer
+    const eligiblePeers = allOfficers.filter((o: any) => {
+      const oId = o.id || o.uid;
+      if (oId === officerId) return false;
+      if (o.isRevoked === true || o.isActive === false) return false;
+      return o.departmentId === dId;
+    });
+
+    if (eligiblePeers.length > 0) {
+      for (const gDoc of grievances) {
+        eligiblePeers.sort((a: any, b: any) => {
+          const idA = a.id || a.uid;
+          const idB = b.id || b.uid;
+          const loadA = loadMap.get(idA) || 0;
+          const loadB = loadMap.get(idB) || 0;
+          if (loadA !== loadB) return loadA - loadB;
+          return (idA || '').localeCompare(idB || '');
+        });
+
+        const assignedPeer = eligiblePeers[0];
+        const assignedPeerId = assignedPeer.id || assignedPeer.uid;
+        const assignedPeerName = assignedPeer.fullName || assignedPeer.name || assignedPeer.displayName || 'Officer';
+
+        await gDoc.ref.update({
+          assignedOfficerId: assignedPeerId,
+          assignedOfficerName: assignedPeerName,
+          status: 'assigned',
+          updatedAt: new Date().toISOString()
+        });
+
+        loadMap.set(assignedPeerId, (loadMap.get(assignedPeerId) || 0) + 1);
+        count++;
+      }
+    } else {
+      // No eligible peer in department: mark as genuinely unassigned
+      for (const gDoc of grievances) {
+        await gDoc.ref.update({
+          assignedOfficerId: '',
+          assignedOfficerName: '',
+          status: 'submitted',
+          updatedAt: new Date().toISOString()
+        });
+        count++;
+      }
+    }
+  }
+
+  return count;
+}
+
+/**
+ * Detects invalid active grievance assignments:
+ * 1. Officer no longer exists.
+ * 2. Officer is revoked or inactive.
+ * 3. Officer's department does not match the grievance's department.
+ * Automatically heals invalid assignments by reassigning to an eligible peer in the grievance's department,
+ * or clearing assignment if no eligible peer exists.
+ */
+export async function sanitizeGrievanceAssignments(): Promise<number> {
+  const activeGrievancesSnap = await db.collection('grievances')
+    .where('status', 'in', ['submitted', 'assigned', 'in_progress', 'reopened'])
+    .get();
+
+  const assignedGrievances = activeGrievancesSnap.docs.filter((d: any) => {
+    const data = d.data();
+    return !!data['assignedOfficerId'] && data['assignedOfficerId'].trim() !== '';
+  });
+
+  if (assignedGrievances.length === 0) return 0;
+
+  const [officersSnap, usersSnap] = await Promise.all([
+    db.collection('officers').get(),
+    db.collection('users').where('role', '==', 'officer').get()
+  ]);
+
+  const officerMap = new Map<string, any>();
+  for (const doc of officersSnap.docs) {
+    officerMap.set(doc.id, { id: doc.id, ...doc.data() });
+  }
+  for (const doc of usersSnap.docs) {
+    if (!officerMap.has(doc.id)) {
+      officerMap.set(doc.id, { id: doc.id, ...doc.data() });
+    }
+  }
+
+  let healedCount = 0;
+  for (const gDoc of assignedGrievances) {
+    const gData = gDoc.data();
+    const offId = gData['assignedOfficerId'];
+    const gDeptId = gData['departmentId'];
+    const officer = officerMap.get(offId);
+
+    const isInvalid = !officer ||
+      officer.isRevoked === true ||
+      officer.isActive === false ||
+      (gDeptId && officer.departmentId && officer.departmentId !== gDeptId);
+
+    if (isInvalid) {
+      // Find eligible peer in grievance's department
+      const eligiblePeers = Array.from(officerMap.values()).filter((o: any) => {
+        const oId = o.id || o.uid;
+        if (oId === offId) return false;
+        if (o.isRevoked === true || o.isActive === false) return false;
+        return o.departmentId === gDeptId;
+      });
+
+      if (eligiblePeers.length > 0) {
+        const chosen = eligiblePeers[0];
+        const chosenId = chosen.id || chosen.uid;
+        const chosenName = chosen.fullName || chosen.name || chosen.displayName || 'Officer';
+        await gDoc.ref.update({
+          assignedOfficerId: chosenId,
+          assignedOfficerName: chosenName,
+          status: 'assigned',
+          updatedAt: new Date().toISOString()
+        });
+      } else {
+        await gDoc.ref.update({
+          assignedOfficerId: '',
+          assignedOfficerName: '',
+          status: 'submitted',
+          updatedAt: new Date().toISOString()
+        });
+      }
+      healedCount++;
+    }
+  }
+
+  return healedCount;
+}
 
 export default router;

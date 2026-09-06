@@ -6,6 +6,7 @@ import { validateBody } from '../middleware/validate.middleware';
 import { createGrievanceSchema, assignGrievanceSchema, updateGrievanceStatusSchema } from '../validators/schemas';
 import { EmailService } from '../services/email.service';
 import { generateUniqueGrievanceCode } from '../utils/user-code';
+import { sanitizeGrievanceAssignments } from './officers.routes';
 
 const router = Router();
 
@@ -22,16 +23,9 @@ router.get('/', authenticateFirebaseToken, async (req: AuthenticatedRequest, res
     if (role === 'admin') {
       // Admin sees all valid grievances
     } else if (role === 'officer') {
-      // Officer sees grievances belonging to their assigned department or assigned directly to them
-      const officerDeptId = req.user?.departmentId;
-      const officerDeptName = (req.user?.departmentName || '').trim().toLowerCase();
-
+      // Officer sees only grievances assigned to them, and must be active/processable (not cancelled)
       grievances = grievances.filter((g: any) => {
-        const gDeptId = g.departmentId;
-        const gDeptName = (g.departmentName || g.category || '').trim().toLowerCase();
-        return (officerDeptId && gDeptId === officerDeptId) ||
-          (officerDeptName && officerDeptName !== 'unassigned' && gDeptName === officerDeptName) ||
-          (g.assignedOfficerId === uid);
+        return g.assignedOfficerId === uid && g.status !== 'cancelled';
       });
     } else {
       // Tourist sees their own lodged grievances
@@ -53,7 +47,7 @@ router.get('/', authenticateFirebaseToken, async (req: AuthenticatedRequest, res
 router.get('/:id', authenticateFirebaseToken, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const id = req.params['id'] as string;
-    const { uid, role, email, departmentId, departmentName } = req.user!;
+    const { uid, role, email } = req.user!;
     const doc = await db.collection('grievances').doc(id).get();
 
     if (!doc.exists) {
@@ -65,10 +59,7 @@ router.get('/:id', authenticateFirebaseToken, async (req: AuthenticatedRequest, 
 
     // IDOR protection: Verify viewer has authorization to access this grievance
     if (role === 'officer') {
-      const isOfficerDept = (departmentId && gData['departmentId'] === departmentId) ||
-        (departmentName && gData['departmentName'] && gData['departmentName'].trim().toLowerCase() === departmentName.trim().toLowerCase()) ||
-        (gData['assignedOfficerId'] === uid);
-      if (!isOfficerDept) {
+      if (gData['assignedOfficerId'] !== uid || gData['status'] === 'cancelled') {
         res.status(403).json({ success: false, message: 'Forbidden: You do not have permission to view this grievance.' });
         return;
       }
@@ -120,6 +111,83 @@ router.post('/', authenticateFirebaseToken, validateBody(createGrievanceSchema),
     const effectiveDeptName = deptData['name'] || departmentName || category;
     const effectiveDeptCode = deptData['code'] || '';
 
+    // Automatic Officer Assignment
+    const targetDeptId = deptDoc.id;
+    const targetDeptName = (effectiveDeptName || '').trim().toLowerCase();
+
+    // Query officers from 'officers' collection
+    const officersSnapshot = await db.collection('officers').get();
+    let officers = officersSnapshot.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+
+    // Backfill any officers stored only in 'users' with role 'officer'
+    const usersSnapshot = await db.collection('users').where('role', '==', 'officer').get();
+    const existingIds = new Set(officers.map((o: any) => o.id || o.uid));
+    for (const uDoc of usersSnapshot.docs) {
+      if (!existingIds.has(uDoc.id)) {
+        officers.push({ id: uDoc.id, ...uDoc.data() });
+      }
+    }
+
+    // Filter eligible officers:
+    // - Department matches (departmentId or departmentName)
+    // - Active (isActive !== false)
+    // - Not revoked (isRevoked !== true)
+    const eligibleOfficers = officers.filter((o: any) => {
+      if (o.isActive === false) return false;
+      if (o.isRevoked === true) return false;
+      const oDeptId = o.departmentId;
+      const oDeptName = (o.departmentName || '').trim().toLowerCase();
+      return (oDeptId && oDeptId === targetDeptId) ||
+             (oDeptName && oDeptName !== 'unassigned' && oDeptName === targetDeptName);
+    });
+
+    let assignedOfficerId = '';
+    let assignedOfficerName = '';
+    let assignedOfficerEmail = '';
+    let status: 'assigned' | 'submitted' = 'submitted';
+
+    if (eligibleOfficers.length > 0) {
+      if (eligibleOfficers.length === 1) {
+        const sel = eligibleOfficers[0];
+        assignedOfficerId = sel.uid || sel.id;
+        assignedOfficerName = sel.fullName || sel.name || sel.displayName || 'Officer';
+        assignedOfficerEmail = sel.email || '';
+        status = 'assigned';
+      } else {
+        // Multiple active officers in same department:
+        // Distribute load by counting active grievances assigned to each officer
+        const activeGrievancesSnap = await db.collection('grievances')
+          .where('status', 'in', ['submitted', 'assigned', 'in_progress', 'reopened'])
+          .get();
+
+        const loadMap = new Map<string, number>();
+        for (const off of eligibleOfficers) {
+          loadMap.set(off.uid || off.id, 0);
+        }
+        for (const gDoc of activeGrievancesSnap.docs) {
+          const offId = gDoc.data()['assignedOfficerId'];
+          if (offId && loadMap.has(offId)) {
+            loadMap.set(offId, (loadMap.get(offId) || 0) + 1);
+          }
+        }
+
+        eligibleOfficers.sort((a: any, b: any) => {
+          const idA = a.uid || a.id;
+          const idB = b.uid || b.id;
+          const loadA = loadMap.get(idA) || 0;
+          const loadB = loadMap.get(idB) || 0;
+          if (loadA !== loadB) return loadA - loadB;
+          return (idA || '').localeCompare(idB || '');
+        });
+
+        const sel = eligibleOfficers[0];
+        assignedOfficerId = sel.uid || sel.id;
+        assignedOfficerName = sel.fullName || sel.name || sel.displayName || 'Officer';
+        assignedOfficerEmail = sel.email || '';
+        status = 'assigned';
+      }
+    }
+
     const newGrievance = {
       id: docRef.id,
       grievanceCode,
@@ -139,9 +207,9 @@ router.post('/', authenticateFirebaseToken, validateBody(createGrievanceSchema),
       touristEmail: email,
       touristPhone: phoneNumber || '',
       attachments: attachments || [],
-      assignedOfficerId: '',
-      assignedOfficerName: '',
-      status: 'submitted',
+      assignedOfficerId,
+      assignedOfficerName,
+      status,
       isEscalated: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -151,6 +219,11 @@ router.post('/', authenticateFirebaseToken, validateBody(createGrievanceSchema),
 
     // Send Confirmation Email to Tourist
     EmailService.sendGrievanceSubmittedEmail(email, newGrievance.touristName, grievanceCode, title, effectiveDeptName);
+
+    // Send Assignment Email to Assigned Officer
+    if (assignedOfficerEmail) {
+      EmailService.sendOfficerAssignmentEmail(assignedOfficerEmail, assignedOfficerName, grievanceCode, title, effectiveDeptName);
+    }
 
     res.status(201).json({
       success: true,
@@ -181,15 +254,57 @@ router.patch('/:id/assign', authenticateFirebaseToken, authorizeRoles('admin'), 
     }
 
     const currentData = doc.data()!;
+    if (currentData['status'] === 'closed') {
+      res.status(400).json({ success: false, message: 'Closed grievances are permanently archived and cannot be reassigned.' });
+      return;
+    }
+
+    const grievanceDeptId = currentData['departmentId'];
+    const grievanceDeptName = currentData['departmentName'] || currentData['category'] || '';
+
+    // Validate Officer if assigned
+    if (officerId) {
+      const [offDoc, userDoc] = await Promise.all([
+        db.collection('officers').doc(officerId).get(),
+        db.collection('users').doc(officerId).get()
+      ]);
+
+      if (!offDoc.exists && !userDoc.exists) {
+        res.status(400).json({ success: false, message: 'Assigned officer does not exist.' });
+        return;
+      }
+
+      const offData = (offDoc.exists ? offDoc.data() : userDoc.data()) || {};
+
+      if (offData['isRevoked'] === true || offData['isActive'] === false) {
+        res.status(400).json({ success: false, message: 'Officer is inactive or revoked and cannot be assigned.' });
+        return;
+      }
+
+      const offDeptId = offData['departmentId'];
+      const offDeptName = (offData['departmentName'] || '').trim().toLowerCase();
+      const targetGrievanceDeptName = grievanceDeptName.trim().toLowerCase();
+
+      // Cross-department check: Officer must belong to the grievance's department
+      const matchesDept = (grievanceDeptId && offDeptId === grievanceDeptId) ||
+        (targetGrievanceDeptName && offDeptName && offDeptName !== 'unassigned' && offDeptName === targetGrievanceDeptName);
+
+      if (!matchesDept) {
+        res.status(400).json({
+          success: false,
+          message: "Cross-department assignment rejected: Officer does not belong to the grievance's department."
+        });
+        return;
+      }
+    }
+
     const isNewAssignment = !currentData['assignedOfficerId'] || currentData['assignedOfficerId'] !== officerId;
 
     await docRef.update({
-      departmentId,
-      departmentName,
       departmentDeleted: false,
-      assignedOfficerId: officerId,
-      assignedOfficerName: officerName,
-      status: currentData['status'] === 'submitted' ? 'assigned' : currentData['status'],
+      assignedOfficerId: officerId || '',
+      assignedOfficerName: officerName || '',
+      status: currentData['status'] === 'submitted' ? (officerId ? 'assigned' : 'submitted') : currentData['status'],
       updatedAt: new Date().toISOString()
     });
 
@@ -200,10 +315,10 @@ router.patch('/:id/assign', authenticateFirebaseToken, authorizeRoles('admin'), 
       if (officerEmail) {
         EmailService.sendOfficerAssignmentEmail(
           officerEmail,
-          officerName,
+          officerName || 'Officer',
           currentData['trackingCode'] || currentData['grievanceCode'],
           currentData['title'],
-          departmentName
+          grievanceDeptName
         );
       }
     }
@@ -235,6 +350,11 @@ router.patch('/:id/status', authenticateFirebaseToken, authorizeRoles('admin', '
 
     const gData = doc.data()!;
 
+    if (gData['status'] === 'closed') {
+      res.status(400).json({ success: false, message: 'Closed grievances are finalized and cannot be modified.' });
+      return;
+    }
+
     // Check if Officer has authority
     if (role === 'officer') {
       if (req.user?.['isRevoked'] === true) {
@@ -242,16 +362,12 @@ router.patch('/:id/status', authenticateFirebaseToken, authorizeRoles('admin', '
         return;
       }
 
-      const officerDeptId = req.user?.departmentId;
-      const officerDeptName = (req.user?.departmentName || '').trim().toLowerCase();
-      const gDeptId = gData['departmentId'];
-      const gDeptName = (gData['departmentName'] || gData['category'] || '').trim().toLowerCase();
+      if (gData['status'] === 'cancelled') {
+        res.status(400).json({ success: false, message: 'Cancelled grievances cannot be updated.' });
+        return;
+      }
 
-      const isDeptOfficer = (officerDeptId && gDeptId === officerDeptId) ||
-        (officerDeptName && officerDeptName !== 'unassigned' && gDeptName === officerDeptName) ||
-        (gData['assignedOfficerId'] === uid);
-
-      if (!isDeptOfficer) {
+      if (gData['assignedOfficerId'] !== uid) {
         res.status(403).json({ success: false, message: 'You do not have permission to update this grievance.' });
         return;
       }
@@ -276,19 +392,23 @@ router.patch('/:id/status', authenticateFirebaseToken, authorizeRoles('admin', '
 
     if (resolutionDetails) updatePayload['resolutionDetails'] = resolutionDetails;
     if (resolutionAttachments) updatePayload['resolutionAttachments'] = resolutionAttachments;
-    if (status === 'resolved') updatePayload['resolvedAt'] = new Date().toISOString();
+    if (status === 'resolved') {
+      updatePayload['resolvedAt'] = new Date().toISOString();
+      updatePayload['resolvedByOfficerId'] = uid || gData['assignedOfficerId'] || '';
+      updatePayload['resolvedByOfficerName'] = req.user?.displayName || gData['assignedOfficerName'] || 'Officer';
+    }
 
     await docRef.update(updatePayload);
 
-    // Send Email to Tourist
+    // Send Email to Tourist (non-blocking)
     const code = gData['grievanceCode'] || gData['trackingCode'];
     const touristEmail = gData['touristEmail'];
     const touristName = gData['touristName'] || 'Tourist';
     if (touristEmail) {
       if (status === 'resolved') {
-        EmailService.sendResolutionEmail(touristEmail, touristName, code, resolutionDetails);
+        EmailService.sendResolutionEmail(touristEmail, touristName, code, resolutionDetails).catch(() => {});
       } else {
-        EmailService.sendStatusUpdateEmail(touristEmail, touristName, code, status);
+        EmailService.sendStatusUpdateEmail(touristEmail, touristName, code, status).catch(() => {});
       }
     }
 
@@ -327,8 +447,8 @@ router.patch('/:id/cancel', authenticateFirebaseToken, async (req: Authenticated
       return;
     }
 
-    if (gData['status'] === 'closed') {
-      res.status(400).json({ success: false, message: 'Closed grievances cannot be cancelled.' });
+    if (gData['status'] === 'resolved' || gData['status'] === 'closed') {
+      res.status(400).json({ success: false, message: 'Resolved or closed grievances cannot be cancelled.' });
       return;
     }
 
@@ -340,7 +460,7 @@ router.patch('/:id/cancel', authenticateFirebaseToken, async (req: Authenticated
     const touristEmail = gData['touristEmail'];
     const touristName = gData['touristName'] || 'Tourist';
     if (touristEmail) {
-      EmailService.sendStatusUpdateEmail(touristEmail, touristName, gData['trackingCode'] || gData['grievanceCode'], 'cancelled');
+      EmailService.sendStatusUpdateEmail(touristEmail, touristName, gData['trackingCode'] || gData['grievanceCode'], 'cancelled').catch(() => {});
     }
 
     res.status(200).json({ success: true, message: 'Grievance cancelled successfully', grievance: { id, ...gData, status: 'cancelled' } });
@@ -370,6 +490,11 @@ router.delete('/:id', authenticateFirebaseToken, async (req: AuthenticatedReques
     const ownerEmail = gData['touristEmail'];
     if (role !== 'admin' && ownerId !== uid && ownerEmail !== email) {
       res.status(403).json({ success: false, message: 'Forbidden: You can only delete your own grievances.' });
+      return;
+    }
+
+    if (gData['status'] === 'resolved' || gData['status'] === 'closed') {
+      res.status(400).json({ success: false, message: 'Resolved grievances cannot be deleted.' });
       return;
     }
 

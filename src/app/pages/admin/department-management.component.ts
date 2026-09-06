@@ -78,8 +78,10 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                   <p class="font-bold text-slate-900 truncate">{{ off.name }}</p>
                   <p class="text-[10px] text-slate-500 font-mono truncate">{{ off.email }}</p>
                 </div>
-                <button (click)="confirmRemoveOfficer(dept.id, off.id, off.name)" title="Remove Officer from Department" class="text-rose-600 font-bold px-1.5 py-0.5 hover:bg-rose-100 rounded text-xs">
-                  ✕
+                <button (click)="confirmRemoveOfficer(dept.id, off.id, off.name)" title="Remove Officer from Department" class="text-rose-600 font-bold p-1 hover:bg-rose-100 rounded text-xs flex items-center justify-center">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -217,39 +219,86 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
         </div>
       </div>
 
-      <!-- Quick Add Officer Modal (Select from Unassigned Registered Officers) -->
+      <!-- Add Officers to Department Modal (Select Multiple Registered Unassigned Officers) -->
       <div *ngIf="isQuickAddOfficerModalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in relative">
-          <div class="flex justify-between items-center border-b pb-3">
-            <h3 class="font-bold text-base text-slate-900">Assign Officer to {{ selectedDeptForAddOfficer?.name }}</h3>
-            <button (click)="isQuickAddOfficerModalOpen.set(false)" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 transition">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in relative max-h-[90vh] flex flex-col">
+          <div class="flex justify-between items-center border-b pb-3 shrink-0">
+            <h3 class="font-bold text-base text-slate-900">Add Officers to {{ selectedDeptForAddOfficer?.name }}</h3>
+            <button (click)="closeQuickAddOfficerModal()" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 transition">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
-          <p class="text-xs text-slate-500">Select an unassigned registered officer to assign exclusively to this department.</p>
+          <p class="text-xs text-slate-500 shrink-0">Select registered officers who are currently unassigned to assign them to this department.</p>
 
-          <div *ngIf="getUnassignedRegisteredOfficers().length > 0" class="space-y-3 text-xs">
-            <div>
-              <label class="block font-bold text-slate-700 uppercase mb-1">Select Unassigned Registered Officer *</label>
-              <select [(ngModel)]="quickSelectedOfficerId" class="w-full px-3 py-2 border rounded-xl font-bold text-xs bg-white">
-                <option value="">Select an unassigned officer...</option>
-                <option *ngFor="let off of getUnassignedRegisteredOfficers()" [value]="off.id">
-                  {{ off.name }} ({{ off.email }})
-                </option>
-              </select>
+          <!-- Selection Count Badge & Select/Deselect All Actions -->
+          <div *ngIf="getUnassignedRegisteredOfficers().length > 0" class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200 shrink-0 text-xs">
+            <div class="flex items-center space-x-2">
+              <span class="font-extrabold text-slate-700">Selection</span>
+              <span class="px-2.5 py-0.5 bg-teal-100 text-teal-800 font-bold rounded-full text-xs">
+                {{ selectedOfficerIds.size }} {{ selectedOfficerIds.size === 1 ? 'Officer selected' : 'Officers selected' }}
+              </span>
             </div>
+            <div class="flex items-center space-x-2">
+              <button 
+                type="button"
+                (click)="selectAllUnassignedOfficers()" 
+                class="text-xs font-bold text-teal-700 hover:text-teal-900 transition underline"
+              >
+                Select All
+              </button>
+              <span class="text-slate-300">|</span>
+              <button 
+                type="button"
+                (click)="deselectAllOfficers()" 
+                class="text-xs font-bold text-slate-500 hover:text-slate-700 transition underline"
+              >
+                Deselect All
+              </button>
+            </div>
+          </div>
+
+          <!-- Officers Checkbox List -->
+          <div *ngIf="getUnassignedRegisteredOfficers().length > 0" class="space-y-2 overflow-y-auto max-h-60 pr-1 flex-1">
+            <label 
+              *ngFor="let off of getUnassignedRegisteredOfficers()" 
+              class="flex items-center justify-between p-3 rounded-xl border transition cursor-pointer hover:bg-slate-50"
+              [class.border-teal-500]="isOfficerSelected(off.id)"
+              [class.bg-teal-50/50]="isOfficerSelected(off.id)"
+              [class.border-slate-200]="!isOfficerSelected(off.id)"
+            >
+              <div class="flex items-center space-x-3 truncate pr-2">
+                <input 
+                  type="checkbox" 
+                  [checked]="isOfficerSelected(off.id)" 
+                  (change)="toggleOfficerSelection(off.id)" 
+                  class="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500 cursor-pointer"
+                />
+                <div class="truncate">
+                  <p class="font-bold text-xs text-slate-900 truncate">{{ off.name }}</p>
+                  <p class="text-[10px] text-slate-500 font-mono truncate">{{ off.email }}</p>
+                </div>
+              </div>
+              <span class="text-[10px] font-mono text-slate-400 shrink-0">{{ off.userCode || off.id }}</span>
+            </label>
           </div>
 
           <div *ngIf="getUnassignedRegisteredOfficers().length === 0" class="text-xs text-amber-800 italic p-3 bg-amber-50 border border-amber-200 rounded-xl">
             No unassigned officers available. All registered officers are currently assigned to operational departments.
           </div>
 
-          <div class="flex space-x-2 pt-2 border-t">
-            <button (click)="isQuickAddOfficerModalOpen.set(false)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
-            <button (click)="submitQuickAddOfficer()" [disabled]="!quickSelectedOfficerId" class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50">Assign Selected Officer</button>
+          <div class="flex space-x-2 pt-2 border-t shrink-0">
+            <button (click)="closeQuickAddOfficerModal()" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
+            <button 
+              (click)="submitAddMultipleOfficers()" 
+              [disabled]="selectedOfficerIds.size === 0 || isAddingOfficers()" 
+              class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 flex items-center justify-center space-x-1.5 shadow-sm"
+            >
+              <span *ngIf="isAddingOfficers()">Adding Officers...</span>
+              <span *ngIf="!isAddingOfficers()">Add Selected Officers</span>
+            </button>
           </div>
         </div>
       </div>
@@ -272,10 +321,11 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
             </button>
             <button 
               (click)="executeConfirmedAction()" 
+              [disabled]="isRemovingDept()"
               [class]="confirmationModal()?.isDestructive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-[#0F172A] hover:bg-slate-800'"
-              class="flex-1 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm"
+              class="flex-1 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50"
             >
-              {{ confirmationModal()?.confirmBtnText || 'Confirm' }}
+              {{ isRemovingDept() ? 'Removing department...' : (confirmationModal()?.confirmBtnText || 'Confirm') }}
             </button>
           </div>
         </div>
@@ -289,17 +339,19 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
 export class DepartmentManagementComponent {
   departmentService = inject(DepartmentService);
   authService = inject(AuthService);
+  grievanceService = inject(GrievanceService);
 
   isModalOpen = signal<boolean>(false);
   isQuickAddOfficerModalOpen = signal<boolean>(false);
   hasSubmitted = signal<boolean>(false);
+  isAddingOfficers = signal<boolean>(false);
   toastMessage = signal<string | null>(null);
 
   editingDeptId: string | null = null;
   selectedDeptForAddOfficer: Department | null = null;
 
   selectedOfficerIdForForm = '';
-  quickSelectedOfficerId = '';
+  selectedOfficerIds = new Set<string>();
 
   deptForm = {
     name: '',
@@ -321,6 +373,7 @@ export class DepartmentManagementComponent {
     const currentFormOfficerEmails = this.deptForm.assignedOfficers.map(o => o.email.toLowerCase());
 
     return this.authService.registeredOfficers().filter(off => {
+      if (off.isRevoked || (off as any).isActive === false) return false;
       if (currentFormOfficerIds.includes(off.id) || currentFormOfficerEmails.includes(off.email.toLowerCase())) {
         return false;
       }
@@ -402,30 +455,57 @@ export class DepartmentManagementComponent {
 
   openQuickAddOfficerModal(dept: Department) {
     this.selectedDeptForAddOfficer = dept;
-    this.quickSelectedOfficerId = '';
+    this.selectedOfficerIds.clear();
     this.isQuickAddOfficerModalOpen.set(true);
   }
 
-  async submitQuickAddOfficer() {
-    if (!this.selectedDeptForAddOfficer || !this.quickSelectedOfficerId) return;
+  closeQuickAddOfficerModal() {
+    this.isQuickAddOfficerModalOpen.set(false);
+    this.selectedOfficerIds.clear();
+  }
 
-    const registered = this.authService.registeredOfficers().find(o => o.id === this.quickSelectedOfficerId);
-    if (!registered) return;
+  toggleOfficerSelection(officerId: string) {
+    if (this.selectedOfficerIds.has(officerId)) {
+      this.selectedOfficerIds.delete(officerId);
+    } else {
+      this.selectedOfficerIds.add(officerId);
+    }
+  }
+
+  selectAllUnassignedOfficers() {
+    const unassigned = this.getUnassignedRegisteredOfficers();
+    unassigned.forEach(off => this.selectedOfficerIds.add(off.id));
+  }
+
+  deselectAllOfficers() {
+    this.selectedOfficerIds.clear();
+  }
+
+  isOfficerSelected(officerId: string): boolean {
+    return this.selectedOfficerIds.has(officerId);
+  }
+
+  async submitAddMultipleOfficers() {
+    if (!this.selectedDeptForAddOfficer || this.selectedOfficerIds.size === 0) return;
+    if (this.isAddingOfficers()) return;
+
+    this.isAddingOfficers.set(true);
+    const deptId = this.selectedDeptForAddOfficer.id;
+    const officerIds = Array.from(this.selectedOfficerIds);
 
     try {
-      await this.authService.updateOfficerByAdmin(registered.id, {
-        departmentId: this.selectedDeptForAddOfficer.id,
-        departmentName: this.selectedDeptForAddOfficer.name
-      });
-      await this.departmentService.loadDepartmentsFromBackend();
+      const res = await this.departmentService.addMultipleOfficersToDepartment(deptId, officerIds);
+      await this.authService.loadOfficersFromBackend();
+      await this.grievanceService.loadGrievancesFromBackend();
 
-      this.toastMessage.set(`Assigned officer "${registered.name}" to ${this.selectedDeptForAddOfficer.name}`);
+      this.toastMessage.set(res.message || 'Officers added to department successfully.');
+      this.closeQuickAddOfficerModal();
     } catch (err: any) {
-      this.toastMessage.set(err.message || 'Failed to assign officer.');
+      console.error('Error adding officers to department:', err);
+      this.toastMessage.set(err.message || 'Failed to add officers to department.');
+    } finally {
+      this.isAddingOfficers.set(false);
     }
-
-    this.isQuickAddOfficerModalOpen.set(false);
-    this.quickSelectedOfficerId = '';
   }
 
   async removeOfficerFromDept(deptId: string, officerId: string) {
@@ -438,6 +518,7 @@ export class DepartmentManagementComponent {
         departmentName: 'Unassigned'
       });
       await this.departmentService.loadDepartmentsFromBackend();
+      await this.grievanceService.loadGrievancesFromBackend();
 
       this.toastMessage.set(`Officer "${targetOfficer?.name || officerId}" unassigned from department.`);
     } catch (err: any) {
@@ -490,9 +571,9 @@ export class DepartmentManagementComponent {
 
   confirmDeleteDepartment(id: string, name: string) {
     this.confirmationModal.set({
-      title: 'Delete Department',
-      message: `Are you sure you want to delete department "${name}"? Solved grievances will be preserved, and open cases will be moved to unassigned tickets.`,
-      confirmBtnText: 'Yes, Delete',
+      title: 'Remove Department',
+      message: 'Are you sure you want to remove this department?',
+      confirmBtnText: 'Yes, Remove',
       isDestructive: true,
       action: async () => {
         await this.deleteDepartment(id, name);
@@ -574,14 +655,23 @@ export class DepartmentManagementComponent {
     }
   }
 
-  grievanceService = inject(GrievanceService);
+  isRemovingDept = signal<boolean>(false);
 
   async deleteDepartment(id: string, name: string) {
+    if (this.isRemovingDept()) return;
+    this.isRemovingDept.set(true);
     try {
       await this.departmentService.deleteDepartment(id);
-      this.toastMessage.set(`Department "${name}" deleted successfully.`);
+      this.toastMessage.set('Department removed successfully.');
     } catch (err: any) {
-      this.toastMessage.set(err.message || 'Failed to delete department.');
+      const msg = (err.message || '').toLowerCase();
+      if (msg.includes('active') || msg.includes('record') || msg.includes('dependen')) {
+        this.toastMessage.set('This department cannot be removed because it is currently associated with active records.');
+      } else {
+        this.toastMessage.set('Unable to remove department. Please try again.');
+      }
+    } finally {
+      this.isRemovingDept.set(false);
     }
   }
 }

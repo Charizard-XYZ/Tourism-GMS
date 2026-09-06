@@ -4,6 +4,7 @@ import { authenticateFirebaseToken, AuthenticatedRequest } from '../middleware/a
 import { authorizeRoles } from '../middleware/role.middleware';
 import { validateBody } from '../middleware/validate.middleware';
 import { createDepartmentSchema, updateDepartmentSchema } from '../validators/schemas';
+import { autoAssignUnassignedGrievances } from './officers.routes';
 
 const router = Router();
 
@@ -168,6 +169,143 @@ router.put('/:id', authenticateFirebaseToken, authorizeRoles('admin'), validateB
     res.status(200).json({ success: true, message: 'Department updated', department: { id, ...updatedDoc.data() } });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Error updating department.' });
+  }
+});
+
+/**
+ * POST /api/departments/:id/officers
+ * Add multiple unassigned registered officers to department in one operation (Admin only)
+ * Request body: { officerIds: string[] }
+ * Validates each officer independently.
+ * Auto-assigns any unassigned grievances for this department.
+ */
+router.post('/:id/officers', authenticateFirebaseToken, authorizeRoles('admin'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const deptId = req.params['id'] as string;
+    const { officerIds } = req.body;
+
+    if (!Array.isArray(officerIds) || officerIds.length === 0) {
+      res.status(400).json({ success: false, message: 'Please select at least one officer.' });
+      return;
+    }
+
+    const deptRef = db.collection('departments').doc(deptId);
+    const deptDoc = await deptRef.get();
+
+    if (!deptDoc.exists) {
+      res.status(404).json({ success: false, message: 'Department not found.' });
+      return;
+    }
+
+    const deptData = deptDoc.data()!;
+    if (deptData['isActive'] === false) {
+      res.status(400).json({ success: false, message: 'Cannot assign officers to an inactive department.' });
+      return;
+    }
+
+    const deptName = deptData['name'] || 'Department';
+    let currentAssignedOfficers: any[] = Array.isArray(deptData['assignedOfficers']) ? [...deptData['assignedOfficers']] : [];
+
+    const successfullyAdded: any[] = [];
+    const skippedAlreadyAssigned: string[] = [];
+    const notFoundOrInvalid: string[] = [];
+
+    for (const offId of officerIds) {
+      const cleanId = String(offId || '').trim();
+      if (!cleanId) continue;
+
+      const [userDoc, offDoc] = await Promise.all([
+        db.collection('users').doc(cleanId).get(),
+        db.collection('officers').doc(cleanId).get()
+      ]);
+
+      if (!userDoc.exists && !offDoc.exists) {
+        notFoundOrInvalid.push(cleanId);
+        continue;
+      }
+
+      const officerProfile = (offDoc.exists ? offDoc.data() : userDoc.data()) || {};
+
+      // Validate officer status
+      if (officerProfile['isRevoked'] === true || officerProfile['isActive'] === false) {
+        notFoundOrInvalid.push(officerProfile['fullName'] || officerProfile['name'] || cleanId);
+        continue;
+      }
+
+      // Check if officer is already assigned to another operational department
+      const currentDeptId = (officerProfile['departmentId'] || '').trim();
+      const currentDeptName = (officerProfile['departmentName'] || '').trim();
+      if (currentDeptId && currentDeptId !== deptId && currentDeptName.toLowerCase() !== 'unassigned') {
+        skippedAlreadyAssigned.push(officerProfile['fullName'] || officerProfile['name'] || cleanId);
+        continue;
+      }
+
+      // Valid: update officer's department in both users and officers collections
+      const officerName = officerProfile['fullName'] || officerProfile['name'] || officerProfile['displayName'] || 'Officer';
+      const officerEmail = officerProfile['email'] || '';
+      const officerPhone = officerProfile['phoneNumber'] || officerProfile['phone'] || '';
+      const officerDesignation = officerProfile['designation'] || 'Officer';
+
+      const updateData = {
+        departmentId: deptId,
+        departmentName: deptName,
+        updatedAt: new Date().toISOString()
+      };
+
+      await Promise.all([
+        db.collection('users').doc(cleanId).set(updateData, { merge: true }),
+        db.collection('officers').doc(cleanId).set(updateData, { merge: true })
+      ]);
+
+      // Add to department's assignedOfficers if not already present
+      currentAssignedOfficers = currentAssignedOfficers.filter((o: any) => o.id !== cleanId && o.email !== officerEmail);
+      currentAssignedOfficers.push({
+        id: cleanId,
+        name: officerName,
+        email: officerEmail,
+        designation: officerDesignation,
+        phone: officerPhone
+      });
+
+      successfullyAdded.push({ id: cleanId, name: officerName });
+    }
+
+    if (successfullyAdded.length > 0) {
+      await deptRef.update({
+        assignedOfficers: currentAssignedOfficers,
+        officerCount: currentAssignedOfficers.length,
+        updatedAt: new Date().toISOString()
+      });
+
+      // Automatically assign any unassigned grievances for this department
+      try {
+        await autoAssignUnassignedGrievances(deptId, deptName);
+      } catch (assignErr) {
+        console.warn('Auto-assignment notice after adding officers:', assignErr);
+      }
+    }
+
+    let message = '';
+    if (successfullyAdded.length > 0) {
+      message = `${successfullyAdded.length} ${successfullyAdded.length === 1 ? 'Officer' : 'Officers'} added to department successfully.`;
+      if (skippedAlreadyAssigned.length > 0) {
+        message += ` ${skippedAlreadyAssigned.length} Officer(s) could not be added because they are already assigned to another department.`;
+      }
+    } else if (skippedAlreadyAssigned.length > 0) {
+      message = `No officers added: selected officer(s) are already assigned to another department.`;
+    } else {
+      message = `No valid officers could be added.`;
+    }
+
+    res.status(200).json({
+      success: successfullyAdded.length > 0,
+      message,
+      addedCount: successfullyAdded.length,
+      skippedCount: skippedAlreadyAssigned.length
+    });
+  } catch (error: any) {
+    console.error('Error adding officers to department:', error);
+    res.status(500).json({ success: false, message: 'Failed to add officers to department.' });
   }
 });
 

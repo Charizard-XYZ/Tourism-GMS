@@ -86,34 +86,39 @@ import { ToastComponent } from '../../common/components/toast.component';
           <div class="flex justify-between items-center border-b pb-3">
             <div>
               <h3 class="font-extrabold text-slate-900 text-lg">Action Required: Unassigned Grievance Tickets</h3>
-              <p class="text-xs text-slate-500">Assign these incoming grievances to designated Officers immediately.</p>
+              <p class="text-xs text-slate-500">Departments with pending grievances awaiting Officer assignment.</p>
             </div>
-            <a routerLink="/admin/grievances" class="text-xs font-bold text-teal-700 hover:underline">Go to Master Desk →</a>
+            <a routerLink="/admin/grievances" class="text-xs font-bold text-teal-700 hover:underline flex items-center space-x-1">
+              <span>Go to Master Desk</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </a>
           </div>
 
           <div class="space-y-3">
-            <div *ngFor="let g of unassignedGrievances()" class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-amber-50/50 border border-amber-200 rounded-2xl gap-4">
-              <div>
+            <div *ngFor="let group of unassignedDepartmentGroups()" class="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-amber-50/50 border border-amber-200 rounded-2xl gap-4">
+              <div class="space-y-1">
                 <div class="flex items-center space-x-2">
-                  <span class="font-mono text-xs font-bold text-slate-700">{{ g.trackingCode }}</span>
-                  <span class="px-2 py-0.5 bg-amber-200 text-amber-900 text-[10px] font-extrabold uppercase rounded">Unassigned</span>
+                  <span class="font-extrabold text-sm text-slate-900">{{ group.departmentName }}</span>
+                  <span class="px-2.5 py-0.5 bg-amber-200 text-amber-900 text-xs font-extrabold rounded-full">
+                    {{ group.count }} {{ group.count === 1 ? 'Unassigned Ticket' : 'Unassigned Tickets' }}
+                  </span>
                 </div>
-                <p class="text-xs text-slate-600">Department: <strong class="text-teal-800 font-bold">{{ g.departmentName || g.category }}</strong> | Tourist: {{ g.touristName || 'Tourist' }} | Location: {{ g.location }}</p>
-                
-                <!-- Tourist Attached Files for Admin -->
-                <div *ngIf="g.attachments && g.attachments.length > 0" class="pt-2 flex flex-wrap gap-2">
-                  <a *ngFor="let att of g.attachments" [href]="att.url" target="_blank" class="px-2.5 py-1 bg-white border border-amber-300 text-amber-950 rounded-lg text-[11px] font-bold hover:bg-amber-100 transition">
-                    <span>{{ att.name }}</span>
-                  </a>
-                </div>
+                <p class="text-xs text-amber-800 font-medium">
+                  {{ group.actionMessage }}
+                </p>
               </div>
 
-              <button (click)="assignOfficerClick(g)" class="px-4 py-2 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 shrink-0 text-center">
-                Assign
-              </button>
+              <a routerLink="/admin/officers" class="px-4 py-2.5 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 shrink-0 text-center flex items-center space-x-1.5 self-start sm:self-auto shadow-sm">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                <span>Register Officer</span>
+              </a>
             </div>
 
-            <div *ngIf="unassignedGrievances().length === 0" class="p-8 text-center text-slate-400 text-xs italic bg-slate-50 rounded-2xl">
+            <div *ngIf="unassignedDepartmentGroups().length === 0" class="p-8 text-center text-slate-400 text-xs italic bg-slate-50 rounded-2xl">
               All grievances are currently assigned to active Officers.
             </div>
           </div>
@@ -178,96 +183,89 @@ export class AdminDashboardComponent implements OnInit {
 
   unassignedGrievances = computed(() => {
     const allGrievances = this.grievanceService.grievances();
-    const allDepts = this.departmentService.departments();
     const registeredOfficers = this.authService.registeredOfficers();
-    const activeOfficers = registeredOfficers.filter(o => !o.isRevoked);
 
     return allGrievances.filter(g => {
-      if (g.status === 'resolved' || g.status === 'closed') {
+      // Resolved, closed, or cancelled are never unassigned
+      if (g.status === 'resolved' || g.status === 'closed' || g.status === 'cancelled') {
         return false;
       }
 
-      const deptName = g.departmentName || g.category;
-      const targetDept = allDepts.find(d => 
-        d.id === g.departmentId || 
-        (deptName && d.name.toLowerCase().trim() === deptName.toLowerCase().trim()) ||
-        (deptName && d.code.toLowerCase().trim() === deptName.toLowerCase().trim())
-      );
-
-      // Condition 1: Department does not exist (deleted by admin)
-      if (!targetDept) {
-        return true;
+      const offId = (g.assignedOfficerId || '').trim();
+      if (!offId) {
+        return true; // Genuinely unassigned
       }
 
-      // Condition 2: Department exists but is inactive
-      if (!targetDept.isActive) {
-        return true;
+      // Check the 4 conditions of valid assignment:
+      const officer = registeredOfficers.find(o => o.id === offId);
+      if (!officer) {
+        return true; // Officer does not exist
+      }
+      if (officer.isRevoked || (officer as any).isActive === false) {
+        return true; // Officer is not active/eligible
       }
 
-      // Find active officers assigned to this department
-      const deptActiveOfficers = activeOfficers.filter(o =>
-        o.departmentId === targetDept.id ||
-        (o.departmentName && o.departmentName.toLowerCase().trim() === targetDept.name.toLowerCase().trim())
-      );
+      const gDeptId = g.departmentId || '';
+      const gDeptName = (g.departmentName || g.category || '').trim().toLowerCase();
+      const oDeptId = officer.departmentId || '';
+      const oDeptName = (officer.departmentName || '').trim().toLowerCase();
 
-      // Condition 3: No officer is assigned in that department
-      if (deptActiveOfficers.length === 0) {
-        return true;
+      const matchesDept = (gDeptId && oDeptId && gDeptId === oDeptId) ||
+        (gDeptName && oDeptName && oDeptName !== 'unassigned' && gDeptName === oDeptName);
+
+      if (!matchesDept) {
+        return true; // Officer does not belong to grievance department
       }
 
-      // Condition 4: No officer assigned to this grievance or assigned officer was revoked
-      if (!g.assignedOfficerId) {
-        return true;
-      }
-
-      const assignedOff = registeredOfficers.find(o => 
-        o.id === g.assignedOfficerId || 
-        o.email.toLowerCase().trim() === (g.assignedOfficerId || '').toLowerCase().trim() ||
-        o.name.toLowerCase().trim() === (g.assignedOfficerName || '').toLowerCase().trim()
-      );
-
-      if (!assignedOff || assignedOff.isRevoked) {
-        return true;
-      }
-
+      // All 4 conditions met: validly assigned!
       return false;
     });
   });
 
-  assignOfficerClick(g: Grievance) {
-    const deptName = g.departmentName || g.category;
-    const depts = this.departmentService.departments();
+  unassignedDepartmentGroups = computed(() => {
+    const unassigned = this.unassignedGrievances();
     const registeredOfficers = this.authService.registeredOfficers();
-    const activeOfficers = registeredOfficers.filter(o => !o.isRevoked);
+    const departments = this.departmentService.departments();
 
-    const targetDept = depts.find(d => 
-      d.id === g.departmentId || 
-      (deptName && d.name.toLowerCase().trim() === deptName.toLowerCase().trim()) ||
-      (deptName && d.code.toLowerCase().trim() === deptName.toLowerCase().trim())
-    );
+    const groupMap = new Map<string, { departmentName: string; departmentId: string; count: number; actionMessage: string }>();
 
-    if (!targetDept) {
-      this.toastMessage.set(`Department does not exist. Please create ${deptName}`);
-      return;
+    for (const g of unassigned) {
+      const deptName = g.departmentName || g.category || 'General';
+      const deptId = g.departmentId || '';
+      const key = (deptId || deptName).toLowerCase();
+
+      if (!groupMap.has(key)) {
+        const targetDept = departments.find(d => 
+          (deptId && d.id === deptId) || 
+          (d.name && d.name.toLowerCase().trim() === deptName.toLowerCase().trim())
+        );
+        const effectiveDeptId = targetDept ? targetDept.id : deptId;
+        const effectiveDeptName = targetDept ? targetDept.name : deptName;
+
+        const deptOfficers = registeredOfficers.filter(o => 
+          (effectiveDeptId && o.departmentId === effectiveDeptId) ||
+          (o.departmentName && o.departmentName.toLowerCase().trim() === effectiveDeptName.toLowerCase().trim())
+        );
+
+        let actionMessage = 'Action Required: Register an Officer for this department.';
+        if (deptOfficers.length > 0) {
+          const hasEligible = deptOfficers.some(o => !o.isRevoked && (o as any).isActive !== false);
+          if (!hasEligible) {
+            actionMessage = 'Action Required: Activate or register an eligible Officer for this department.';
+          }
+        }
+
+        groupMap.set(key, {
+          departmentName: effectiveDeptName,
+          departmentId: effectiveDeptId,
+          count: 0,
+          actionMessage
+        });
+      }
+
+      groupMap.get(key)!.count++;
     }
 
-    if (!targetDept.isActive) {
-      this.toastMessage.set(`please activate department`);
-      this.router.navigate(['/admin/departments'], { queryParams: { deptId: targetDept.id } });
-      return;
-    }
-
-    const deptActiveOfficers = activeOfficers.filter(o =>
-      o.departmentId === targetDept.id ||
-      (o.departmentName && o.departmentName.toLowerCase().trim() === targetDept.name.toLowerCase().trim())
-    );
-
-    if (deptActiveOfficers.length === 0) {
-      this.toastMessage.set(`Please assign an officer to ${targetDept.name} first.`);
-      this.router.navigate(['/admin/departments'], { queryParams: { deptId: targetDept.id } });
-      return;
-    }
-
-    this.router.navigate(['/admin/grievances'], { queryParams: { search: g.trackingCode } });
-  }
+    return Array.from(groupMap.values()).filter(group => group.count > 0);
+  });
 }

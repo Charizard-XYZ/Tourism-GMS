@@ -5,12 +5,13 @@ import { RouterLink } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { DepartmentService } from '../../core/services/department.service';
 import { StatusBadgeComponent } from '../../common/components/status-badge.component';
+import { ToastComponent } from '../../common/components/toast.component';
 import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
 
 @Component({
   selector: 'app-grievance-history',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent, ToastComponent],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       
@@ -53,6 +54,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
           <option value="in_progress">In Progress</option>
           <option value="resolved">Resolved</option>
           <option value="reopened">Reopened</option>
+          <option value="cancelled">Cancelled</option>
           <option value="closed">Closed</option>
         </select>
 
@@ -90,13 +92,16 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                 <td class="p-4 space-x-1">
                   <app-status-badge [status]="g.status"></app-status-badge>
                 </td>
-                <td class="p-4 text-right">
+                <td class="p-4 text-right space-x-1.5 whitespace-nowrap">
                   <a [routerLink]="['/tourist/grievance', g.id]" class="px-3 py-1.5 bg-[#A0C8C3] text-slate-950 font-bold rounded-lg text-xs hover:bg-teal-300 inline-flex items-center space-x-1">
                     <span>View</span>
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                   </a>
+                  <button *ngIf="g.status === 'cancelled'" (click)="targetGrievanceToDelete = g" class="px-3 py-1.5 bg-rose-100 text-rose-700 font-bold rounded-lg text-xs hover:bg-rose-200 inline-flex items-center space-x-1">
+                    <span>Delete</span>
+                  </button>
                 </td>
               </tr>
 
@@ -107,6 +112,35 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
           </table>
         </div>
       </div>
+
+      <!-- Delete Grievance Confirmation Modal -->
+      <div *ngIf="targetGrievanceToDelete" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+          <div class="flex justify-between items-center border-b pb-3">
+            <h3 class="font-bold text-base text-slate-900">Delete Grievance Confirmation</h3>
+            <button (click)="targetGrievanceToDelete = null" aria-label="Close dialog" class="text-slate-400 hover:text-slate-600 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs text-slate-600">Are you sure you want to delete this grievance?</p>
+          <div class="flex space-x-2 pt-3 border-t">
+            <button (click)="targetGrievanceToDelete = null" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">
+              Go Back
+            </button>
+            <button 
+              (click)="executeDelete()" 
+              [disabled]="isDeleting"
+              class="flex-1 bg-rose-700 hover:bg-rose-800 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50"
+            >
+              {{ isDeleting ? 'Deleting grievance...' : 'Yes, Delete' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <app-toast [message]="toastMessage()" (dismiss)="toastMessage.set(null)"></app-toast>
 
     </div>
   `
@@ -119,8 +153,28 @@ export class GrievanceHistoryComponent implements OnInit {
   statusFilter = 'ALL';
   categoryFilter = 'ALL';
 
+  targetGrievanceToDelete: any = null;
+  isDeleting = false;
+  toastMessage = signal<string | null>(null);
+
   async ngOnInit(): Promise<void> {
     await this.grievanceService.loadGrievancesFromBackend();
+  }
+
+  async executeDelete(): Promise<void> {
+    if (!this.targetGrievanceToDelete || this.isDeleting) return;
+    const id = this.targetGrievanceToDelete.id;
+    this.targetGrievanceToDelete = null;
+    this.isDeleting = true;
+    try {
+      await this.grievanceService.deleteGrievance(id);
+      this.toastMessage.set('Grievance deleted successfully.');
+    } catch (e: any) {
+      console.error('Delete grievance error:', e);
+      this.toastMessage.set('Unable to delete grievance. Please try again.');
+    } finally {
+      this.isDeleting = false;
+    }
   }
 
   onSearchChange(val: string) {

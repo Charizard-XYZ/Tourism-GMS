@@ -72,9 +72,10 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Detailed Complaint Description *</label>
             <textarea 
-              [(ngModel)]="description" 
-              name="description" 
               rows="5" 
+              [ngModel]="description" 
+              (ngModelChange)="onDescriptionChange($event)"
+              name="description" 
               required 
               autocomplete="off"
               autocorrect="off"
@@ -92,7 +93,8 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
             <label class="block text-xs font-bold text-slate-700 uppercase mb-2">Exact Location / Address *</label>
             <input 
               type="text" 
-              [(ngModel)]="location" 
+              [ngModel]="location" 
+              (ngModelChange)="onLocationChange($event)"
               name="location" 
               required 
               autocomplete="off"
@@ -115,7 +117,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
               [disabled]="isSubmitting() || activeDepartments().length === 0"
               class="px-8 py-3.5 bg-[#0F172A] text-white font-extrabold text-sm rounded-xl hover:bg-slate-800 transition shadow-lg disabled:opacity-50"
             >
-              {{ isSubmitting() ? 'Submitting Grievance...' : 'Submit Official Grievance' }}
+              {{ isSubmitting() ? 'Submitting...' : 'Submit Official Grievance' }}
             </button>
           </div>
 
@@ -142,6 +144,14 @@ export class GrievanceSubmissionComponent {
 
   onTitleChange(val: string) {
     this.title = capitalizeFirstChar(val);
+  }
+
+  onDescriptionChange(val: string) {
+    this.description = capitalizeFirstChar(val);
+  }
+
+  onLocationChange(val: string) {
+    this.location = capitalizeFirstChar(val);
   }
 
   isSubmitting = signal<boolean>(false);
@@ -180,13 +190,16 @@ export class GrievanceSubmissionComponent {
     }
 
     try {
+      const cleanDesc = capitalizeFirstChar(this.description.trim());
+      const cleanLocation = capitalizeFirstChar(this.location.trim());
+
       const newGrievance = await this.grievanceService.submitGrievance({
         title: this.title.trim(),
-        description: this.description.trim(),
+        description: cleanDesc,
         category: matchedDept.name as GrievanceCategory,
         departmentId: matchedDept.id,
         departmentName: matchedDept.name,
-        location: this.location.trim(),
+        location: cleanLocation,
         touristLocationName: 'Central Region',
         touristId: user.uid,
         touristName: user.displayName,

@@ -82,8 +82,8 @@ import { ToastComponent } from '../../common/components/toast.component';
                   <input type="checkbox" [(ngModel)]="isInternalOnly" class="rounded text-amber-500" />
                   <span>Mark as Confidential Internal Note (Officer/Admin only)</span>
                 </label>
-                <button (click)="postNote()" [disabled]="!noteText.trim()" class="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800">
-                  Save Note
+                <button (click)="postNote()" [disabled]="!noteText.trim() || isPostingNote()" class="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50">
+                  {{ isPostingNote() ? 'Submitting...' : 'Save Note' }}
                 </button>
               </div>
             </div>
@@ -112,7 +112,6 @@ import { ToastComponent } from '../../common/components/toast.component';
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Update Complaint Status</label>
               <select [(ngModel)]="selectedStatus" class="w-full px-4 py-2.5 border rounded-xl text-xs font-bold">
-                <option value="assigned">Assigned (Queue)</option>
                 <option value="in_progress">In Progress (Under Inquiry)</option>
                 <option value="resolved">Resolved (Complete)</option>
               </select>
@@ -168,6 +167,7 @@ export class GrievanceProcessingComponent implements OnInit {
   isInternalOnly = true;
 
   toastMessage = signal<string | null>(null);
+  isPostingNote = signal<boolean>(false);
 
   async ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -184,7 +184,7 @@ export class GrievanceProcessingComponent implements OnInit {
         }
       }
       if (this.grievance) {
-        this.selectedStatus = this.grievance.status;
+        this.selectedStatus = (this.grievance.status === 'assigned' || this.grievance.status === 'submitted') ? 'in_progress' : this.grievance.status;
         this.resolutionReport = this.grievance.resolutionDetails || '';
       }
     }
@@ -200,10 +200,19 @@ export class GrievanceProcessingComponent implements OnInit {
     return dept.isActive === false;
   }
 
-  postNote() {
-    if (!this.grievance || !this.noteText.trim()) return;
-    this.grievanceService.addComment(this.grievance.id, this.noteText.trim(), this.isInternalOnly);
-    this.noteText = '';
+  async postNote() {
+    if (!this.grievance || !this.noteText.trim() || this.isPostingNote()) return;
+    this.isPostingNote.set(true);
+    try {
+      await this.grievanceService.addComment(this.grievance.id, this.noteText.trim(), this.isInternalOnly);
+      this.noteText = '';
+      this.toastMessage.set('Note posted successfully.');
+    } catch (e: any) {
+      console.error('Post note error:', e);
+      this.toastMessage.set(e.error?.message || e.message || 'Failed to post note.');
+    } finally {
+      this.isPostingNote.set(false);
+    }
   }
 
   simulateResolutionProof() {

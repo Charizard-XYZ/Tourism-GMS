@@ -97,7 +97,7 @@ export class GrievanceService {
       return;
     }
     try {
-      const res = await firstValueFrom(this.http.get<{ success: boolean; feedbacks: Feedback[] }>(`${this.apiUrl}/feedback`));
+      const res = await firstValueFrom(this.http.get<{ success: boolean; feedbacks: Feedback[] }>(`${this.apiUrl}/feedbacks`));
       if (res && res.success && Array.isArray(res.feedbacks)) {
         this.feedbacks.set(res.feedbacks);
       }
@@ -115,18 +115,7 @@ export class GrievanceService {
     if (user.role === 'admin') {
       return list;
     } else if (user.role === 'officer') {
-      const officerDeptId = user.departmentId;
-      const officerDeptName = (user.departmentName || '').trim().toLowerCase();
-      return list.filter(g => {
-        const gDeptId = g.departmentId;
-        const gDeptName = (g.departmentName || g.category || '').trim().toLowerCase();
-
-        return (officerDeptId && gDeptId === officerDeptId) ||
-          (officerDeptName && officerDeptName !== 'unassigned' && gDeptName === officerDeptName) ||
-          (g.assignedOfficerId === user.uid) ||
-          (g.assignedOfficerName === user.displayName) ||
-          (g.assignedOfficerId === user.email);
-      });
+      return list.filter(g => g.assignedOfficerId === user.uid && g.status !== 'cancelled');
     } else {
       // Tourist
       return list.filter(g => (g.touristId === user.uid || g.touristEmail === user.email));
@@ -228,7 +217,7 @@ export class GrievanceService {
    */
   async cancelGrievance(grievanceId: string): Promise<void> {
     await firstValueFrom(this.http.patch(`${this.apiUrl}/grievances/${grievanceId}/cancel`, {}));
-    await this.loadGrievancesFromBackend();
+    this.grievances.update(prev => prev.map(g => g.id === grievanceId ? { ...g, status: 'cancelled', updatedAt: new Date().toISOString() } : g));
   }
 
   /**
@@ -236,7 +225,7 @@ export class GrievanceService {
    */
   async deleteGrievance(grievanceId: string): Promise<void> {
     await firstValueFrom(this.http.delete(`${this.apiUrl}/grievances/${grievanceId}`));
-    await this.loadGrievancesFromBackend();
+    this.grievances.update(prev => prev.filter(g => g.id !== grievanceId));
   }
 
   /**
@@ -251,7 +240,7 @@ export class GrievanceService {
    * Submit Feedback / Rating (Tourist)
    */
   async submitFeedback(grievanceId: string, rating: number, comments: string, autoClose: boolean = true): Promise<void> {
-    await firstValueFrom(this.http.post(`${this.apiUrl}/feedback`, {
+    await firstValueFrom(this.http.post(`${this.apiUrl}/feedbacks`, {
       grievanceId,
       rating,
       comments,

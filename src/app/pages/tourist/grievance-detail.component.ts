@@ -1,18 +1,19 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { DepartmentService } from '../../core/services/department.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Grievance } from '../../core/models/complaint.model';
 import { WorkflowTimelineComponent } from '../../common/components/workflow-timeline.component';
 import { StatusBadgeComponent } from '../../common/components/status-badge.component';
+import { ToastComponent } from '../../common/components/toast.component';
 
 @Component({
   selector: 'app-grievance-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, WorkflowTimelineComponent, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, RouterLink, WorkflowTimelineComponent, StatusBadgeComponent, ToastComponent],
   template: `
     <div *ngIf="grievance" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
@@ -97,8 +98,8 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
               </div>
             </div>
 
-            <!-- Rating Feedback Section -->
-            <div *ngIf="!grievance.rating && (grievance.status === 'resolved' || grievance.status === 'closed')" class="pt-4 border-t border-emerald-200">
+            <!-- Rating Feedback Section (Only when resolved and unrated) -->
+            <div *ngIf="!grievance.rating && grievance.status === 'resolved'" class="pt-4 border-t border-emerald-200">
               <button (click)="isFeedbackModalOpen = true" class="w-full bg-emerald-700 text-white py-3 rounded-xl font-bold text-sm hover:bg-emerald-800 shadow-md">
                 Provide Resolution Rating & Feedback
               </button>
@@ -107,7 +108,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
             <div *ngIf="grievance.rating" class="p-4 bg-white rounded-2xl border border-emerald-200 text-xs space-y-1">
               <p class="font-bold text-emerald-900">Your Submitted Feedback Rating:</p>
               <p class="text-amber-500 font-bold text-base">★ {{ grievance.rating }} / 5 Stars</p>
-              <p class="text-slate-600 italic">"{{ grievance.feedbackComments }}"</p>
+              <p *ngIf="grievance.feedbackComments" class="text-slate-600 italic">"{{ grievance.feedbackComments }}"</p>
             </div>
           </div>
 
@@ -151,10 +152,10 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
 
               <button 
                 (click)="postComment()" 
-                [disabled]="!newCommentText.trim()"
+                [disabled]="!newCommentText.trim() || isPostingComment()"
                 class="px-4 py-2 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50"
               >
-                Post Comment
+                {{ isPostingComment() ? 'Submitting...' : 'Post Comment' }}
               </button>
             </div>
           </div>
@@ -185,10 +186,10 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
             </div>
           </div>
 
-          <!-- Action Box: Reopen & Feedback Buttons (Side-by-Side) -->
-          <div *ngIf="grievance.status === 'resolved' || grievance.status === 'closed'" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+          <!-- Action Box: Resolved Grievance Actions (Reopen or Give Feedback) -->
+          <div *ngIf="grievance.status === 'resolved'" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
             <h4 class="font-bold text-xs text-slate-700 uppercase">Resolution Feedback & Escalation Actions</h4>
-            <p class="text-xs text-slate-500">Provide your resolution feedback rating or reopen this ticket if the resolution requires further action.</p>
+            <p class="text-xs text-slate-500">Provide your resolution feedback rating to close this ticket, or reopen it if the resolution requires further action.</p>
             
             <div class="grid grid-cols-2 gap-3 pt-1">
               <button (click)="isReopenModalOpen = true" class="w-full py-2.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl font-bold text-xs hover:bg-rose-100 transition">
@@ -199,16 +200,25 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
                 <span>Give Feedback ★</span>
               </button>
             </div>
+          </div>
 
-            <!-- Display Recorded Feedback & Rating if already submitted -->
-            <div *ngIf="grievance.rating" class="mt-3 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs space-y-1.5">
+          <!-- Closed Case Banner (Ticket Finalized) -->
+          <div *ngIf="grievance.status === 'closed'" class="bg-slate-50 p-6 rounded-3xl border border-slate-300 shadow-sm space-y-3">
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+              <h4 class="font-bold text-xs text-slate-800 uppercase tracking-wider">Ticket Finalized & Closed</h4>
+            </div>
+            <p class="text-xs text-slate-600">This grievance has been officially closed following feedback submission. This ticket cannot be modified, reopened, or deleted.</p>
+
+            <!-- Display Recorded Feedback & Rating -->
+            <div *ngIf="grievance.rating" class="mt-2 p-3.5 bg-white border border-slate-200 rounded-2xl text-xs space-y-1.5 shadow-xs">
               <div class="flex justify-between items-center">
-                <span class="font-bold text-emerald-900 uppercase text-[10px]">Your Submitted Rating:</span>
+                <span class="font-bold text-slate-700 uppercase text-[10px]">Feedback Rating:</span>
                 <span class="text-amber-500 font-extrabold text-sm">
                   {{ '★'.repeat(grievance.rating) }}{{ '☆'.repeat(5 - grievance.rating) }} ({{ grievance.rating }}/5)
                 </span>
               </div>
-              <p *ngIf="grievance.feedbackComments" class="text-slate-700 italic text-xs">"{{ grievance.feedbackComments }}"</p>
+              <p *ngIf="grievance.feedbackComments" class="text-slate-600 italic text-xs">"{{ grievance.feedbackComments }}"</p>
             </div>
           </div>
 
@@ -221,14 +231,21 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
               [disabled]="isCancelling"
               class="w-full py-2.5 bg-rose-600 text-white rounded-xl font-bold text-xs hover:bg-rose-700 transition disabled:opacity-50"
             >
-              {{ isCancelling ? 'Cancelling...' : 'Cancel This Grievance' }}
+              {{ isCancelling ? 'Cancelling grievance...' : 'Cancel This Grievance' }}
             </button>
           </div>
 
-          <!-- Cancelled State Banner -->
-          <div *ngIf="grievance.status === 'cancelled'" class="bg-rose-50 p-6 rounded-3xl border border-rose-200 shadow-sm text-center space-y-2">
+          <!-- Cancelled State Banner with Delete Action -->
+          <div *ngIf="grievance.status === 'cancelled'" class="bg-rose-50 p-6 rounded-3xl border border-rose-200 shadow-sm text-center space-y-3">
             <p class="text-rose-800 font-bold text-sm">This grievance has been cancelled.</p>
-            <p class="text-xs text-slate-500">Contact the Admin if you wish to reinstate this grievance.</p>
+            <p class="text-xs text-slate-500">You can permanently delete this grievance from your account records.</p>
+            <button 
+              (click)="confirmDeleteModal.set(true)" 
+              [disabled]="isDeleting"
+              class="px-5 py-2.5 bg-rose-700 hover:bg-rose-800 text-white rounded-xl font-bold text-xs transition disabled:opacity-50 shadow-sm"
+            >
+              {{ isDeleting ? 'Deleting grievance...' : 'Delete Grievance Permanently' }}
+            </button>
           </div>
 
         </div>
@@ -255,8 +272,10 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
           </div>
 
           <div class="flex space-x-2 pt-2">
-            <button (click)="isFeedbackModalOpen = false" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
-            <button (click)="submitFeedback()" class="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl text-xs font-bold">Submit Feedback</button>
+            <button (click)="isFeedbackModalOpen = false" [disabled]="isSubmittingFeedback()" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
+            <button (click)="submitFeedback()" [disabled]="isSubmittingFeedback()" class="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl text-xs font-bold disabled:opacity-50">
+              {{ isSubmittingFeedback() ? 'Submitting...' : 'Submit Feedback' }}
+            </button>
           </div>
         </div>
       </div>
@@ -294,19 +313,50 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
             </button>
             <button 
               (click)="executeCancelGrievance()" 
-              class="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm"
+              [disabled]="isCancelling"
+              class="flex-1 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50"
             >
-              Yes, Cancel
+              {{ isCancelling ? 'Cancelling grievance...' : 'Yes, Cancel' }}
             </button>
           </div>
         </div>
       </div>
+
+      <!-- Delete Grievance Confirmation Modal -->
+      <div *ngIf="confirmDeleteModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+          <div class="flex justify-between items-center border-b pb-3">
+            <h3 class="font-bold text-base text-slate-900">Delete Grievance Confirmation</h3>
+            <button (click)="confirmDeleteModal.set(false)" aria-label="Close dialog" class="text-slate-400 hover:text-slate-600 transition">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <p class="text-xs text-slate-600">Are you sure you want to delete this grievance?</p>
+          <div class="flex space-x-2 pt-3 border-t">
+            <button (click)="confirmDeleteModal.set(false)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">
+              Go Back
+            </button>
+            <button 
+              (click)="executeDeleteGrievance()" 
+              [disabled]="isDeleting"
+              class="flex-1 bg-rose-700 hover:bg-rose-800 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50"
+            >
+              {{ isDeleting ? 'Deleting grievance...' : 'Yes, Delete' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <app-toast [message]="toastMessage()" (dismiss)="toastMessage.set(null)"></app-toast>
 
     </div>
   `
 })
 export class GrievanceDetailComponent implements OnInit {
   route = inject(ActivatedRoute);
+  router = inject(Router);
   grievanceService = inject(GrievanceService);
   departmentService = inject(DepartmentService);
   authService = inject(AuthService);
@@ -314,11 +364,32 @@ export class GrievanceDetailComponent implements OnInit {
   grievance?: Grievance;
   isLoading = false;
   isCancelling = false;
+  isDeleting = false;
   confirmCancelModal = signal<boolean>(false);
+  confirmDeleteModal = signal<boolean>(false);
+  toastMessage = signal<string | null>(null);
 
   async executeCancelGrievance() {
     this.confirmCancelModal.set(false);
     await this.cancelGrievance();
+  }
+
+  async executeDeleteGrievance() {
+    if (!this.grievance || this.isDeleting) return;
+    this.confirmDeleteModal.set(false);
+    this.isDeleting = true;
+    try {
+      await this.grievanceService.deleteGrievance(this.grievance.id);
+      this.toastMessage.set('Grievance deleted successfully.');
+      setTimeout(() => {
+        this.router.navigate(['/tourist/history']);
+      }, 800);
+    } catch (e: any) {
+      console.error('Delete grievance error:', e);
+      this.toastMessage.set('Unable to delete grievance. Please try again.');
+    } finally {
+      this.isDeleting = false;
+    }
   }
 
   get departmentHelpline(): string {
@@ -334,6 +405,8 @@ export class GrievanceDetailComponent implements OnInit {
   isFeedbackModalOpen = false;
   selectedRating = 5;
   feedbackComments = '';
+  isSubmittingFeedback = signal<boolean>(false);
+  isPostingComment = signal<boolean>(false);
 
   isReopenModalOpen = false;
   reopenReason = '';
@@ -373,31 +446,56 @@ export class GrievanceDetailComponent implements OnInit {
     try {
       await this.grievanceService.cancelGrievance(this.grievance.id);
       this.grievance = this.grievanceService.getGrievanceById(this.grievance.id);
+      this.toastMessage.set('Grievance cancelled successfully.');
     } catch (e: any) {
       console.error('Cancel grievance error:', e);
+      this.toastMessage.set('Unable to cancel grievance. Please try again.');
     } finally {
       this.isCancelling = false;
     }
   }
 
-  postComment() {
-    if (!this.grievance || !this.newCommentText.trim()) return;
-    this.grievanceService.addComment(this.grievance.id, this.newCommentText.trim(), this.isInternalComment);
-    this.newCommentText = '';
-    this.isInternalComment = false;
+  async postComment() {
+    if (!this.grievance || !this.newCommentText.trim() || this.isPostingComment()) return;
+    this.isPostingComment.set(true);
+    try {
+      await this.grievanceService.addComment(this.grievance.id, this.newCommentText.trim(), this.isInternalComment);
+      this.newCommentText = '';
+      this.isInternalComment = false;
+    } catch (e: any) {
+      console.error('Post comment error:', e);
+      this.toastMessage.set(e.error?.message || e.message || 'Failed to post comment.');
+    } finally {
+      this.isPostingComment.set(false);
+    }
   }
 
-  submitFeedback() {
-    if (!this.grievance) return;
-    this.grievanceService.submitFeedback(this.grievance.id, this.selectedRating, this.feedbackComments, true);
-    this.isFeedbackModalOpen = false;
-    this.grievance = this.grievanceService.getGrievanceById(this.grievance.id);
+  async submitFeedback() {
+    if (!this.grievance || this.isSubmittingFeedback()) return;
+    this.isSubmittingFeedback.set(true);
+    try {
+      await this.grievanceService.submitFeedback(this.grievance.id, this.selectedRating, this.feedbackComments, true);
+      this.isFeedbackModalOpen = false;
+      this.grievance = this.grievanceService.getGrievanceById(this.grievance.id);
+      this.toastMessage.set('Feedback submitted successfully. Ticket is now closed.');
+    } catch (e: any) {
+      console.error('Submit feedback error:', e);
+      this.toastMessage.set(e.error?.message || e.message || 'Failed to submit feedback.');
+    } finally {
+      this.isSubmittingFeedback.set(false);
+    }
   }
 
-  reopenGrievance() {
+  async reopenGrievance() {
     if (!this.grievance || !this.reopenReason.trim()) return;
-    this.grievanceService.reopenGrievance(this.grievance.id, this.reopenReason.trim());
-    this.isReopenModalOpen = false;
-    this.grievance = this.grievanceService.getGrievanceById(this.grievance.id);
+    try {
+      await this.grievanceService.reopenGrievance(this.grievance.id, this.reopenReason.trim());
+      this.isReopenModalOpen = false;
+      this.grievance = this.grievanceService.getGrievanceById(this.grievance.id);
+      this.toastMessage.set('Grievance reopened successfully.');
+    } catch (e: any) {
+      console.error('Reopen grievance error:', e);
+      this.toastMessage.set(e.error?.message || e.message || 'Failed to reopen grievance.');
+    }
   }
 }

@@ -54,11 +54,14 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       // Tourists can submit grievances owned by their UID
       allow create: if isAuthenticated() && request.resource.data.touristId == request.auth.uid;
-      // Officers and Admins can update status, assignment, resolution details; tourists can update their own
-      allow update: if isAdmin() || isOfficer() || (
-        isTourist() && resource.data.touristId == request.auth.uid
+      // Closed grievances are finalized and immutable; otherwise officers, admins, or owning tourists can update
+      allow update: if (resource.data.status != 'closed' || isAdmin()) && (
+        isAdmin() || isOfficer() || (
+          isTourist() && resource.data.touristId == request.auth.uid
+        )
       );
-      allow delete: if isAdmin();
+      // Resolved or closed grievances cannot be deleted; only admins can delete
+      allow delete: if isAdmin() && resource.data.status != 'resolved' && resource.data.status != 'closed';
     }
 
     // Comments Collection: comments/{commentId}
@@ -68,8 +71,8 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || isOwner(resource.data.userId);
     }
 
-    // Feedback Collection: feedback/{feedbackId}
-    match /feedback/{feedbackId} {
+    // Feedbacks Collection: feedbacks/{feedbackId}
+    match /feedbacks/{feedbackId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.resource.data.touristId == request.auth.uid;
       allow update, delete: if isAdmin();

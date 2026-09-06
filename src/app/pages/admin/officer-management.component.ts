@@ -236,8 +236,12 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
 
             <div class="flex space-x-3 pt-4 border-t">
               <button type="button" (click)="isModalOpen.set(false)" class="flex-1 bg-slate-100 py-3 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
-              <button type="submit" class="flex-1 bg-[#0F172A] text-white py-3 rounded-xl text-xs font-extrabold hover:bg-slate-800">
-                {{ editingOfficerId() ? 'Save Changes' : 'Register Officer' }}
+              <button 
+                type="submit" 
+                [disabled]="isSubmittingOfficer()"
+                class="flex-1 bg-[#0F172A] text-white py-3 rounded-xl text-xs font-extrabold hover:bg-slate-800 disabled:opacity-50 transition"
+              >
+                {{ isSubmittingOfficer() ? (editingOfficerId() ? 'Saving Changes...' : 'Registering Officer...') : (editingOfficerId() ? 'Save Changes' : 'Register Officer') }}
               </button>
             </div>
           </form>
@@ -381,6 +385,7 @@ export class OfficerManagementComponent {
   showPassword = signal<boolean>(false);
   showConfirmPassword = signal<boolean>(false);
   hasSubmitted = signal<boolean>(false);
+  isSubmittingOfficer = signal<boolean>(false);
   toastMessage = signal<string | null>(null);
 
   // Admin password gate for officer password changes
@@ -593,6 +598,9 @@ export class OfficerManagementComponent {
     const deptName = dept ? dept.name : 'Unassigned';
     const formattedPhone = formatPhoneNumber(this.newOfficer.phone);
 
+    if (this.isSubmittingOfficer()) return;
+    this.isSubmittingOfficer.set(true);
+
     try {
       if (this.editingOfficerId()) {
         // Edit mode
@@ -610,6 +618,7 @@ export class OfficerManagementComponent {
 
         await this.authService.updateOfficerByAdmin(this.editingOfficerId()!, updatePayload);
         await this.departmentService.loadDepartmentsFromBackend();
+        await this.grievanceService.loadGrievancesFromBackend();
         this.toastMessage.set(`Officer details updated successfully for "${this.newOfficer.name}".`);
       } else {
         // Create mode
@@ -624,14 +633,23 @@ export class OfficerManagementComponent {
         });
 
         await this.departmentService.loadDepartmentsFromBackend();
-        this.toastMessage.set(`Officer "${this.newOfficer.name}" registered successfully! Access granted.`);
+        await this.grievanceService.loadGrievancesFromBackend();
+        this.toastMessage.set('Officer registered successfully.');
       }
 
       this.isModalOpen.set(false);
       this.editingOfficerId.set(null);
       this.newOfficer = { name: '', email: '', password: '', confirmPassword: '', departmentId: '', phone: '', designation: '' };
     } catch (err: any) {
-      this.toastMessage.set(err.message || 'Action failed.');
+      console.error('Officer save error:', err);
+      const backendMsg = err.error?.message || (err.error?.errors ? Object.values(err.error.errors).join(', ') : null) || err.message;
+      if (this.editingOfficerId()) {
+        this.toastMessage.set(backendMsg || 'Action failed.');
+      } else {
+        this.toastMessage.set(backendMsg || 'Unable to register Officer. Please try again.');
+      }
+    } finally {
+      this.isSubmittingOfficer.set(false);
     }
   }
 
@@ -644,6 +662,7 @@ export class OfficerManagementComponent {
       action: async () => {
         await this.authService.revokeOfficerAccess(off.id);
         await this.departmentService.loadDepartmentsFromBackend();
+        await this.grievanceService.loadGrievancesFromBackend();
         this.toastMessage.set(`Officer access revoked for "${off.name}". Credentials disabled.`);
       }
     });
@@ -658,6 +677,7 @@ export class OfficerManagementComponent {
       action: async () => {
         await this.authService.restoreOfficerAccess(off.id);
         await this.departmentService.loadDepartmentsFromBackend();
+        await this.grievanceService.loadGrievancesFromBackend();
         this.toastMessage.set(`Officer "${off.name}" unrevoked successfully! Access restored.`);
       }
     });
@@ -672,6 +692,7 @@ export class OfficerManagementComponent {
       action: async () => {
         await this.authService.removeOfficerByAdmin(off.id);
         await this.departmentService.loadDepartmentsFromBackend();
+        await this.grievanceService.loadGrievancesFromBackend();
         this.toastMessage.set(`Officer account permanently deleted for "${off.name}".`);
       }
     });

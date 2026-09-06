@@ -117,6 +117,25 @@ export class DepartmentService {
   }
 
   /**
+   * Add Multiple Officers to Department in one operation (Admin Only)
+   */
+  async addMultipleOfficersToDepartment(departmentId: string, officerIds: string[]): Promise<{ success: boolean; message: string; addedCount: number; skippedCount?: number }> {
+    if (!this.authService.isAdmin()) {
+      throw new Error('Unauthorized: Only Administrators can modify department officers.');
+    }
+
+    const res = await firstValueFrom(
+      this.http.post<{ success: boolean; message: string; addedCount: number; skippedCount?: number }>(
+        `${this.apiUrl}/departments/${departmentId}/officers`,
+        { officerIds }
+      )
+    );
+
+    await this.loadDepartmentsFromBackend();
+    return res;
+  }
+
+  /**
    * Remove Officer from Department
    */
   async removeOfficerFromDepartment(departmentId: string, officerId: string): Promise<void> {

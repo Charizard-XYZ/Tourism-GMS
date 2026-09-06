@@ -44,7 +44,6 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
         <select [(ngModel)]="statusFilter" class="px-4 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]">
           <option value="ALL">All Statuses</option>
           <option value="submitted">Submitted / Action Required</option>
-          <option value="assigned">Assigned</option>
           <option value="in_progress">Under Investigation / In Progress</option>
           <option value="resolved">Resolved</option>
           <option value="reopened">Reopened / Escalated</option>

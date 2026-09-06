@@ -85,8 +85,8 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                 <span class="font-bold text-teal-800">{{ g.departmentName || g.category }}</span>
               </td>
               <td class="p-4 text-slate-600">
-                <span *ngIf="g.assignedOfficerName" class="font-bold text-slate-900">{{ g.assignedOfficerName }}</span>
-                <span *ngIf="!g.assignedOfficerName" class="text-rose-600 font-bold italic">Unassigned</span>
+                <span *ngIf="getDisplayedOfficerName(g)" class="font-bold text-slate-900">{{ getDisplayedOfficerName(g) }}</span>
+                <span *ngIf="!getDisplayedOfficerName(g)" class="text-rose-600 font-bold italic">Unassigned</span>
               </td>
               <td class="p-4">
                 <app-status-badge [status]="g.status"></app-status-badge>
@@ -276,10 +276,10 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
 
               <button 
                 (click)="postAdminComment()" 
-                [disabled]="!adminCommentText.trim()" 
+                [disabled]="!adminCommentText.trim() || isPostingAdminComment()" 
                 class="px-4 py-2 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 transition shadow-xs"
               >
-                Post Comment
+                {{ isPostingAdminComment() ? 'Submitting...' : 'Post Comment' }}
               </button>
             </div>
           </div>
@@ -372,6 +372,7 @@ export class GrievanceAssignmentComponent implements OnInit {
 
   targetDeptId = '';
   targetOfficerId = '';
+  isPostingAdminComment = signal<boolean>(false);
   toastMessage = signal<string | null>(null);
 
   searchKeyword = '';
@@ -445,18 +446,47 @@ export class GrievanceAssignmentComponent implements OnInit {
         g.departmentName === this.departmentFilter ||
         g.category === this.departmentFilter;
 
-      const matchesLifecycle = this.lifecycleFilter === 'ALL' || g.status === this.lifecycleFilter;
+      const matchesLifecycle = this.lifecycleFilter === 'ALL' ? g.status !== 'cancelled' : g.status === this.lifecycleFilter;
 
       return matchesSearch && matchesDept && matchesLifecycle;
     });
   }
 
-  /** Returns all unsolved grievances with no assigned officer */
+  getDisplayedOfficerName(g: Grievance): string {
+    if (g.assignedOfficerName && g.assignedOfficerName.trim()) {
+      return g.assignedOfficerName;
+    }
+    if (g.assignedOfficerId && g.assignedOfficerId.trim()) {
+      const off = this.authService.registeredOfficers().find(o => o.id === g.assignedOfficerId);
+      if (off && off.name) return off.name;
+    }
+    return '';
+  }
+
+  /** Returns all unsolved grievances that are genuinely unassigned or have invalid assignments */
   getUnassignedActionRequired(): Grievance[] {
     const unsolvedStatuses = ['submitted', 'assigned', 'in_progress', 'reopened'];
-    return this.grievanceService.grievances().filter(g =>
-      unsolvedStatuses.includes(g.status) && !g.assignedOfficerId
-    );
+    const registeredOfficers = this.authService.registeredOfficers();
+
+    return this.grievanceService.grievances().filter(g => {
+      if (!unsolvedStatuses.includes(g.status)) return false;
+
+      const offId = (g.assignedOfficerId || '').trim();
+      if (!offId) return true;
+
+      const officer = registeredOfficers.find(o => o.id === offId);
+      if (!officer || officer.isRevoked || (officer as any).isActive === false) return true;
+
+      const gDeptId = g.departmentId || '';
+      const gDeptName = (g.departmentName || g.category || '').trim().toLowerCase();
+      const oDeptId = officer.departmentId || '';
+      const oDeptName = (officer.departmentName || '').trim().toLowerCase();
+
+      const matchesDept = (gDeptId && oDeptId && gDeptId === oDeptId) ||
+        (gDeptName && oDeptName && oDeptName !== 'unassigned' && gDeptName === oDeptName);
+
+      return !matchesDept;
+    });
   }
 
   /** Groups unassigned cases by their department category into single card structure */
@@ -499,17 +529,25 @@ export class GrievanceAssignmentComponent implements OnInit {
     this.isAdminInternalOnly = false;
   }
 
-  postAdminComment() {
-    if (!this.commentModalGrievance || !this.adminCommentText.trim()) return;
+  async postAdminComment() {
+    if (!this.commentModalGrievance || !this.adminCommentText.trim() || this.isPostingAdminComment()) return;
 
-    this.grievanceService.addComment(
-      this.commentModalGrievance.id,
-      this.adminCommentText.trim(),
-      this.isAdminInternalOnly
-    );
+    this.isPostingAdminComment.set(true);
+    try {
+      await this.grievanceService.addComment(
+        this.commentModalGrievance.id,
+        this.adminCommentText.trim(),
+        this.isAdminInternalOnly
+      );
 
-    this.toastMessage.set(`Admin comment posted on ${this.commentModalGrievance.trackingCode}`);
-    this.adminCommentText = '';
+      this.toastMessage.set(`Admin comment posted on ${this.commentModalGrievance.trackingCode}`);
+      this.adminCommentText = '';
+    } catch (e: any) {
+      console.error('Post admin comment error:', e);
+      this.toastMessage.set(e.error?.message || e.message || 'Failed to post comment.');
+    } finally {
+      this.isPostingAdminComment.set(false);
+    }
   }
 
   onDepartmentChange() {

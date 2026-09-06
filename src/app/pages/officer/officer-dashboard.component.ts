@@ -34,30 +34,42 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
         </a>
       </div>
 
-      <!-- Officer Metrics Grid -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
-          <p class="text-xs font-bold text-slate-500 uppercase">Assigned Cases</p>
-          <p class="text-3xl font-extrabold text-slate-900">{{ assignedCount() }}</p>
-          <p class="text-[11px] text-slate-400">Total in officer queue</p>
+      <!-- Grievance Overview Section -->
+      <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-2">
+          <div>
+            <h2 class="text-lg font-extrabold text-slate-900">Grievance Overview</h2>
+            <p class="text-xs text-slate-500">Live operational status and queue distribution for your assigned cases</p>
+          </div>
+          <span class="px-3 py-1 bg-teal-50 text-teal-800 text-xs font-bold rounded-xl self-start sm:self-auto">
+            {{ assignedCount() }} Total Assigned
+          </span>
         </div>
 
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
-          <p class="text-xs font-bold text-amber-600 uppercase">Action Required</p>
-          <p class="text-3xl font-extrabold text-amber-600">{{ pendingCount() }}</p>
-          <p class="text-[11px] text-slate-400">Awaiting status update</p>
-        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
+            <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Total Assigned</span>
+            <p class="text-2xl sm:text-3xl font-extrabold text-slate-900">{{ assignedCount() }}</p>
+            <p class="text-[11px] text-slate-400">Cases allocated to you</p>
+          </div>
 
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
-          <p class="text-xs font-bold text-emerald-600 uppercase">Cases Resolved</p>
-          <p class="text-3xl font-extrabold text-emerald-600">{{ resolvedCount() }}</p>
-          <p class="text-[11px] text-slate-400">Successfully closed</p>
-        </div>
+          <div class="p-5 bg-amber-50/60 rounded-2xl border border-amber-200 space-y-1">
+            <span class="text-[10px] font-extrabold text-amber-700 uppercase tracking-wider">Pending / In Investigation</span>
+            <p class="text-2xl sm:text-3xl font-extrabold text-amber-800">{{ pendingCount() }}</p>
+            <p class="text-[11px] text-amber-600">Active inquiry underway</p>
+          </div>
 
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
-          <p class="text-xs font-bold text-sky-600 uppercase">Resolution Rate</p>
-          <p class="text-3xl font-extrabold text-sky-600">{{ resolutionRate() }}%</p>
-          <p class="text-[11px] text-slate-400">On-time resolution rate</p>
+          <div class="p-5 bg-rose-50/60 rounded-2xl border border-rose-200 space-y-1">
+            <span class="text-[10px] font-extrabold text-rose-700 uppercase tracking-wider">Reopened</span>
+            <p class="text-2xl sm:text-3xl font-extrabold text-rose-800">{{ reopenedCount() }}</p>
+            <p class="text-[11px] text-rose-600">Requires re-investigation</p>
+          </div>
+
+          <div class="p-5 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-1">
+            <span class="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider">Successfully Resolved</span>
+            <p class="text-2xl sm:text-3xl font-extrabold text-emerald-800">{{ resolvedCount() }}</p>
+            <p class="text-[11px] text-emerald-600">Successfully closed</p>
+          </div>
         </div>
       </div>
 
@@ -120,6 +132,10 @@ export class OfficerDashboardComponent implements OnInit {
 
   pendingCount(): number {
     return this.grievanceService.roleGrievances().filter(g => g.status === 'assigned' || g.status === 'in_progress' || g.status === 'submitted').length;
+  }
+
+  reopenedCount(): number {
+    return this.grievanceService.roleGrievances().filter(g => g.status === 'reopened').length;
   }
 
   resolvedCount(): number {

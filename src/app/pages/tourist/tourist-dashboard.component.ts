@@ -35,41 +35,47 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
         </div>
       </div>
 
-      <!-- Quick Metrics Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+      <!-- Grievance Overview Section -->
+      <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-2">
           <div>
-            <p class="text-[11px] font-bold uppercase text-slate-400">Total Grievances</p>
-            <p class="text-2xl font-black text-slate-900 mt-1">{{ totalCount() }}</p>
+            <h2 class="text-lg font-extrabold text-slate-900">Grievance Overview</h2>
+            <p class="text-xs text-slate-500">Live operational status and lifecycle progress across your filed complaints</p>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
+          <span class="px-3 py-1 bg-teal-50 text-teal-800 text-xs font-bold rounded-xl self-start sm:self-auto">
+            {{ totalCount() }} Total Records
+          </span>
         </div>
 
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p class="text-[11px] font-bold uppercase text-amber-500">In Investigation</p>
-            <p class="text-2xl font-black text-amber-600 mt-1">{{ inProgressCount() }}</p>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
+            <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Total Grievances</span>
+            <p class="text-2xl sm:text-3xl font-extrabold text-slate-900">{{ totalCount() }}</p>
+            <p class="text-[11px] text-slate-400">Total filed by you</p>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        </div>
 
-        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-          <div>
-            <p class="text-[11px] font-bold uppercase text-teal-600">Successfully Resolved</p>
-            <p class="text-2xl font-black text-teal-700 mt-1">{{ resolvedCount() }}</p>
+          <div class="p-5 bg-amber-50/60 rounded-2xl border border-amber-200 space-y-1">
+            <span class="text-[10px] font-extrabold text-amber-700 uppercase tracking-wider">In Investigation / Active</span>
+            <p class="text-2xl sm:text-3xl font-extrabold text-amber-800">{{ activeCount() }}</p>
+            <p class="text-[11px] text-amber-600">Active inquiry underway</p>
           </div>
-          <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-700">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-            </svg>
+
+          <div class="p-5 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-1">
+            <span class="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider">Successfully Resolved</span>
+            <p class="text-2xl sm:text-3xl font-extrabold text-emerald-800">{{ resolvedCount() }}</p>
+            <p class="text-[11px] text-emerald-600">Successfully closed</p>
+          </div>
+
+          <div class="p-5 bg-rose-50/60 rounded-2xl border border-rose-200 space-y-1">
+            <span class="text-[10px] font-extrabold text-rose-700 uppercase tracking-wider">Reopened</span>
+            <p class="text-2xl sm:text-3xl font-extrabold text-rose-800">{{ reopenedCount() }}</p>
+            <p class="text-[11px] text-rose-600">Re-submitted inquiry</p>
+          </div>
+
+          <div class="p-5 bg-slate-100/60 rounded-2xl border border-slate-300 space-y-1">
+            <span class="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">Cancelled</span>
+            <p class="text-2xl sm:text-3xl font-extrabold text-slate-700">{{ cancelledCount() }}</p>
+            <p class="text-[11px] text-slate-500">Withdrawn by you</p>
           </div>
         </div>
       </div>
@@ -159,6 +165,7 @@ export class TouristDashboardComponent implements OnInit {
 
   filteredGrievances() {
     return this.grievanceService.roleGrievances().filter(g => {
+      if (g.status === 'cancelled') return false;
       const keyword = this.searchKeyword.toLowerCase().trim();
       if (!keyword) return true;
       return (
@@ -175,12 +182,22 @@ export class TouristDashboardComponent implements OnInit {
     return this.grievanceService.roleGrievances().length;
   }
 
-  inProgressCount(): number {
-    return this.grievanceService.roleGrievances().filter(g => g.status === 'assigned' || g.status === 'in_progress' || g.status === 'under_review').length;
+  activeCount(): number {
+    return this.grievanceService.roleGrievances().filter(g =>
+      g.status === 'assigned' || g.status === 'in_progress' || g.status === 'under_review' || g.status === 'submitted'
+    ).length;
   }
 
   resolvedCount(): number {
     return this.grievanceService.roleGrievances().filter(g => g.status === 'resolved' || g.status === 'closed').length;
+  }
+
+  reopenedCount(): number {
+    return this.grievanceService.roleGrievances().filter(g => g.status === 'reopened').length;
+  }
+
+  cancelledCount(): number {
+    return this.grievanceService.roleGrievances().filter(g => g.status === 'cancelled').length;
   }
 }
 

@@ -62,7 +62,9 @@ interface TimelineStep {
               [class]="getStepCircleClass(step.key)"
               class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all duration-300 shadow-md"
             >
-              <span *ngIf="isCompleted(step.key)">✓</span>
+              <svg *ngIf="isCompleted(step.key)" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+              </svg>
               <span *ngIf="!isCompleted(step.key)">{{ idx + 1 }}</span>
             </div>
 

@@ -75,27 +75,8 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
       <!-- Overview Tab View -->
       <div *ngIf="activeTab === 'overview'" class="space-y-8">
 
-        <!-- Role 1: TOURIST PROFILE STATISTICS -->
+        <!-- Role 1: TOURIST PROFILE -->
         <div *ngIf="authService.isTourist()" class="space-y-8">
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span class="text-slate-400 font-bold text-xs uppercase">Total Filed Grievances</span>
-              <div class="text-3xl font-black text-slate-900">{{ touristMetrics().filed }}</div>
-              <p class="text-[11px] text-slate-500">Complaints registered by you</p>
-            </div>
-
-            <div class="bg-white p-6 rounded-3xl border border-emerald-200 bg-emerald-50/40 shadow-sm space-y-2">
-              <span class="text-emerald-700 font-bold text-xs uppercase">Solved Grievances</span>
-              <div class="text-3xl font-black text-emerald-800">{{ touristMetrics().solved }}</div>
-              <p class="text-[11px] text-emerald-600 font-medium">Successfully resolved & closed</p>
-            </div>
-
-            <div class="bg-white p-6 rounded-3xl border border-rose-200 bg-rose-50/40 shadow-sm space-y-2">
-              <span class="text-rose-700 font-bold text-xs uppercase">Reopened Grievances</span>
-              <div class="text-3xl font-black text-rose-800">{{ touristMetrics().reopened }}</div>
-              <p class="text-[11px] text-rose-600 font-medium">Re-submitted for investigation</p>
-            </div>
-          </div>
 
           <!-- Solved Grievances & Attached Documents Section -->
           <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
@@ -156,33 +137,8 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
           </div>
         </div>
 
-        <!-- Role 2: OFFICER PROFILE STATISTICS -->
+        <!-- Role 2: OFFICER PROFILE -->
         <div *ngIf="authService.isOfficer()" class="space-y-8">
-          <div class="grid grid-cols-1 sm:grid-cols-4 gap-6">
-            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2">
-              <span class="text-slate-400 font-bold text-xs uppercase">Assigned Grievances</span>
-              <div class="text-3xl font-black text-slate-900">{{ officerMetrics().assigned }}</div>
-              <p class="text-[11px] text-slate-500">Allocated to your desk</p>
-            </div>
-
-            <div class="bg-white p-6 rounded-3xl border border-amber-200 bg-amber-50/40 shadow-sm space-y-2">
-              <span class="text-amber-700 font-bold text-xs uppercase">Pending Grievances</span>
-              <div class="text-3xl font-black text-amber-800">{{ officerMetrics().pending }}</div>
-              <p class="text-[11px] text-amber-600 font-medium">Under active investigation</p>
-            </div>
-
-            <div class="bg-white p-6 rounded-3xl border border-rose-200 bg-rose-50/40 shadow-sm space-y-2">
-              <span class="text-rose-700 font-bold text-xs uppercase">Reopened Grievances</span>
-              <div class="text-3xl font-black text-rose-800">{{ officerMetrics().reopened }}</div>
-              <p class="text-[11px] text-rose-600 font-medium">Requires re-investigation</p>
-            </div>
-
-            <div class="bg-white p-6 rounded-3xl border border-emerald-200 bg-emerald-50/40 shadow-sm space-y-2">
-              <span class="text-emerald-700 font-bold text-xs uppercase">Solved Grievances</span>
-              <div class="text-3xl font-black text-emerald-800">{{ officerMetrics().solved }}</div>
-              <p class="text-[11px] text-emerald-600 font-medium">Resolved by you</p>
-            </div>
-          </div>
 
           <!-- Officer Department Info Card -->
           <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
