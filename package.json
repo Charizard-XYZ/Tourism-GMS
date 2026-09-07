@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "server": "tsx watch server/src/index.ts",
+    "server": "tsx server/src/index.ts",
     "build": "ng build",
     "build:server": "tsc -p server/tsconfig.json",
     "watch": "ng build --watch --configuration development",
