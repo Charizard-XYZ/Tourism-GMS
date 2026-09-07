@@ -7,6 +7,7 @@ import { createOfficerSchema, updateOfficerSchema } from '../validators/schemas'
 import { generateUniqueUserCode } from '../utils/user-code';
 import { redistributeOfficerGrievances, autoDistributeDepartmentUnassignedGrievances } from '../services/redistribution.service';
 import { logActivity } from '../utils/activity-logger';
+import { EmailService } from '../services/email.service';
 
 const router = Router();
 
@@ -197,6 +198,19 @@ router.post('/', authenticateFirebaseToken, authorizeRoles('admin'), validateBod
       uid,
       `Created officer account "${name}" (${cleanEmail})`
     ).catch(() => {});
+
+    // Send Registration Success Email asynchronously (failure never breaks registration response)
+    EmailService.sendRegistrationSuccessEmail(cleanEmail, {
+      fullName: name,
+      email: cleanEmail,
+      role: 'officer',
+      userCode,
+      departmentName: isAssigned ? departmentName : undefined,
+      designation: designation || 'Officer',
+      registeredAt: now
+    }).catch(emailErr => {
+      console.error('[EMAIL ERROR] Officer registration notification failed:', emailErr?.message || emailErr);
+    });
 
     res.status(201).json({
       success: true,

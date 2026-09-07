@@ -29,10 +29,6 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
         </div>
 
         <div class="flex items-center space-x-3">
-          <button (click)="openRegisterOfficerModal()" class="px-4 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-xl text-xs font-extrabold hover:bg-slate-50 shadow-sm flex items-center space-x-2 transition">
-            <app-icon name="user-plus" size="w-4 h-4 text-slate-700"></app-icon>
-            <span>Register Officer</span>
-          </button>
           <button (click)="openCreateModal()" class="px-5 py-2.5 bg-[#0F172A] text-white rounded-xl text-xs font-extrabold hover:bg-slate-800 shadow-lg flex items-center space-x-2 transition">
             <app-icon name="plus" size="w-4 h-4"></app-icon>
             <span>Create New Department</span>
@@ -115,16 +111,8 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
               </div>
             </div>
 
-            <div *ngIf="!dept.assignedOfficers || dept.assignedOfficers.length === 0" class="text-xs text-slate-400 italic p-2 bg-slate-50 rounded-xl flex items-center justify-between">
+            <div *ngIf="!dept.assignedOfficers || dept.assignedOfficers.length === 0" class="text-xs text-slate-400 italic p-2 bg-slate-50 rounded-xl">
               <span>No Officers assigned yet.</span>
-              <button 
-                type="button" 
-                (click)="openRegisterOfficerModal(dept)" 
-                class="text-[11px] font-extrabold text-teal-700 hover:underline inline-flex items-center space-x-1 not-italic"
-              >
-                <app-icon name="user-plus" size="w-3 h-3"></app-icon>
-                <span>Register Officer</span>
-              </button>
             </div>
           </div>
 
@@ -250,14 +238,6 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
 
                 <div *ngIf="getUnassignedRegisteredOfficers().length === 0" class="text-xs text-amber-800 italic p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between">
                   <span>No unassigned officers available. All registered officers are already assigned to operational departments.</span>
-                  <button 
-                    type="button" 
-                    (click)="openRegisterOfficerModal()" 
-                    class="ml-2 px-2.5 py-1 bg-[#0F172A] text-white rounded-lg text-[11px] font-bold hover:bg-slate-800 shrink-0 inline-flex items-center space-x-1 not-italic"
-                  >
-                    <app-icon name="user-plus" size="w-3.5 h-3.5"></app-icon>
-                    <span>Register Officer</span>
-                  </button>
                 </div>
               </div>
             </div>
@@ -285,20 +265,9 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
               <h3 class="font-bold text-base text-slate-900">Assign Officers to {{ selectedDeptForAddOfficer?.name }}</h3>
               <p class="text-[11px] text-slate-500">Select one or multiple officers to assign to this department</p>
             </div>
-            <div class="flex items-center space-x-2">
-              <button 
-                type="button" 
-                (click)="openRegisterOfficerModal()" 
-                class="px-3.5 py-1.5 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition shadow-sm inline-flex items-center space-x-1.5 shrink-0"
-                title="Register a new officer"
-              >
-                <app-icon name="user-plus" size="w-3.5 h-3.5"></app-icon>
-                <span>Register Officer</span>
-              </button>
-              <button (click)="isQuickAddOfficerModalOpen.set(false)" [disabled]="isAssigningOfficers()" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 transition disabled:opacity-50">
-                <app-icon name="x" size="w-5 h-5"></app-icon>
-              </button>
-            </div>
+            <button (click)="isQuickAddOfficerModalOpen.set(false)" [disabled]="isAssigningOfficers()" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 transition disabled:opacity-50">
+              <app-icon name="x" size="w-5 h-5"></app-icon>
+            </button>
           </div>
 
           <!-- Filter & Search Controls Bar -->
@@ -411,16 +380,20 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
             </div>
           </div>
 
-          <div *ngIf="getAvailableOfficersForAssignment().length === 0" class="text-xs text-amber-800 p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
-            <p class="font-medium">No registered officers available to assign. All non-revoked officers are already in this department.</p>
-            <button 
-              type="button" 
-              (click)="openRegisterOfficerModal()" 
-              class="px-3.5 py-1.5 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition shadow-sm inline-flex items-center space-x-1.5"
-            >
-              <app-icon name="user-plus" size="w-3.5 h-3.5"></app-icon>
-              <span>Register Officer</span>
-            </button>
+          <div *ngIf="getAvailableOfficersForAssignment().length === 0" class="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
+            <p class="text-xs font-medium text-amber-800">No registered officers available to assign. All non-revoked officers are already in this department.</p>
+            <div>
+              <button 
+                type="button" 
+                (click)="openRegisterOfficerModal(selectedDeptForAddOfficer)" 
+                [disabled]="isAssigningOfficers()"
+                class="px-3 py-2 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition shadow-xs inline-flex items-center space-x-1.5 disabled:opacity-50"
+                title="Register a new officer"
+              >
+                <app-icon name="user-plus" size="w-3.5 h-3.5"></app-icon>
+                <span>Register Officer</span>
+              </button>
+            </div>
           </div>
 
           <div *ngIf="getAvailableOfficersForAssignment().length > 0 && getFilteredAvailableOfficers().length === 0" class="text-xs text-slate-500 italic p-4 text-center bg-slate-50 border border-slate-200 rounded-2xl">
@@ -932,7 +905,7 @@ export class DepartmentManagementComponent {
     return isPhoneTextInvalid(val);
   }
 
-  openRegisterOfficerModal(dept?: Department) {
+  openRegisterOfficerModal(dept?: Department | null) {
     this.hasRegisterSubmitted.set(false);
     this.showOfficerPassword.set(false);
     this.showOfficerConfirmPassword.set(false);

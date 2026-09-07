@@ -436,10 +436,27 @@ export class AuthService {
 
   /**
    * Password Reset Email
+   * Dispatches branded password reset email via backend Nodemailer service.
+   * Gracefully falls back to Firebase Client SDK if backend endpoint is unavailable.
    */
   async sendPasswordResetEmail(email: string): Promise<void> {
     const cleanEmail = email.trim().toLowerCase();
-    await sendPasswordResetEmail(this.firebaseService.auth, cleanEmail);
+    try {
+      const res = await firstValueFrom(
+        this.http.post<{ success: boolean; message: string }>(`${this.apiUrl}/auth/forgot-password`, { email: cleanEmail })
+      );
+      if (res && res.success) {
+        return;
+      }
+      throw new Error(res?.message || 'Failed to send password reset email.');
+    } catch (apiErr: any) {
+      // If backend explicitly rejected with client error (e.g. 404 unregistered), preserve message
+      if (apiErr?.status === 404 || apiErr?.status === 400) {
+        throw new Error(apiErr?.error?.message || 'No registered account was found with this email address.');
+      }
+      console.warn('Backend /auth/forgot-password unreachable, using Firebase client SDK fallback:', apiErr?.message || apiErr);
+      await sendPasswordResetEmail(this.firebaseService.auth, cleanEmail);
+    }
   }
 
   /**

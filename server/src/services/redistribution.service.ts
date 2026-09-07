@@ -149,10 +149,13 @@ export async function redistributeOfficerGrievances(
         if (targetOfficer.email) {
           EmailService.sendOfficerAssignmentEmail(
             targetOfficer.email,
-            targetOfficer.name,
-            gData?.['trackingCode'] || gData?.['grievanceCode'] || gDoc.id,
-            gData?.['title'] || 'Grievance',
-            gData?.['departmentName'] || gData?.['category'] || oldDeptName || 'Tourism Department'
+            {
+              officerName: targetOfficer.name,
+              grievanceCode: gData?.['trackingCode'] || gData?.['grievanceCode'] || gDoc.id,
+              title: gData?.['title'] || 'Grievance',
+              category: gData?.['departmentName'] || gData?.['category'] || oldDeptName || 'Tourism Department',
+              assignedAt: now
+            }
           ).catch((err: any) => console.warn('Assignment email notification failed:', err));
         }
       }
@@ -388,10 +391,13 @@ export async function autoDistributeDepartmentUnassignedGrievances(
       if (chosenOfficer.email) {
         EmailService.sendOfficerAssignmentEmail(
           chosenOfficer.email,
-          chosenOfficer.name,
-          freshGData?.['trackingCode'] || freshGData?.['grievanceCode'] || gDoc.id,
-          freshGData?.['title'] || 'Grievance',
-          deptName || freshGData?.['departmentName'] || freshGData?.['category'] || 'Tourism Department'
+          {
+            officerName: chosenOfficer.name,
+            grievanceCode: freshGData?.['trackingCode'] || freshGData?.['grievanceCode'] || gDoc.id,
+            title: freshGData?.['title'] || 'Grievance',
+            category: deptName || freshGData?.['departmentName'] || freshGData?.['category'] || 'Tourism Department',
+            assignedAt: now
+          }
         ).catch((err: any) => console.warn('Assignment email notification failed:', err));
       }
     }

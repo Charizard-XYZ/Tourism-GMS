@@ -155,8 +155,18 @@ router.post('/', authenticateFirebaseToken, validateBody(createGrievanceSchema),
 
     await docRef.set(newGrievance);
 
-    // Send Confirmation Email to Tourist
-    EmailService.sendGrievanceSubmittedEmail(email, newGrievance.touristName, grievanceCode, title, effectiveDeptName);
+    // Send Confirmation Email to Tourist (asynchronously, failure never breaks submission)
+    EmailService.sendGrievanceFiledEmail(email, {
+      touristName: newGrievance.touristName,
+      grievanceCode,
+      title: newGrievance.title,
+      category: effectiveDeptName,
+      submittedAt: newGrievance.createdAt,
+      status: newGrievance.status,
+      location: newGrievance.location
+    }).catch(emailErr => {
+      console.error('[EMAIL DISPATCH ERROR] Grievance filed notification failed:', emailErr?.message || emailErr);
+    });
 
     // If department has active officers assigned, automatically distribute to balance workload
     try {
@@ -274,10 +284,13 @@ router.patch('/:id/assign', authenticateFirebaseToken, authorizeRoles('admin'), 
     if (officerId && targetOfficerEmail) {
       EmailService.sendOfficerAssignmentEmail(
         targetOfficerEmail,
-        officerName,
-        grievanceData['trackingCode'] || grievanceData['grievanceCode'] || id,
-        grievanceData['title'] || 'Grievance Ticket',
-        departmentName
+        {
+          officerName,
+          grievanceCode: grievanceData['trackingCode'] || grievanceData['grievanceCode'] || id,
+          title: grievanceData['title'] || 'Grievance Ticket',
+          category: departmentName,
+          assignedAt: now
+        }
       ).catch((err) => console.warn('Failed to send officer assignment email:', err));
     }
 
