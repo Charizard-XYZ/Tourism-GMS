@@ -1,11 +1,13 @@
 import { Injectable, signal, computed, inject, effect } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { collection, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { Grievance, GrievanceCategory, GrievanceStatus } from '../models/complaint.model';
 import { GrievanceComment } from '../models/comment.model';
 import { Feedback } from '../models/feedback.model';
 import { AuthService } from './auth.service';
 import { AuditLogService } from './audit-log.service';
+import { FirebaseService } from './firebase.service';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -15,6 +17,7 @@ export class GrievanceService {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
   private auditLogService = inject(AuditLogService);
+  private firebaseService = inject(FirebaseService);
   private apiUrl = environment.apiBaseUrl;
 
   readonly grievances = signal<Grievance[]>([]);
@@ -22,6 +25,8 @@ export class GrievanceService {
   readonly feedbacks = signal<Feedback[]>([]);
 
   private currentGrievanceRequestId = 0;
+  private firestoreUnsubscribe: Unsubscribe | null = null;
+  private realtimeSyncTimeout: any = null;
 
   constructor() {
     // Wait for authentication initialization before loading protected data
@@ -39,13 +44,43 @@ export class GrievanceService {
         this.loadGrievancesFromBackend();
         this.loadCommentsFromBackend();
         this.loadFeedbacksFromBackend();
+        this.startRealtimeSync();
       } else {
         // User logged out: cleanly reset grievance state
+        this.stopRealtimeSync();
         this.grievances.set([]);
         this.comments.set([]);
         this.feedbacks.set([]);
       }
     }, { allowSignalWrites: true });
+  }
+
+  startRealtimeSync(): void {
+    if (this.firestoreUnsubscribe) return;
+    try {
+      const colRef = collection(this.firebaseService.db, 'grievances');
+      this.firestoreUnsubscribe = onSnapshot(colRef, () => {
+        if (this.realtimeSyncTimeout) clearTimeout(this.realtimeSyncTimeout);
+        this.realtimeSyncTimeout = setTimeout(() => {
+          this.loadGrievancesFromBackend();
+        }, 300);
+      }, (err) => {
+        console.warn('Realtime grievance sync warning:', err?.message || err);
+      });
+    } catch (err) {
+      console.warn('Failed to attach realtime grievance listener:', err);
+    }
+  }
+
+  stopRealtimeSync(): void {
+    if (this.realtimeSyncTimeout) {
+      clearTimeout(this.realtimeSyncTimeout);
+      this.realtimeSyncTimeout = null;
+    }
+    if (this.firestoreUnsubscribe) {
+      this.firestoreUnsubscribe();
+      this.firestoreUnsubscribe = null;
+    }
   }
 
   async loadGrievancesFromBackend(): Promise<void> {
@@ -97,7 +132,7 @@ export class GrievanceService {
       return;
     }
     try {
-      const res = await firstValueFrom(this.http.get<{ success: boolean; feedbacks: Feedback[] }>(`${this.apiUrl}/feedbacks`));
+      const res = await firstValueFrom(this.http.get<{ success: boolean; feedbacks: Feedback[] }>(`${this.apiUrl}/feedback`));
       if (res && res.success && Array.isArray(res.feedbacks)) {
         this.feedbacks.set(res.feedbacks);
       }
@@ -115,7 +150,19 @@ export class GrievanceService {
     if (user.role === 'admin') {
       return list;
     } else if (user.role === 'officer') {
-      return list.filter(g => g.assignedOfficerId === user.uid && g.status !== 'cancelled');
+      const cleanEmail = (user.email || '').trim().toLowerCase();
+      const cleanName = (user.displayName || '').trim().toLowerCase();
+      return list.filter(g => {
+        // Exclude cancelled grievances from Officer active/assigned views
+        if (g.status === 'cancelled') return false;
+
+        const assignedId = (g.assignedOfficerId || '').trim();
+        const assignedName = (g.assignedOfficerName || '').trim().toLowerCase();
+
+        return (assignedId === user.uid) ||
+          (cleanEmail && assignedId.toLowerCase() === cleanEmail) ||
+          (cleanName && assignedName === cleanName);
+      });
     } else {
       // Tourist
       return list.filter(g => (g.touristId === user.uid || g.touristEmail === user.email));
@@ -159,13 +206,18 @@ export class GrievanceService {
    * Assign Grievance to Department & Officer (Admin)
    */
   async assignGrievance(grievanceId: string, departmentId: string, departmentName: string, officerId: string, officerName: string): Promise<void> {
-    await firstValueFrom(this.http.patch(`${this.apiUrl}/grievances/${grievanceId}/assign`, {
-      departmentId,
-      departmentName,
-      officerId,
-      officerName
-    }));
-    await this.loadGrievancesFromBackend();
+    try {
+      await firstValueFrom(this.http.patch<{ success: boolean; message: string }>(`${this.apiUrl}/grievances/${grievanceId}/assign`, {
+        departmentId,
+        departmentName,
+        officerId,
+        officerName
+      }));
+      await this.loadGrievancesFromBackend();
+    } catch (err: any) {
+      const msg = err?.error?.message || err?.message || 'Failed to assign grievance.';
+      throw new Error(msg);
+    }
   }
 
   /**
@@ -216,16 +268,20 @@ export class GrievanceService {
    * Cancel Grievance (Tourist)
    */
   async cancelGrievance(grievanceId: string): Promise<void> {
+    this.grievances.update(prev =>
+      prev.map(g => g.id === grievanceId ? { ...g, status: 'cancelled' as GrievanceStatus, updatedAt: new Date().toISOString() } : g)
+    );
     await firstValueFrom(this.http.patch(`${this.apiUrl}/grievances/${grievanceId}/cancel`, {}));
-    this.grievances.update(prev => prev.map(g => g.id === grievanceId ? { ...g, status: 'cancelled', updatedAt: new Date().toISOString() } : g));
+    await this.loadGrievancesFromBackend();
   }
 
   /**
    * Permanently Delete Cancelled Grievance (Tourist or Admin)
    */
   async deleteGrievance(grievanceId: string): Promise<void> {
-    await firstValueFrom(this.http.delete(`${this.apiUrl}/grievances/${grievanceId}`));
     this.grievances.update(prev => prev.filter(g => g.id !== grievanceId));
+    await firstValueFrom(this.http.delete(`${this.apiUrl}/grievances/${grievanceId}`));
+    await this.loadGrievancesFromBackend();
   }
 
   /**
@@ -240,7 +296,7 @@ export class GrievanceService {
    * Submit Feedback / Rating (Tourist)
    */
   async submitFeedback(grievanceId: string, rating: number, comments: string, autoClose: boolean = true): Promise<void> {
-    await firstValueFrom(this.http.post(`${this.apiUrl}/feedbacks`, {
+    await firstValueFrom(this.http.post(`${this.apiUrl}/feedback`, {
       grievanceId,
       rating,
       comments,

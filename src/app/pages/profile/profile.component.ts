@@ -7,6 +7,7 @@ import { GrievanceService } from '../../core/services/grievance.service';
 import { DepartmentService } from '../../core/services/department.service';
 import { ReportsService } from '../../core/services/reports.service';
 import { ToastComponent } from '../../common/components/toast.component';
+import { IconComponent } from '../../common/components/icon.component';
 import { Grievance } from '../../core/models/complaint.model';
 import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.model';
 import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
@@ -14,7 +15,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToastComponent],
+  imports: [CommonModule, FormsModule, ToastComponent, IconComponent],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fade-in text-slate-900">
       
@@ -49,23 +50,23 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
               (click)="switchTab('overview')"
               [class.bg-teal-600]="activeTab === 'overview'"
               [class.bg-slate-800]="activeTab !== 'overview'"
-              class="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition hover:bg-teal-700 shadow-md">
-              Overview & Analytics
+              class="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition hover:bg-teal-700 shadow-md flex items-center space-x-1.5">
+              <app-icon name="bar-chart" size="w-3.5 h-3.5"></app-icon>
+              <span>Overview & Analytics</span>
             </button>
             <button 
               (click)="switchTab('settings')"
               [class.bg-teal-600]="activeTab === 'settings'"
               [class.bg-slate-800]="activeTab !== 'settings'"
-              class="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition hover:bg-teal-700 shadow-md">
-              Edit Details & Password
+              class="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition hover:bg-teal-700 shadow-md flex items-center space-x-1.5">
+              <app-icon name="settings" size="w-3.5 h-3.5"></app-icon>
+              <span>Edit Details & Password</span>
             </button>
             <button 
               (click)="confirmLogout()"
               title="Log out of account"
               class="px-4 py-2.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center space-x-1.5">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
+              <app-icon name="log-out" size="w-4 h-4"></app-icon>
               <span>Logout</span>
             </button>
           </div>
@@ -75,8 +76,27 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
       <!-- Overview Tab View -->
       <div *ngIf="activeTab === 'overview'" class="space-y-8">
 
-        <!-- Role 1: TOURIST PROFILE -->
+        <!-- Role 1: TOURIST PROFILE STATISTICS -->
         <div *ngIf="authService.isTourist()" class="space-y-8">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2">
+              <span class="text-slate-400 font-bold text-xs uppercase">Total Filed Grievances</span>
+              <div class="text-3xl font-black text-slate-900">{{ touristMetrics().filed }}</div>
+              <p class="text-[11px] text-slate-500">Complaints registered by you</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl border border-emerald-200 bg-emerald-50/40 shadow-sm space-y-2">
+              <span class="text-emerald-700 font-bold text-xs uppercase">Solved Grievances</span>
+              <div class="text-3xl font-black text-emerald-800">{{ touristMetrics().solved }}</div>
+              <p class="text-[11px] text-emerald-600 font-medium">Successfully resolved & closed</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl border border-rose-200 bg-rose-50/40 shadow-sm space-y-2">
+              <span class="text-rose-700 font-bold text-xs uppercase">Reopened Grievances</span>
+              <div class="text-3xl font-black text-rose-800">{{ touristMetrics().reopened }}</div>
+              <p class="text-[11px] text-rose-600 font-medium">Re-submitted for investigation</p>
+            </div>
+          </div>
 
           <!-- Solved Grievances & Attached Documents Section -->
           <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
@@ -137,8 +157,33 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
           </div>
         </div>
 
-        <!-- Role 2: OFFICER PROFILE -->
+        <!-- Role 2: OFFICER PROFILE STATISTICS -->
         <div *ngIf="authService.isOfficer()" class="space-y-8">
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-6">
+            <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-2">
+              <span class="text-slate-400 font-bold text-xs uppercase">Assigned Grievances</span>
+              <div class="text-3xl font-black text-slate-900">{{ officerMetrics().assigned }}</div>
+              <p class="text-[11px] text-slate-500">Allocated to your desk</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl border border-amber-200 bg-amber-50/40 shadow-sm space-y-2">
+              <span class="text-amber-700 font-bold text-xs uppercase">Pending Grievances</span>
+              <div class="text-3xl font-black text-amber-800">{{ officerMetrics().pending }}</div>
+              <p class="text-[11px] text-amber-600 font-medium">Under active investigation</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl border border-rose-200 bg-rose-50/40 shadow-sm space-y-2">
+              <span class="text-rose-700 font-bold text-xs uppercase">Reopened Grievances</span>
+              <div class="text-3xl font-black text-rose-800">{{ officerMetrics().reopened }}</div>
+              <p class="text-[11px] text-rose-600 font-medium">Requires re-investigation</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl border border-emerald-200 bg-emerald-50/40 shadow-sm space-y-2">
+              <span class="text-emerald-700 font-bold text-xs uppercase">Solved Grievances</span>
+              <div class="text-3xl font-black text-emerald-800">{{ officerMetrics().solved }}</div>
+              <p class="text-[11px] text-emerald-600 font-medium">Resolved by you</p>
+            </div>
+          </div>
 
           <!-- Officer Department Info Card -->
           <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
@@ -348,17 +393,17 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                     <button 
                       type="button" 
                       (click)="verifyPreviousPassword()"
-                      class="px-4 py-2.5 bg-teal-700 text-white rounded-xl text-xs font-bold hover:bg-teal-800 shrink-0">
-                      Verify
+                      [disabled]="isVerifyingPreviousPassword()"
+                      class="px-4 py-2.5 bg-teal-700 text-white rounded-xl text-xs font-bold hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed shrink-0 min-h-[38px] min-w-[85px] inline-flex items-center justify-center space-x-1">
+                      <app-icon *ngIf="isVerifyingPreviousPassword()" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0"></app-icon>
+                      <span>{{ isVerifyingPreviousPassword() ? 'Verifying...' : 'Verify' }}</span>
                     </button>
                   </div>
                   <p *ngIf="previousPasswordError" class="text-[11px] text-rose-600 font-bold mt-1">
                     {{ previousPasswordError }}
                   </p>
                   <p *ngIf="isPreviousPasswordVerified" class="text-[11px] text-emerald-700 font-bold mt-1 flex items-center space-x-1">
-                    <svg class="w-4 h-4 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                    </svg>
+                    <app-icon name="check-circle" size="w-4 h-4 text-emerald-600 shrink-0"></app-icon>
                     <span>Previous password verified successfully! New password fields unlocked below.</span>
                   </p>
                 </div>
@@ -415,13 +460,15 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
               <button 
                 type="button" 
                 (click)="cancelSettings()" 
-                class="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl font-bold text-xs hover:bg-slate-200 transition">
+                class="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl font-bold text-xs hover:bg-slate-200 transition min-h-[44px]">
                 Discard Changes
               </button>
               <button 
                 type="submit" 
-                class="flex-1 bg-[#0F172A] text-white py-3 rounded-xl font-bold text-xs hover:bg-slate-800 transition shadow-md">
-                Save Profile Changes
+                [disabled]="isSavingProfile()"
+                class="flex-1 bg-[#0F172A] text-white py-3 rounded-xl font-bold text-xs hover:bg-slate-800 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center space-x-2 min-h-[44px] min-w-[180px]">
+                <app-icon *ngIf="isSavingProfile()" name="loader" size="w-4 h-4" class="animate-spin shrink-0"></app-icon>
+                <span>{{ isSavingProfile() ? 'Saving...' : 'Save Profile Changes' }}</span>
               </button>
             </div>
           </form>
@@ -430,26 +477,26 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
       </div>
 
       <!-- Action Confirmation Dialog -->
-      <div *ngIf="confirmationModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in">
-        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+      <div *ngIf="confirmationModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl animate-modal-pop">
           <div class="flex justify-between items-center border-b pb-3">
             <h3 class="font-bold text-base text-slate-900">{{ confirmationModal()?.title }}</h3>
-            <button (click)="confirmationModal.set(null)" aria-label="Close dialog" class="text-slate-400 hover:text-slate-600 transition">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button (click)="confirmationModal.set(null)" [disabled]="isConfirmingAction()" aria-label="Close dialog" class="text-slate-400 hover:text-slate-600 transition disabled:opacity-50">
+              <app-icon name="x" size="w-5 h-5"></app-icon>
             </button>
           </div>
           <p class="text-xs text-slate-600">{{ confirmationModal()?.message }}</p>
           <div class="flex space-x-2 pt-3 border-t">
-            <button (click)="confirmationModal.set(null)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">
+            <button (click)="confirmationModal.set(null)" [disabled]="isConfirmingAction()" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600 min-h-[40px] disabled:opacity-50">
               Cancel
             </button>
             <button 
               (click)="executeConfirmedAction()" 
-              class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 transition shadow-sm"
+              [disabled]="isConfirmingAction()"
+              class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center space-x-1.5 min-h-[40px] min-w-[130px]"
             >
-              {{ confirmationModal()?.confirmBtnText || 'Confirm' }}
+              <app-icon *ngIf="isConfirmingAction()" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0"></app-icon>
+              <span>{{ isConfirmingAction() ? (confirmationModal()?.loadingText || 'Processing...') : (confirmationModal()?.confirmBtnText || 'Confirm') }}</span>
             </button>
           </div>
         </div>
@@ -516,6 +563,7 @@ export class ProfileComponent {
       title: 'Confirm Logout',
       message: 'Are you sure you want to log out of your account?',
       confirmBtnText: 'Yes, Logout',
+      loadingText: 'Logging out...',
       action: async () => {
         await this.authService.logout();
         this.grievanceService.clearState();
@@ -531,6 +579,7 @@ export class ProfileComponent {
   newPassword = '';
   confirmPassword = '';
 
+  isVerifyingPreviousPassword = signal<boolean>(false);
   showPreviousPassword = signal<boolean>(false);
   showNewPassword = signal<boolean>(false);
   showConfirmPassword = signal<boolean>(false);
@@ -556,22 +605,30 @@ export class ProfileComponent {
     this.previousPasswordError = '';
   }
 
-  verifyPreviousPassword(): boolean {
+  async verifyPreviousPassword(): Promise<boolean> {
     if (!this.previousPassword.trim()) {
       this.previousPasswordError = 'Please enter your previous password.';
       this.isPreviousPasswordVerified = false;
       return false;
     }
 
-    const isValid = this.authService.verifyCurrentPassword(this.previousPassword);
-    if (isValid) {
-      this.isPreviousPasswordVerified = true;
-      this.previousPasswordError = '';
-      return true;
-    } else {
-      this.isPreviousPasswordVerified = false;
-      this.previousPasswordError = 'Previous password does not match your current registered password.';
-      return false;
+    if (this.isVerifyingPreviousPassword()) return false;
+    this.isVerifyingPreviousPassword.set(true);
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 250));
+      const isValid = this.authService.verifyCurrentPassword(this.previousPassword);
+      if (isValid) {
+        this.isPreviousPasswordVerified = true;
+        this.previousPasswordError = '';
+        return true;
+      } else {
+        this.isPreviousPasswordVerified = false;
+        this.previousPasswordError = 'Previous password does not match your current registered password.';
+        return false;
+      }
+    } finally {
+      this.isVerifyingPreviousPassword.set(false);
     }
   }
 
@@ -703,14 +760,18 @@ export class ProfileComponent {
     };
   });
 
+  isSavingProfile = signal<boolean>(false);
+  isConfirmingAction = signal<boolean>(false);
+
   confirmationModal = signal<{
     title: string;
     message: string;
     confirmBtnText: string;
+    loadingText?: string;
     action: () => Promise<void>;
   } | null>(null);
 
-  promptSaveProfile() {
+  async promptSaveProfile() {
     if (!this.editForm.name.trim() || !this.editForm.email.trim() || !this.editForm.phone.trim()) {
       this.toastMessage.set('Please fill out all required profile fields.');
       return;
@@ -728,7 +789,8 @@ export class ProfileComponent {
 
     if (this.isChangingPassword) {
       if (!this.isPreviousPasswordVerified) {
-        if (!this.verifyPreviousPassword()) {
+        const isValid = await this.verifyPreviousPassword();
+        if (!isValid) {
           this.toastMessage.set('Please enter and verify your valid previous password first.');
           return;
         }
@@ -754,6 +816,7 @@ export class ProfileComponent {
       title: 'Save Profile Changes',
       message: 'Are you sure you want to save these changes?',
       confirmBtnText: 'Yes, Save Changes',
+      loadingText: 'Saving...',
       action: async () => {
         await this.executeSaveProfileDetails();
       }
@@ -762,31 +825,42 @@ export class ProfileComponent {
 
   async executeConfirmedAction() {
     const modal = this.confirmationModal();
-    this.confirmationModal.set(null);
-    if (modal && modal.action) {
+    if (!modal || !modal.action || this.isConfirmingAction()) return;
+    this.isConfirmingAction.set(true);
+    try {
       await modal.action();
+      this.confirmationModal.set(null);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      this.isConfirmingAction.set(false);
     }
   }
 
   async executeSaveProfileDetails() {
-    if (this.isChangingPassword) {
-      try {
-        await this.authService.changeUserPassword(this.previousPassword, this.newPassword);
-      } catch (err: any) {
-        this.toastMessage.set(err.message || 'Password update failed.');
-        return;
-      }
-    }
-
+    this.isSavingProfile.set(true);
     try {
-      const formattedPhone = formatPhoneNumber(this.editForm.phone);
-      await this.authService.updateUserProfile(this.editForm.name, this.editForm.email, formattedPhone);
-      this.toastMessage.set(this.isChangingPassword ? 'Profile details and password updated successfully!' : 'Profile details updated successfully!');
       if (this.isChangingPassword) {
-        this.toggleChangePassword();
+        try {
+          await this.authService.changeUserPassword(this.previousPassword, this.newPassword);
+        } catch (err: any) {
+          this.toastMessage.set(err.message || 'Password update failed.');
+          return;
+        }
       }
-    } catch (err: any) {
-      this.toastMessage.set(err.message || 'Failed to update profile.');
+
+      try {
+        const formattedPhone = formatPhoneNumber(this.editForm.phone);
+        await this.authService.updateUserProfile(this.editForm.name, this.editForm.email, formattedPhone);
+        this.toastMessage.set(this.isChangingPassword ? 'Profile details and password updated successfully!' : 'Profile details updated successfully!');
+        if (this.isChangingPassword) {
+          this.toggleChangePassword();
+        }
+      } catch (err: any) {
+        this.toastMessage.set(err.message || 'Failed to update profile.');
+      }
+    } finally {
+      this.isSavingProfile.set(false);
     }
   }
 }

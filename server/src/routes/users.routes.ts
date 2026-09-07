@@ -83,7 +83,7 @@ router.put('/me', authenticateFirebaseToken, validateBody(updateProfileSchema), 
       console.warn('Firestore user update notice:', e);
     }
 
-    // Synchronize to officers/{uid} if user is an officer
+    // Synchronize to officers/{uid} if user is an officer and officer doc exists
     if (req.user?.role === 'officer') {
       try {
         const officerUpdateData: Record<string, any> = { updatedAt: new Date().toISOString() };
@@ -93,7 +93,11 @@ router.put('/me', authenticateFirebaseToken, validateBody(updateProfileSchema), 
           officerUpdateData['phone'] = phoneNumber;
         }
         if (updateData['email']) officerUpdateData['email'] = updateData['email'];
-        await db.collection('officers').doc(uid).set(officerUpdateData, { merge: true });
+        const offRef = db.collection('officers').doc(uid);
+        const offSnap = await offRef.get();
+        if (offSnap.exists) {
+          await offRef.update(officerUpdateData);
+        }
       } catch (officerSyncErr) {
         console.warn('Notice: error synchronizing officer profile:', officerSyncErr);
       }

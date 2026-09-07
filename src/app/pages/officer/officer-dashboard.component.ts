@@ -4,11 +4,12 @@ import { RouterLink } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { AuthService } from '../../core/services/auth.service';
 import { StatusBadgeComponent } from '../../common/components/status-badge.component';
+import { IconComponent } from '../../common/components/icon.component';
 
 @Component({
   selector: 'app-officer-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, StatusBadgeComponent],
+  imports: [CommonModule, RouterLink, StatusBadgeComponent, IconComponent],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
@@ -16,6 +17,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
       <div class="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div class="space-y-2">
           <div class="inline-flex items-center space-x-2 px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full text-xs font-bold uppercase">
+            <app-icon name="shield" size="w-3.5 h-3.5"></app-icon>
             <span>Officer Portal</span>
           </div>
           <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
@@ -28,48 +30,46 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
 
         <a routerLink="/officer/grievances" class="bg-amber-400 text-slate-950 px-6 py-3.5 rounded-2xl font-extrabold text-sm hover:bg-amber-300 transition shadow-lg shrink-0 flex items-center space-x-1.5">
           <span>Review Workqueue</span>
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-          </svg>
+          <app-icon name="arrow-right" size="w-4 h-4"></app-icon>
         </a>
       </div>
 
-      <!-- Grievance Overview Section -->
-      <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-2">
-          <div>
-            <h2 class="text-lg font-extrabold text-slate-900">Grievance Overview</h2>
-            <p class="text-xs text-slate-500">Live operational status and queue distribution for your assigned cases</p>
+      <!-- Officer Metrics Grid -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-bold text-slate-500 uppercase">Assigned Cases</p>
+            <app-icon name="file-text" size="w-4 h-4" class="text-slate-400"></app-icon>
           </div>
-          <span class="px-3 py-1 bg-teal-50 text-teal-800 text-xs font-bold rounded-xl self-start sm:self-auto">
-            {{ assignedCount() }} Total Assigned
-          </span>
+          <p class="text-3xl font-extrabold text-slate-900">{{ assignedCount() }}</p>
+          <p class="text-[11px] text-slate-400">Total in officer queue</p>
         </div>
 
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
-            <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Total Assigned</span>
-            <p class="text-2xl sm:text-3xl font-extrabold text-slate-900">{{ assignedCount() }}</p>
-            <p class="text-[11px] text-slate-400">Cases allocated to you</p>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-bold text-amber-600 uppercase">Action Required</p>
+            <app-icon name="alert-circle" size="w-4 h-4" class="text-amber-500"></app-icon>
           </div>
+          <p class="text-3xl font-extrabold text-amber-600">{{ pendingCount() }}</p>
+          <p class="text-[11px] text-slate-400">Awaiting status update</p>
+        </div>
 
-          <div class="p-5 bg-amber-50/60 rounded-2xl border border-amber-200 space-y-1">
-            <span class="text-[10px] font-extrabold text-amber-700 uppercase tracking-wider">Pending / In Investigation</span>
-            <p class="text-2xl sm:text-3xl font-extrabold text-amber-800">{{ pendingCount() }}</p>
-            <p class="text-[11px] text-amber-600">Active inquiry underway</p>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-bold text-emerald-600 uppercase">Cases Resolved</p>
+            <app-icon name="check-circle" size="w-4 h-4" class="text-emerald-500"></app-icon>
           </div>
+          <p class="text-3xl font-extrabold text-emerald-600">{{ resolvedCount() }}</p>
+          <p class="text-[11px] text-slate-400">Successfully closed</p>
+        </div>
 
-          <div class="p-5 bg-rose-50/60 rounded-2xl border border-rose-200 space-y-1">
-            <span class="text-[10px] font-extrabold text-rose-700 uppercase tracking-wider">Reopened</span>
-            <p class="text-2xl sm:text-3xl font-extrabold text-rose-800">{{ reopenedCount() }}</p>
-            <p class="text-[11px] text-rose-600">Requires re-investigation</p>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-bold text-sky-600 uppercase">Resolution Rate</p>
+            <app-icon name="bar-chart" size="w-4 h-4" class="text-sky-500"></app-icon>
           </div>
-
-          <div class="p-5 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-1">
-            <span class="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider">Successfully Resolved</span>
-            <p class="text-2xl sm:text-3xl font-extrabold text-emerald-800">{{ resolvedCount() }}</p>
-            <p class="text-[11px] text-emerald-600">Successfully closed</p>
-          </div>
+          <p class="text-3xl font-extrabold text-sky-600">{{ resolutionRate() }}%</p>
+          <p class="text-[11px] text-slate-400">On-time resolution rate</p>
         </div>
       </div>
 
@@ -102,9 +102,7 @@ import { StatusBadgeComponent } from '../../common/components/status-badge.compo
             <div class="shrink-0">
               <a [routerLink]="['/officer/process', g.id]" class="px-4 py-2 bg-amber-500 text-slate-950 rounded-xl text-xs font-bold hover:bg-amber-400 shadow-sm flex items-center space-x-1">
                 <span>Process Case</span>
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
+                <app-icon name="arrow-right" size="w-3.5 h-3.5"></app-icon>
               </a>
             </div>
           </div>
@@ -132,10 +130,6 @@ export class OfficerDashboardComponent implements OnInit {
 
   pendingCount(): number {
     return this.grievanceService.roleGrievances().filter(g => g.status === 'assigned' || g.status === 'in_progress' || g.status === 'submitted').length;
-  }
-
-  reopenedCount(): number {
-    return this.grievanceService.roleGrievances().filter(g => g.status === 'reopened').length;
   }
 
   resolvedCount(): number {

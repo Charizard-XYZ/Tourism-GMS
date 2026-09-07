@@ -27,25 +27,14 @@ const PORT = process.env['PORT'] || 5000;
 const clientOrigin = process.env['CLIENT_ORIGIN'] || 'http://localhost:4200';
 
 // Explicit CORS Options Configuration
-const allowedOrigins = [
-  'http://localhost:4200',
-  'http://127.0.0.1:4200',
-  'http://localhost:3000',
-  'http://localhost:5000',
-  clientOrigin
-];
+const allowedOrigins = ['http://localhost:4200', 'http://127.0.0.1:4200', clientOrigin];
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    if (
-      !origin ||
-      allowedOrigins.includes(origin) ||
-      origin.startsWith('http://localhost:') ||
-      origin.endsWith('.vercel.app')
-    ) {
+    if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:')) {
       callback(null, true);
     } else {
-      callback(new Error(`CORS origin "${origin}" not allowed.`));
+      callback(null, true);
     }
   },
   credentials: true,
@@ -75,7 +64,6 @@ app.use('/api/officers', officersRoutes);
 app.use('/api/grievances', grievancesRoutes);
 app.use('/api/comments', commentsRoutes);
 app.use('/api/feedback', feedbackRoutes);
-app.use('/api/feedbacks', feedbackRoutes);
 app.use('/api/activity-logs', activityLogsRoutes);
 
 // Global Error Handler
@@ -83,7 +71,7 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error('Unhandled Express API Error:', err.message || err);
   res.status(500).json({
     success: false,
-    message: err.message || 'Internal server error occurred.'
+    message: 'Internal server error occurred.'
   });
 });
 
@@ -95,14 +83,9 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Run app.listen for standalone Node server (dev / standalone containers)
-if (process.env['NODE_ENV'] !== 'test' && !process.env['VERCEL']) {
-  app.listen(PORT, () => {
-    console.log(`==================================================`);
-    console.log(`Tourism-GMS Express Server running on port ${PORT}`);
-    console.log(`Allowed CORS Origin: ${clientOrigin}`);
-    console.log(`==================================================`);
-  });
-}
-
-export default app;
+app.listen(PORT, () => {
+  console.log(`==================================================`);
+  console.log(`Tourism-GMS Express Server running on port ${PORT}`);
+  console.log(`Allowed CORS Origin: ${clientOrigin}`);
+  console.log(`==================================================`);
+});

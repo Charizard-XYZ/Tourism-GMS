@@ -1,6 +1,6 @@
-﻿export const environment = {
+export const environment = {
   production: true,
-  apiBaseUrl: 'https://tourism-gms-backend.vercel.app/api',
+  apiBaseUrl: 'http://localhost:5000/api',
   firebase: {
     apiKey: 'AIzaSyCaZIXAbEaQNqUUawZHbt8S2HaVq-o23Zs',
     authDomain: 'tourism-gms.firebaseapp.com',

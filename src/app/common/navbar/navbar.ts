@@ -5,12 +5,13 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { ToastComponent } from '../components/toast.component';
+import { IconComponent } from '../components/icon.component';
 import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.model';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, ToastComponent],
+  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, ToastComponent, IconComponent],
   templateUrl: './navbar.html',
   styleUrl: './navbar.css'
 })

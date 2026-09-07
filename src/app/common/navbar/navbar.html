@@ -23,9 +23,10 @@
           [routerLink]="getHomeRoute()" 
           routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
           [routerLinkActiveOptions]="{exact: true}"
-          class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+          class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0 inline-flex items-center space-x-1.5"
         >
-          Home
+          <app-icon name="home" size="w-4 h-4"></app-icon>
+          <span>Home</span>
         </a>
 
         <!-- Tourist Links -->
@@ -33,16 +34,18 @@
           <a 
             routerLink="/tourist/dashboard" 
             routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
-            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0 inline-flex items-center space-x-1.5"
           >
-            My Complaints
+            <app-icon name="file-text" size="w-4 h-4"></app-icon>
+            <span>My Complaints</span>
           </a>
           <a 
             routerLink="/tourist/history" 
             routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
-            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0 inline-flex items-center space-x-1.5"
           >
-            History
+            <app-icon name="clipboard-list" size="w-4 h-4"></app-icon>
+            <span>History</span>
           </a>
         </ng-container>
 
@@ -51,16 +54,18 @@
           <a 
             routerLink="/officer/dashboard" 
             routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
-            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0 inline-flex items-center space-x-1.5"
           >
-            Officer Queue
+            <app-icon name="dashboard" size="w-4 h-4"></app-icon>
+            <span>Officer Queue</span>
           </a>
           <a 
             routerLink="/officer/grievances" 
             routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
-            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0 inline-flex items-center space-x-1.5"
           >
-            Assigned Cases
+            <app-icon name="file-check" size="w-4 h-4"></app-icon>
+            <span>Assigned Cases</span>
           </a>
         </ng-container>
 
@@ -69,37 +74,42 @@
           <a 
             routerLink="/admin/dashboard" 
             routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
-            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0 inline-flex items-center space-x-1.5"
           >
-            Dashboard
+            <app-icon name="dashboard" size="w-4 h-4"></app-icon>
+            <span>Dashboard</span>
           </a>
           <a 
             routerLink="/admin/departments" 
             routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
-            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0 inline-flex items-center space-x-1.5"
           >
-            Departments
+            <app-icon name="building" size="w-4 h-4"></app-icon>
+            <span>Departments</span>
           </a>
           <a 
             routerLink="/admin/officers" 
             routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
-            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0 inline-flex items-center space-x-1.5"
           >
-            Officers
+            <app-icon name="users" size="w-4 h-4"></app-icon>
+            <span>Officers</span>
           </a>
           <a 
             routerLink="/admin/grievances" 
             routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
-            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0 inline-flex items-center space-x-1.5"
           >
-            Grievance Desk
+            <app-icon name="file-text" size="w-4 h-4"></app-icon>
+            <span>Grievance Desk</span>
           </a>
           <a 
             routerLink="/admin/reports" 
             routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
-            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0 inline-flex items-center space-x-1.5"
           >
-            Reports
+            <app-icon name="bar-chart" size="w-4 h-4"></app-icon>
+            <span>Reports</span>
           </a>
         </ng-container>
       </nav>
@@ -137,6 +147,7 @@
           routerLink="/auth/login"
           class="px-4 py-2 rounded-xl text-xs font-extrabold bg-[#A0C8C3] text-slate-950 hover:bg-teal-300 transition shadow-md flex items-center space-x-1.5"
         >
+          <app-icon name="log-in" size="w-4 h-4"></app-icon>
           <span>Sign In / Login</span>
         </a>
 
@@ -147,9 +158,7 @@
           aria-label="Toggle mobile menu"
           class="lg:hidden p-2 text-slate-300 hover:text-white rounded-lg transition hover:bg-slate-800"
         >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
+          <app-icon name="menu" size="w-6 h-6"></app-icon>
         </button>
       </div>
     </div>
@@ -157,34 +166,62 @@
 
   <!-- Mobile & Tablet Navigation Drawer -->
   <div *ngIf="authService.isAuthenticated() && isMobileMenuOpen()" class="lg:hidden bg-slate-900 border-b border-slate-800 px-4 py-4 space-y-2 animate-fade-in">
-    <a [routerLink]="getHomeRoute()" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm font-semibold text-slate-200 hover:bg-slate-800">Home</a>
+    <a [routerLink]="getHomeRoute()" (click)="toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm font-semibold text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+      <app-icon name="home" size="w-4 h-4"></app-icon>
+      <span>Home</span>
+    </a>
     
     <!-- Tourist Links -->
     <ng-container *ngIf="authService.isTourist()">
-      <a routerLink="/tourist/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">My Complaints</a>
-      <a routerLink="/tourist/history" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">History</a>
+      <a routerLink="/tourist/dashboard" (click)="toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+        <app-icon name="file-text" size="w-4 h-4"></app-icon>
+        <span>My Complaints</span>
+      </a>
+      <a routerLink="/tourist/history" (click)="toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+        <app-icon name="clipboard-list" size="w-4 h-4"></app-icon>
+        <span>History</span>
+      </a>
     </ng-container>
 
     <!-- Officer Links -->
     <ng-container *ngIf="authService.isOfficer()">
-      <a routerLink="/officer/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Officer Queue</a>
-      <a routerLink="/officer/grievances" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Assigned Cases</a>
+      <a routerLink="/officer/dashboard" (click)="toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+        <app-icon name="dashboard" size="w-4 h-4"></app-icon>
+        <span>Officer Queue</span>
+      </a>
+      <a routerLink="/officer/grievances" (click)="toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+        <app-icon name="file-check" size="w-4 h-4"></app-icon>
+        <span>Assigned Cases</span>
+      </a>
     </ng-container>
 
     <!-- Admin Links -->
     <ng-container *ngIf="authService.isAdmin()">
-      <a routerLink="/admin/dashboard" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Dashboard</a>
-      <a routerLink="/admin/departments" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Departments</a>
-      <a routerLink="/admin/officers" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Officers</a>
-      <a routerLink="/admin/grievances" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Grievance Desk</a>
-      <a routerLink="/admin/reports" (click)="toggleMobileMenu()" class="block px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800">Reports</a>
+      <a routerLink="/admin/dashboard" (click)="toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+        <app-icon name="dashboard" size="w-4 h-4"></app-icon>
+        <span>Dashboard</span>
+      </a>
+      <a routerLink="/admin/departments" (click)="toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+        <app-icon name="building" size="w-4 h-4"></app-icon>
+        <span>Departments</span>
+      </a>
+      <a routerLink="/admin/officers" (click)="toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+        <app-icon name="users" size="w-4 h-4"></app-icon>
+        <span>Officers</span>
+      </a>
+      <a routerLink="/admin/grievances" (click)="toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+        <app-icon name="file-text" size="w-4 h-4"></app-icon>
+        <span>Grievance Desk</span>
+      </a>
+      <a routerLink="/admin/reports" (click)="toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+        <app-icon name="bar-chart" size="w-4 h-4"></app-icon>
+        <span>Reports</span>
+      </a>
     </ng-container>
 
     <div class="border-t border-slate-800 pt-2 space-y-1">
       <button (click)="logout()" class="w-full text-left px-3 py-2 rounded-lg text-sm font-bold text-rose-400 hover:bg-slate-800 flex items-center space-x-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-        </svg>
+        <app-icon name="log-out" size="w-4 h-4"></app-icon>
         <span>Logout</span>
       </button>
     </div>

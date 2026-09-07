@@ -4,13 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ToastComponent } from '../../common/components/toast.component';
+import { IconComponent } from '../../common/components/icon.component';
 import { formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.model';
 import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
 
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ToastComponent],
+  imports: [CommonModule, FormsModule, RouterLink, ToastComponent, IconComponent],
   template: `
     <div class="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50">
       <div class="max-w-md w-full space-y-6 bg-white p-8 rounded-3xl shadow-xl border border-slate-200">
@@ -18,9 +19,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
         <!-- Back to Home -->
         <div>
           <a routerLink="/" class="inline-flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-teal-700 transition">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
+            <app-icon name="arrow-left" size="w-3.5 h-3.5"></app-icon>
             <span>Back to Home</span>
           </a>
         </div>
@@ -77,7 +76,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                 autocomplete="one-time-code" 
                 autocorrect="off" 
                 autocapitalize="off" 
-                spellcheck="false"
+                spellcheck="false" 
                 data-lpignore="true" 
                 placeholder="••••••••" 
                 class="w-full px-4 py-2.5 pr-10 border rounded-xl text-sm font-mono" 
@@ -86,9 +85,9 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                 type="button" 
                 (click)="showPassword.set(!showPassword())" 
                 aria-label="Toggle password visibility"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none"
               >
-                {{ showPassword() ? 'Hide' : 'Show' }}
+                <app-icon name="eye" size="w-4 h-4"></app-icon>
               </button>
             </div>
             <p *ngIf="hasSubmitted() && !password.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
@@ -105,7 +104,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                 autocomplete="one-time-code" 
                 autocorrect="off" 
                 autocapitalize="off" 
-                spellcheck="false"
+                spellcheck="false" 
                 data-lpignore="true" 
                 placeholder="••••••••" 
                 class="w-full px-4 py-2.5 pr-10 border rounded-xl text-sm font-mono" 
@@ -114,9 +113,9 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                 type="button" 
                 (click)="showConfirmPassword.set(!showConfirmPassword())" 
                 aria-label="Toggle confirm password visibility"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none"
               >
-                {{ showConfirmPassword() ? 'Hide' : 'Show' }}
+                <app-icon name="eye" size="w-4 h-4"></app-icon>
               </button>
             </div>
             <p *ngIf="hasSubmitted() && !confirmPassword.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
@@ -130,9 +129,16 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
           <button 
             type="submit" 
             [disabled]="isLoading()"
-            class="w-full bg-[#0F172A] text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg"
+            class="w-full bg-[#0F172A] text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-[50px] min-w-[200px]"
           >
-            {{ isLoading() ? 'Creating Account...' : 'Register Account' }}
+            <span *ngIf="isLoading()" class="inline-flex items-center space-x-2">
+              <app-icon name="loader" size="w-4 h-4" class="animate-spin shrink-0"></app-icon>
+              <span>Creating account...</span>
+            </span>
+            <span *ngIf="!isLoading()" class="inline-flex items-center space-x-2">
+              <app-icon name="user-plus" size="w-4 h-4"></app-icon>
+              <span>Register Account</span>
+            </span>
           </button>
         </form>
 
@@ -184,6 +190,7 @@ export class RegisterComponent {
   }
 
   async onRegister() {
+    if (this.isLoading()) return;
     this.hasSubmitted.set(true);
     this.errorMessage.set(null);
 

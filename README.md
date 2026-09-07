@@ -142,8 +142,7 @@ The Node.js backend server utilizes internal environment settings and JSON persi
 
 ## Production Deployment & Handover
 
-The recommended deployment topology is:
-- **Frontend**: Deployed to Vercel or Netlify (`dist/Tourism-GMS`).
+- **Frontend**: Angular SPA served locally or on static hosting (`dist/Tourism-GMS`).
 - **Backend**: Deployed to Railway, Render, or AWS EC2 (`node server/server.js`).
 
 ### Build Command (Frontend Production)

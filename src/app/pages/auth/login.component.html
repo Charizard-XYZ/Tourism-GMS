@@ -4,9 +4,7 @@
     <!-- Back to Home -->
     <div>
       <a routerLink="/" class="inline-flex items-center space-x-1.5 text-xs font-bold text-slate-500 hover:text-teal-700 transition">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
+        <app-icon name="arrow-left" size="w-3.5 h-3.5"></app-icon>
         <span>Back to Home</span>
       </a>
     </div>
@@ -27,25 +25,28 @@
       <button 
         (click)="setRole('tourist')" 
         [class]="selectedRole() === 'tourist' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
-        class="py-2.5 rounded-lg transition"
+        class="py-2.5 rounded-lg transition inline-flex items-center justify-center space-x-1.5"
       >
-        Tourist
+        <app-icon name="user" size="w-3.5 h-3.5"></app-icon>
+        <span>Tourist</span>
       </button>
 
       <button 
         (click)="setRole('officer')" 
         [class]="selectedRole() === 'officer' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
-        class="py-2.5 rounded-lg transition"
+        class="py-2.5 rounded-lg transition inline-flex items-center justify-center space-x-1.5"
       >
-        Officer
+        <app-icon name="shield" size="w-3.5 h-3.5"></app-icon>
+        <span>Officer</span>
       </button>
 
       <button 
         (click)="setRole('admin')" 
         [class]="selectedRole() === 'admin' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
-        class="py-2.5 rounded-lg transition"
+        class="py-2.5 rounded-lg transition inline-flex items-center justify-center space-x-1.5"
       >
-        Admin
+        <app-icon name="lock" size="w-3.5 h-3.5"></app-icon>
+        <span>Admin</span>
       </button>
     </div>
 
@@ -55,7 +56,7 @@
         <input 
           type="text" 
           [(ngModel)]="email" 
-          name="usr_id_text_comm"
+          name="usr_id_text_comm" 
           required
           autocomplete="one-time-code"
           autocorrect="off"
@@ -92,10 +93,10 @@
             type="button" 
             (click)="showPassword.set(!showPassword())"
             aria-label="Toggle password visibility"
-            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none"
             [title]="showPassword() ? 'Hide Password' : 'Show Password'"
           >
-            {{ showPassword() ? 'Hide' : 'Show' }}
+            <app-icon name="eye" size="w-4 h-4"></app-icon>
           </button>
         </div>
         <p *ngIf="hasSubmitted() && !password.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
@@ -108,10 +109,16 @@
       <button 
         type="submit" 
         [disabled]="isLoading()"
-        class="w-full bg-[#0F172A] text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg flex items-center justify-center space-x-2"
+        class="w-full bg-[#0F172A] text-white py-3.5 rounded-xl font-bold hover:bg-slate-800 transition shadow-lg flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed min-h-[50px] min-w-[200px]"
       >
-        <span *ngIf="isLoading()">Authenticating...</span>
-        <span *ngIf="!isLoading()">Sign In as {{ selectedRole() === 'tourist' ? 'Tourist' : (selectedRole() | titlecase) }}</span>
+        <span *ngIf="isLoading()" class="inline-flex items-center space-x-2">
+          <app-icon name="loader" size="w-4 h-4" class="animate-spin shrink-0"></app-icon>
+          <span>Signing in...</span>
+        </span>
+        <span *ngIf="!isLoading()" class="inline-flex items-center space-x-2">
+          <app-icon name="log-in" size="w-4 h-4"></app-icon>
+          <span>Sign In as {{ selectedRole() === 'tourist' ? 'Tourist' : (selectedRole() | titlecase) }}</span>
+        </span>
       </button>
     </form>
 
@@ -126,15 +133,13 @@
 
 <!-- Forgot Password Modal -->
 <div *ngIf="isForgotPasswordOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
-  <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-100 relative text-slate-900">
+  <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl border border-slate-100 relative text-slate-900 animate-modal-pop">
     <button 
       (click)="isForgotPasswordOpen.set(false)"
       type="button"
-      class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100"
+      class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition"
     >
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-      </svg>
+      <app-icon name="x" size="w-4 h-4"></app-icon>
     </button>
 
     <div>
@@ -183,8 +188,22 @@
       </div>
 
       <div class="flex space-x-2 pt-2">
-        <button type="button" (click)="isForgotPasswordOpen.set(false)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200">Cancel</button>
-        <button type="submit" class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 transition">Send Reset Link</button>
+        <button 
+          type="button" 
+          [disabled]="isResetLoading()" 
+          (click)="isForgotPasswordOpen.set(false)" 
+          class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 disabled:opacity-50 transition"
+        >
+          Cancel
+        </button>
+        <button 
+          type="submit" 
+          [disabled]="isResetLoading()" 
+          class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center space-x-1.5 min-h-[40px] min-w-[130px]"
+        >
+          <app-icon *ngIf="isResetLoading()" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0"></app-icon>
+          <span>{{ isResetLoading() ? 'Sending reset link...' : 'Send Reset Link' }}</span>
+        </button>
       </div>
     </form>
   </div>

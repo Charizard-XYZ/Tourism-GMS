@@ -15,14 +15,20 @@ export function validateBody(schema: ZodSchema) {
           formattedErrors[path || 'field'] = err.message;
         });
 
+        const errorMessages = Object.values(formattedErrors);
+        const primaryMessage = errorMessages.length > 0 ? errorMessages.join('. ') : 'Validation failed';
+
+        console.warn(`[VALIDATION 400] ${req.method} ${req.originalUrl} failed:`, formattedErrors);
+
         res.status(400).json({
           success: false,
-          message: 'Validation failed',
+          message: primaryMessage,
           errors: formattedErrors
         });
         return;
       }
 
+      console.warn(`[VALIDATION 400] ${req.method} ${req.originalUrl} invalid payload:`, error?.message || error);
       res.status(400).json({
         success: false,
         message: 'Invalid request payload'

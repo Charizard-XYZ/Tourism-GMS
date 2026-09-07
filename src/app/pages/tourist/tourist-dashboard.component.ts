@@ -5,12 +5,13 @@ import { RouterLink } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { AuthService } from '../../core/services/auth.service';
 import { StatusBadgeComponent } from '../../common/components/status-badge.component';
+import { IconComponent } from '../../common/components/icon.component';
 import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
 
 @Component({
   selector: 'app-tourist-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent, IconComponent],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
@@ -27,55 +28,41 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
         </div>
         <div class="flex items-center space-x-3">
           <a routerLink="/tourist/submit" class="px-5 py-3 bg-[#A0C8C3] text-slate-900 rounded-2xl font-bold text-xs hover:bg-[#8eb8b3] transition shadow-lg flex items-center space-x-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
+            <app-icon name="plus" size="w-4 h-4"></app-icon>
             <span>File New Grievance</span>
           </a>
         </div>
       </div>
 
-      <!-- Grievance Overview Section -->
-      <div class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-2">
+      <!-- Quick Metrics Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
-            <h2 class="text-lg font-extrabold text-slate-900">Grievance Overview</h2>
-            <p class="text-xs text-slate-500">Live operational status and lifecycle progress across your filed complaints</p>
+            <p class="text-[11px] font-bold uppercase text-slate-400">Total Grievances</p>
+            <p class="text-2xl font-black text-slate-900 mt-1">{{ totalCount() }}</p>
           </div>
-          <span class="px-3 py-1 bg-teal-50 text-teal-800 text-xs font-bold rounded-xl self-start sm:self-auto">
-            {{ totalCount() }} Total Records
-          </span>
+          <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-700">
+            <app-icon name="file-text" size="w-5 h-5"></app-icon>
+          </div>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
-            <span class="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Total Grievances</span>
-            <p class="text-2xl sm:text-3xl font-extrabold text-slate-900">{{ totalCount() }}</p>
-            <p class="text-[11px] text-slate-400">Total filed by you</p>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <p class="text-[11px] font-bold uppercase text-amber-500">In Investigation</p>
+            <p class="text-2xl font-black text-amber-600 mt-1">{{ inProgressCount() }}</p>
           </div>
-
-          <div class="p-5 bg-amber-50/60 rounded-2xl border border-amber-200 space-y-1">
-            <span class="text-[10px] font-extrabold text-amber-700 uppercase tracking-wider">In Investigation / Active</span>
-            <p class="text-2xl sm:text-3xl font-extrabold text-amber-800">{{ activeCount() }}</p>
-            <p class="text-[11px] text-amber-600">Active inquiry underway</p>
+          <div class="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
+            <app-icon name="alert-circle" size="w-5 h-5"></app-icon>
           </div>
+        </div>
 
-          <div class="p-5 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-1">
-            <span class="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider">Successfully Resolved</span>
-            <p class="text-2xl sm:text-3xl font-extrabold text-emerald-800">{{ resolvedCount() }}</p>
-            <p class="text-[11px] text-emerald-600">Successfully closed</p>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
+          <div>
+            <p class="text-[11px] font-bold uppercase text-teal-600">Successfully Resolved</p>
+            <p class="text-2xl font-black text-teal-700 mt-1">{{ resolvedCount() }}</p>
           </div>
-
-          <div class="p-5 bg-rose-50/60 rounded-2xl border border-rose-200 space-y-1">
-            <span class="text-[10px] font-extrabold text-rose-700 uppercase tracking-wider">Reopened</span>
-            <p class="text-2xl sm:text-3xl font-extrabold text-rose-800">{{ reopenedCount() }}</p>
-            <p class="text-[11px] text-rose-600">Re-submitted inquiry</p>
-          </div>
-
-          <div class="p-5 bg-slate-100/60 rounded-2xl border border-slate-300 space-y-1">
-            <span class="text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">Cancelled</span>
-            <p class="text-2xl sm:text-3xl font-extrabold text-slate-700">{{ cancelledCount() }}</p>
-            <p class="text-[11px] text-slate-500">Withdrawn by you</p>
+          <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center text-teal-700">
+            <app-icon name="check-circle" size="w-5 h-5"></app-icon>
           </div>
         </div>
       </div>
@@ -90,9 +77,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
           <div class="flex items-center space-x-3 w-full sm:w-auto">
             <div class="relative w-full sm:w-64">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+                <app-icon name="search" size="w-4 h-4"></app-icon>
               </div>
               <input 
                 type="text" 
@@ -104,9 +89,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
             </div>
             <a routerLink="/tourist/history" class="text-xs font-bold text-teal-700 hover:underline shrink-0 flex items-center space-x-1">
               <span>View All</span>
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
+              <app-icon name="arrow-right" size="w-3.5 h-3.5"></app-icon>
             </a>
           </div>
         </div>
@@ -132,9 +115,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
             <div class="flex items-center space-x-2 shrink-0">
               <a [routerLink]="['/tourist/grievance', g.id]" class="px-4 py-2 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 flex items-center space-x-1.5">
                 <span>Track Timeline</span>
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
+                <app-icon name="arrow-right" size="w-3.5 h-3.5"></app-icon>
               </a>
             </div>
           </div>
@@ -165,7 +146,6 @@ export class TouristDashboardComponent implements OnInit {
 
   filteredGrievances() {
     return this.grievanceService.roleGrievances().filter(g => {
-      if (g.status === 'cancelled') return false;
       const keyword = this.searchKeyword.toLowerCase().trim();
       if (!keyword) return true;
       return (
@@ -182,22 +162,12 @@ export class TouristDashboardComponent implements OnInit {
     return this.grievanceService.roleGrievances().length;
   }
 
-  activeCount(): number {
-    return this.grievanceService.roleGrievances().filter(g =>
-      g.status === 'assigned' || g.status === 'in_progress' || g.status === 'under_review' || g.status === 'submitted'
-    ).length;
+  inProgressCount(): number {
+    return this.grievanceService.roleGrievances().filter(g => g.status === 'assigned' || g.status === 'in_progress' || g.status === 'under_review').length;
   }
 
   resolvedCount(): number {
     return this.grievanceService.roleGrievances().filter(g => g.status === 'resolved' || g.status === 'closed').length;
-  }
-
-  reopenedCount(): number {
-    return this.grievanceService.roleGrievances().filter(g => g.status === 'reopened').length;
-  }
-
-  cancelledCount(): number {
-    return this.grievanceService.roleGrievances().filter(g => g.status === 'cancelled').length;
   }
 }
 

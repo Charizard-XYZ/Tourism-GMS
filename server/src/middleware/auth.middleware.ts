@@ -116,7 +116,7 @@ export async function authenticateFirebaseToken(req: AuthenticatedRequest, res: 
           uid,
           email,
           role: 'tourist',
-          displayName: decodedToken['name'] || '',
+          displayName: decodedToken.name || '',
           phoneNumber: '',
           isActive: true,
           createdAt: new Date().toISOString()
@@ -179,7 +179,7 @@ export async function authenticateFirebaseToken(req: AuthenticatedRequest, res: 
       userCode: userData['userCode'] || '',
       email: userData['email'] || email,
       role: normalizedRole,
-      displayName: userData['fullName'] || userData['displayName'] || decodedToken['name'] || '',
+      displayName: userData['fullName'] || userData['displayName'] || decodedToken.name || '',
       departmentId: userData['departmentId'] || '',
       departmentName: userData['departmentName'] || '',
       designation: userData['designation'] || '',

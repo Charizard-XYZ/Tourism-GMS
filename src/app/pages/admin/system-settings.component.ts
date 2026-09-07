@@ -2,15 +2,20 @@ import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ToastComponent } from '../../common/components/toast.component';
+import { IconComponent } from '../../common/components/icon.component';
 
 @Component({
   selector: 'app-system-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToastComponent],
+  imports: [CommonModule, FormsModule, ToastComponent, IconComponent],
   template: `
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
       <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <div class="inline-flex items-center space-x-2 px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-xs font-bold uppercase mb-2">
+          <app-icon name="settings" size="w-3.5 h-3.5"></app-icon>
+          <span>System Administration</span>
+        </div>
         <h1 class="text-2xl font-extrabold text-slate-900">System Configuration & Policy</h1>
         <p class="text-xs text-slate-500">Global portal thresholds and resolution hours</p>
       </div>
@@ -42,8 +47,14 @@ import { ToastComponent } from '../../common/components/toast.component';
 
         </div>
 
-        <button (click)="saveSettings()" class="px-6 py-3 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 shadow-lg">
-          Save System Configuration
+        <button 
+          (click)="saveSettings()" 
+          [disabled]="isSaving()"
+          class="px-6 py-3 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 shadow-lg flex items-center justify-center space-x-2 min-h-[44px] min-w-[220px] disabled:opacity-50 disabled:cursor-not-allowed transition"
+        >
+          <app-icon *ngIf="isSaving()" name="loader" size="w-4 h-4" class="animate-spin shrink-0"></app-icon>
+          <app-icon *ngIf="!isSaving()" name="check-circle" size="w-4 h-4 text-emerald-400 shrink-0"></app-icon>
+          <span>{{ isSaving() ? 'Saving...' : 'Save System Configuration' }}</span>
         </button>
 
       </div>
@@ -60,8 +71,17 @@ export class SystemSettingsComponent {
   notifySms = true;
 
   toastMessage = signal<string | null>(null);
+  isSaving = signal<boolean>(false);
 
-  saveSettings() {
-    this.toastMessage.set('System settings updated successfully.');
+  async saveSettings() {
+    if (this.isSaving()) return;
+    this.isSaving.set(true);
+    try {
+      // Simulate persistence delay
+      await new Promise(resolve => setTimeout(resolve, 600));
+      this.toastMessage.set('System settings updated successfully.');
+    } finally {
+      this.isSaving.set(false);
+    }
   }
 }

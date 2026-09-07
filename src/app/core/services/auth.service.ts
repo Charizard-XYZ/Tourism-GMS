@@ -5,6 +5,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  fetchSignInMethodsForEmail,
   updatePassword,
   updateEmail,
   signOut,
@@ -395,6 +396,41 @@ export class AuthService {
       return true;
     } catch (err: any) {
       return false;
+    }
+  }
+
+  /**
+   * Check whether an email corresponds to a registered account in Firebase Auth
+   */
+  async checkEmailRegistered(email: string): Promise<boolean> {
+    const cleanEmail = email.trim().toLowerCase();
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return false;
+    }
+
+    try {
+      const res = await firstValueFrom(
+        this.http.post<{ success: boolean; registered: boolean }>(`${this.apiUrl}/auth/check-email`, { email: cleanEmail })
+      );
+      return Boolean(res && res.registered);
+    } catch (err: any) {
+      if (err?.error && err.error.registered === false) {
+        return false;
+      }
+      console.warn('Backend /auth/check-email failed or unreachable, checking Firebase Auth directly:', err?.message || err);
+
+      try {
+        const methods = await fetchSignInMethodsForEmail(this.firebaseService.auth, cleanEmail);
+        return methods.length > 0;
+      } catch (fbErr: any) {
+        if (fbErr?.code === 'auth/user-not-found' || fbErr?.code === 'auth/invalid-email') {
+          return false;
+        }
+        console.warn('Fallback Firebase check failed:', fbErr?.message || fbErr);
+        // If neither backend nor client SDK could confirm existence, do not assume registered
+        return false;
+      }
     }
   }
 

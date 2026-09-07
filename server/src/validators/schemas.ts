@@ -52,6 +52,10 @@ export const updateDepartmentSchema = z.object({
   isActive: z.boolean().optional()
 });
 
+export const assignMultipleOfficersSchema = z.object({
+  officerIds: z.array(z.string().min(1)).min(1, 'At least one officer must be selected')
+});
+
 export const createGrievanceSchema = z.object({
   title: z.string().trim().min(3, 'Title must be at least 3 characters').max(200),
   description: z.string().trim().min(10, 'Description must be at least 10 characters'),
@@ -59,15 +63,16 @@ export const createGrievanceSchema = z.object({
   departmentId: z.string().trim().min(1, 'An active department selection is required'),
   departmentName: z.string().optional(),
   location: z.string().trim().min(2, 'Location is required'),
+  touristLocationName: z.string().optional(),
   touristId: z.string().optional(),
   touristName: z.string().optional(),
-  touristEmail: z.string().email().optional(),
-  touristPhone: z.string().optional(),
+  touristEmail: z.string().email('Invalid email address format').optional().or(z.literal('')).or(z.null()),
+  touristPhone: z.string().optional().or(z.null()),
   attachments: z.array(z.object({
     name: z.string(),
     url: z.string(),
     type: z.string().optional(),
-    size: z.string().optional()
+    size: z.union([z.string(), z.number()]).optional()
   })).optional().default([])
 });
 

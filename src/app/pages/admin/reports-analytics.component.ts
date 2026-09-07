@@ -1,11 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReportsService } from '../../core/services/reports.service';
+import { IconComponent } from '../../common/components/icon.component';
 
 @Component({
   selector: 'app-reports-analytics',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
@@ -13,6 +14,7 @@ import { ReportsService } from '../../core/services/reports.service';
       <div class="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
           <div class="inline-flex items-center space-x-2 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold uppercase mb-1">
+            <app-icon name="bar-chart" size="w-3.5 h-3.5"></app-icon>
             <span>Directorate Admin Panel</span>
           </div>
           <h1 class="text-2xl font-extrabold text-slate-900">Departmental Grievance Report</h1>

@@ -5,32 +5,36 @@ import { DepartmentService } from '../../core/services/department.service';
 import { AuthService } from '../../core/services/auth.service';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { ToastComponent } from '../../common/components/toast.component';
+import { IconComponent } from '../../common/components/icon.component';
 import { RegisteredOfficer, formatPhoneNumber, isPhoneTextInvalid } from '../../core/models/user.model';
 import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
 
 @Component({
   selector: 'app-officer-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToastComponent],
+  imports: [CommonModule, FormsModule, ToastComponent, IconComponent],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
       <div class="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
           <div class="inline-flex items-center space-x-2 px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold uppercase mb-1">
+            <app-icon name="shield" size="w-3.5 h-3.5"></app-icon>
             <span>Directorate Admin Portal</span>
           </div>
-          <h1 class="text-2xl font-extrabold text-slate-900"> Officer Account Management</h1>
+          <h1 class="text-2xl font-extrabold text-slate-900">Officer Account Management</h1>
           <p class="text-xs text-slate-500">Register and edit Officers with secure credentials. Only registered officers can log in under Officer Login.</p>
         </div>
 
         <div class="flex items-center space-x-3">
           <button (click)="isRevokedModalOpen.set(true)" class="px-4 py-2.5 bg-rose-600 text-white rounded-xl text-xs font-extrabold hover:bg-rose-700 shadow-md flex items-center space-x-2 transition">
+            <app-icon name="user-x" size="w-4 h-4"></app-icon>
             <span>Revoked Officers</span>
             <span class="px-2 py-0.5 bg-white/20 text-white text-[11px] font-bold rounded-full">{{ getRevokedOfficersCount() }}</span>
           </button>
 
           <button (click)="openRegisterModal()" class="px-5 py-2.5 bg-[#0F172A] text-white rounded-xl text-xs font-extrabold hover:bg-slate-800 shadow-md flex items-center space-x-2 transition">
+            <app-icon name="user-plus" size="w-4 h-4"></app-icon>
             <span>Register New Officer</span>
           </button>
         </div>
@@ -40,9 +44,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
       <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs grid sm:grid-cols-2 gap-4">
         <div class="relative">
           <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <app-icon name="search" size="w-4 h-4"></app-icon>
           </div>
           <input 
             type="text" 
@@ -90,11 +92,14 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
               <td class="p-4 text-slate-600 font-mono">{{ off.email }}</td>
               <td class="p-4 text-slate-500">{{ off.phone || '—' }}</td>
               <td class="p-4 text-right space-x-2">
-                <button (click)="openEditModal(off)" class="px-3 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-lg text-xs font-bold transition">
-                  Edit
+                <button (click)="openEditModal(off)" [disabled]="isConfirmingAction() || activeActionOfficerId() === off.id" class="px-3 py-1.5 bg-slate-100 text-slate-800 hover:bg-slate-200 rounded-lg text-xs font-bold transition inline-flex items-center space-x-1 disabled:opacity-50">
+                  <app-icon name="edit" size="w-3.5 h-3.5 text-slate-600"></app-icon>
+                  <span>Edit</span>
                 </button>
-                <button (click)="confirmRevoke(off)" class="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-xs font-bold transition">
-                  Revoke Access
+                <button (click)="confirmRevoke(off)" [disabled]="isConfirmingAction() || activeActionOfficerId() === off.id" class="px-3 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-xs font-bold transition inline-flex items-center space-x-1 disabled:opacity-50 min-h-[30px]">
+                  <app-icon *ngIf="activeActionOfficerId() === off.id" name="loader" size="w-3.5 h-3.5" class="animate-spin"></app-icon>
+                  <app-icon *ngIf="activeActionOfficerId() !== off.id" name="user-x" size="w-3.5 h-3.5 text-rose-600"></app-icon>
+                  <span>{{ activeActionOfficerId() === off.id ? 'Revoking...' : 'Revoke Access' }}</span>
                 </button>
               </td>
             </tr>
@@ -109,14 +114,12 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
       </div>
 
       <!-- Register / Edit Officer Modal -->
-      <div *ngIf="isModalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in">
+      <div *ngIf="isModalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-modal-pop">
           <div class="flex justify-between items-center border-b pb-3">
             <h3 class="font-bold text-lg text-slate-900">{{ editingOfficerId() ? 'Edit Officer' : 'Register Officer' }}</h3>
-            <button (click)="isModalOpen.set(false)" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 transition">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button (click)="isModalOpen.set(false)" [disabled]="isSavingOfficer()" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 transition disabled:opacity-50">
+              <app-icon name="x" size="w-5 h-5"></app-icon>
             </button>
           </div>
 
@@ -235,13 +238,14 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
             </div>
 
             <div class="flex space-x-3 pt-4 border-t">
-              <button type="button" (click)="isModalOpen.set(false)" class="flex-1 bg-slate-100 py-3 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
+              <button type="button" [disabled]="isSavingOfficer()" (click)="isModalOpen.set(false)" class="flex-1 bg-slate-100 py-3 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50">Cancel</button>
               <button 
                 type="submit" 
-                [disabled]="isSubmittingOfficer()"
-                class="flex-1 bg-[#0F172A] text-white py-3 rounded-xl text-xs font-extrabold hover:bg-slate-800 disabled:opacity-50 transition"
+                [disabled]="isSavingOfficer()"
+                class="flex-1 bg-[#0F172A] text-white py-3 rounded-xl text-xs font-extrabold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center space-x-1.5 min-h-[44px] min-w-[150px]"
               >
-                {{ isSubmittingOfficer() ? (editingOfficerId() ? 'Saving Changes...' : 'Registering Officer...') : (editingOfficerId() ? 'Save Changes' : 'Register Officer') }}
+                <app-icon *ngIf="isSavingOfficer()" name="loader" size="w-4 h-4" class="animate-spin shrink-0"></app-icon>
+                <span>{{ isSavingOfficer() ? (editingOfficerId() ? 'Saving...' : 'Registering...') : (editingOfficerId() ? 'Save Changes' : 'Register Officer') }}</span>
               </button>
             </div>
           </form>
@@ -249,17 +253,15 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
       </div>
 
       <!-- Revoked Officers Roster Modal (Layer: z-50) -->
-      <div *ngIf="isRevokedModalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div class="bg-white rounded-3xl max-w-3xl w-full p-6 space-y-4 shadow-2xl animate-fade-in relative max-h-[85vh] overflow-y-auto">
+      <div *ngIf="isRevokedModalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-3xl w-full p-6 space-y-4 shadow-2xl animate-modal-pop relative max-h-[85vh] overflow-y-auto">
           <div class="flex justify-between items-center border-b pb-3">
             <div>
               <span class="px-2.5 py-0.5 bg-rose-100 text-rose-800 font-extrabold uppercase text-[10px] rounded-full">Access Revoked Roster</span>
               <h3 class="font-extrabold text-lg text-slate-900 mt-1">Revoked Officers Roster</h3>
             </div>
             <button (click)="isRevokedModalOpen.set(false)" aria-label="Close revoked roster" class="text-slate-400 hover:text-slate-600 transition">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <app-icon name="x" size="w-5 h-5"></app-icon>
             </button>
           </div>
 
@@ -287,11 +289,15 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                     <span class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-extrabold uppercase rounded-md">Access Revoked</span>
                   </td>
                   <td class="p-3 text-right space-x-2">
-                    <button (click)="confirmUnrevoke(off)" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-xs font-bold transition">
-                      Restore Access
+                    <button (click)="confirmUnrevoke(off)" [disabled]="isConfirmingAction() || activeActionOfficerId() === off.id" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-xs font-bold transition inline-flex items-center space-x-1 disabled:opacity-50 min-h-[28px] min-w-[110px] justify-center">
+                      <app-icon *ngIf="activeActionOfficerId() === off.id" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0"></app-icon>
+                      <app-icon *ngIf="activeActionOfficerId() !== off.id" name="user-check" size="w-3.5 h-3.5"></app-icon>
+                      <span>{{ activeActionOfficerId() === off.id ? 'Restoring...' : 'Restore Access' }}</span>
                     </button>
-                    <button (click)="confirmDelete(off)" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded text-xs font-bold transition">
-                      Delete Permanently
+                    <button (click)="confirmDelete(off)" [disabled]="isConfirmingAction() || activeActionOfficerId() === off.id" class="px-2.5 py-1 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded text-xs font-bold transition inline-flex items-center space-x-1 disabled:opacity-50 min-h-[28px] min-w-[125px] justify-center">
+                      <app-icon *ngIf="activeActionOfficerId() === off.id" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0"></app-icon>
+                      <app-icon *ngIf="activeActionOfficerId() !== off.id" name="trash" size="w-3.5 h-3.5"></app-icon>
+                      <span>{{ activeActionOfficerId() === off.id ? 'Deleting...' : 'Delete Permanently' }}</span>
                     </button>
                   </td>
                 </tr>
@@ -312,14 +318,12 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
       </div>
 
       <!-- Admin Password Verification Modal (Layer: z-[70] so it stacks over Roster) -->
-      <div *ngIf="isAdminPasswordModalOpen()" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 animate-fade-in">
-        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+      <div *ngIf="isAdminPasswordModalOpen()" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl animate-modal-pop">
           <div class="flex justify-between items-center border-b pb-3">
             <h3 class="font-bold text-base text-slate-900">Admin Authorization Required</h3>
-            <button (click)="isAdminPasswordModalOpen.set(false)" aria-label="Close admin verification" class="text-slate-400 hover:text-slate-600 transition">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button (click)="isAdminPasswordModalOpen.set(false)" [disabled]="isVerifyingAdmin()" aria-label="Close admin verification" class="text-slate-400 hover:text-slate-600 transition disabled:opacity-50">
+              <app-icon name="x" size="w-5 h-5"></app-icon>
             </button>
           </div>
           <p class="text-xs text-slate-600">Please enter your Administrator password to authorize changing this officer's password.</p>
@@ -334,36 +338,41 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
             <p *ngIf="adminVerifyError()" class="text-[11px] text-rose-600 font-bold mt-1">{{ adminVerifyError() }}</p>
           </div>
           <div class="flex space-x-2 pt-2 border-t">
-            <button (click)="isAdminPasswordModalOpen.set(false)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
-            <button (click)="verifyAdminAndUnlockPassword()" [disabled]="!adminVerifyPassword.trim() || isVerifyingAdmin" class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50">
-              {{ isVerifyingAdmin ? 'Verifying...' : 'Authorize' }}
+            <button (click)="isAdminPasswordModalOpen.set(false)" [disabled]="isVerifyingAdmin()" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50">Cancel</button>
+            <button 
+              (click)="verifyAdminAndUnlockPassword()" 
+              [disabled]="!adminVerifyPassword.trim() || isVerifyingAdmin()" 
+              class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center space-x-1.5 min-h-[40px] min-w-[110px]"
+            >
+              <app-icon *ngIf="isVerifyingAdmin()" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0"></app-icon>
+              <span>{{ isVerifyingAdmin() ? 'Authorizing...' : 'Authorize' }}</span>
             </button>
           </div>
         </div>
       </div>
 
       <!-- Action Confirmation Dialog (Layer: z-[70] so it stacks over Roster and blocks background) -->
-      <div *ngIf="confirmationModal()" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 animate-fade-in">
-        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+      <div *ngIf="confirmationModal()" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl animate-modal-pop">
           <div class="flex justify-between items-center border-b pb-3">
             <h3 class="font-bold text-base text-slate-900">{{ confirmationModal()?.title }}</h3>
-            <button (click)="confirmationModal.set(null)" aria-label="Close dialog" class="text-slate-400 hover:text-slate-600 transition">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button (click)="confirmationModal.set(null)" [disabled]="isConfirmingAction()" aria-label="Close dialog" class="text-slate-400 hover:text-slate-600 transition disabled:opacity-50">
+              <app-icon name="x" size="w-5 h-5"></app-icon>
             </button>
           </div>
           <p class="text-xs text-slate-600">{{ confirmationModal()?.message }}</p>
           <div class="flex space-x-2 pt-3 border-t">
-            <button (click)="confirmationModal.set(null)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">
+            <button (click)="confirmationModal.set(null)" [disabled]="isConfirmingAction()" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50">
               Cancel
             </button>
             <button 
               (click)="executeConfirmedAction()" 
+              [disabled]="isConfirmingAction()"
               [class]="confirmationModal()?.isDestructive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-[#0F172A] hover:bg-slate-800'"
-              class="flex-1 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm"
+              class="flex-1 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1.5 min-h-[40px] min-w-[140px]"
             >
-              {{ confirmationModal()?.confirmBtnText || 'Confirm' }}
+              <app-icon *ngIf="isConfirmingAction()" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0"></app-icon>
+              <span>{{ isConfirmingAction() ? (confirmationModal()?.loadingText || 'Processing...') : (confirmationModal()?.confirmBtnText || 'Confirm') }}</span>
             </button>
           </div>
         </div>
@@ -385,14 +394,17 @@ export class OfficerManagementComponent {
   showPassword = signal<boolean>(false);
   showConfirmPassword = signal<boolean>(false);
   hasSubmitted = signal<boolean>(false);
-  isSubmittingOfficer = signal<boolean>(false);
   toastMessage = signal<string | null>(null);
+
+  isSavingOfficer = signal<boolean>(false);
+  isConfirmingAction = signal<boolean>(false);
+  activeActionOfficerId = signal<string | null>(null);
 
   // Admin password gate for officer password changes
   isAdminPasswordModalOpen = signal<boolean>(false);
   adminVerifyPassword = '';
   adminVerifyError = signal<string | null>(null);
-  isVerifyingAdmin = false;
+  isVerifyingAdmin = signal<boolean>(false);
   isPasswordChangeUnlocked = signal<boolean>(false);
 
   // Action Confirmation Dialog
@@ -400,6 +412,7 @@ export class OfficerManagementComponent {
     title: string;
     message: string;
     confirmBtnText: string;
+    loadingText?: string;
     isDestructive?: boolean;
     action: () => Promise<void>;
   } | null>(null);
@@ -501,7 +514,7 @@ export class OfficerManagementComponent {
       this.adminVerifyError.set('Please enter your administrator password.');
       return;
     }
-    this.isVerifyingAdmin = true;
+    this.isVerifyingAdmin.set(true);
     this.adminVerifyError.set(null);
     try {
       const verified = await this.authService.verifyAdminPassword(this.adminVerifyPassword.trim());
@@ -515,7 +528,7 @@ export class OfficerManagementComponent {
     } catch (e: any) {
       this.adminVerifyError.set(e.message || 'Verification failed.');
     } finally {
-      this.isVerifyingAdmin = false;
+      this.isVerifyingAdmin.set(false);
     }
   }
 
@@ -583,6 +596,7 @@ export class OfficerManagementComponent {
         title: 'Save Changes Confirmation',
         message: `Are you sure you want to save these changes for officer "${this.newOfficer.name}"?`,
         confirmBtnText: 'Yes, Save Changes',
+        loadingText: 'Saving...',
         isDestructive: false,
         action: async () => { await this.executeSaveOfficer(); }
       });
@@ -592,14 +606,13 @@ export class OfficerManagementComponent {
   }
 
   async executeSaveOfficer() {
+    if (this.isSavingOfficer()) return;
+    this.isSavingOfficer.set(true);
     const isUnassigned = !this.newOfficer.departmentId || this.newOfficer.departmentId === 'unassigned' || this.newOfficer.departmentId === '';
     const dept = isUnassigned ? null : this.departmentService.departments().find(d => d.id === this.newOfficer.departmentId);
     const deptId = dept ? dept.id : '';
     const deptName = dept ? dept.name : 'Unassigned';
     const formattedPhone = formatPhoneNumber(this.newOfficer.phone);
-
-    if (this.isSubmittingOfficer()) return;
-    this.isSubmittingOfficer.set(true);
 
     try {
       if (this.editingOfficerId()) {
@@ -634,22 +647,16 @@ export class OfficerManagementComponent {
 
         await this.departmentService.loadDepartmentsFromBackend();
         await this.grievanceService.loadGrievancesFromBackend();
-        this.toastMessage.set('Officer registered successfully.');
+        this.toastMessage.set(`Officer "${this.newOfficer.name}" registered successfully! Access granted.`);
       }
 
       this.isModalOpen.set(false);
       this.editingOfficerId.set(null);
       this.newOfficer = { name: '', email: '', password: '', confirmPassword: '', departmentId: '', phone: '', designation: '' };
     } catch (err: any) {
-      console.error('Officer save error:', err);
-      const backendMsg = err.error?.message || (err.error?.errors ? Object.values(err.error.errors).join(', ') : null) || err.message;
-      if (this.editingOfficerId()) {
-        this.toastMessage.set(backendMsg || 'Action failed.');
-      } else {
-        this.toastMessage.set(backendMsg || 'Unable to register Officer. Please try again.');
-      }
+      this.toastMessage.set(err.message || 'Action failed.');
     } finally {
-      this.isSubmittingOfficer.set(false);
+      this.isSavingOfficer.set(false);
     }
   }
 
@@ -658,12 +665,18 @@ export class OfficerManagementComponent {
       title: 'Revoke Officer Access',
       message: `Are you sure you want to revoke access for officer "${off.name}"? Website access will be disabled, and unsolved cases will be redistributed to departmental peers.`,
       confirmBtnText: 'Yes, Revoke Access',
+      loadingText: 'Revoking...',
       isDestructive: true,
       action: async () => {
-        await this.authService.revokeOfficerAccess(off.id);
-        await this.departmentService.loadDepartmentsFromBackend();
-        await this.grievanceService.loadGrievancesFromBackend();
-        this.toastMessage.set(`Officer access revoked for "${off.name}". Credentials disabled.`);
+        this.activeActionOfficerId.set(off.id);
+        try {
+          await this.authService.revokeOfficerAccess(off.id);
+          await this.departmentService.loadDepartmentsFromBackend();
+          await this.grievanceService.loadGrievancesFromBackend();
+          this.toastMessage.set(`Officer access revoked for "${off.name}". Credentials disabled.`);
+        } finally {
+          this.activeActionOfficerId.set(null);
+        }
       }
     });
   }
@@ -673,12 +686,18 @@ export class OfficerManagementComponent {
       title: 'Restore Officer Access',
       message: `Are you sure you want to restore access for officer "${off.name}"? Credentials will be re-enabled.`,
       confirmBtnText: 'Yes, Restore Access',
+      loadingText: 'Restoring...',
       isDestructive: false,
       action: async () => {
-        await this.authService.restoreOfficerAccess(off.id);
-        await this.departmentService.loadDepartmentsFromBackend();
-        await this.grievanceService.loadGrievancesFromBackend();
-        this.toastMessage.set(`Officer "${off.name}" unrevoked successfully! Access restored.`);
+        this.activeActionOfficerId.set(off.id);
+        try {
+          await this.authService.restoreOfficerAccess(off.id);
+          await this.departmentService.loadDepartmentsFromBackend();
+          await this.grievanceService.loadGrievancesFromBackend();
+          this.toastMessage.set(`Officer "${off.name}" unrevoked successfully! Access restored.`);
+        } finally {
+          this.activeActionOfficerId.set(null);
+        }
       }
     });
   }
@@ -688,21 +707,33 @@ export class OfficerManagementComponent {
       title: 'Delete Officer Permanently',
       message: `Are you sure you want to permanently delete officer "${off.name}"? This action cannot be undone.`,
       confirmBtnText: 'Yes, Delete Permanently',
+      loadingText: 'Deleting...',
       isDestructive: true,
       action: async () => {
-        await this.authService.removeOfficerByAdmin(off.id);
-        await this.departmentService.loadDepartmentsFromBackend();
-        await this.grievanceService.loadGrievancesFromBackend();
-        this.toastMessage.set(`Officer account permanently deleted for "${off.name}".`);
+        this.activeActionOfficerId.set(off.id);
+        try {
+          await this.authService.removeOfficerByAdmin(off.id);
+          await this.departmentService.loadDepartmentsFromBackend();
+          await this.grievanceService.loadGrievancesFromBackend();
+          this.toastMessage.set(`Officer account permanently deleted for "${off.name}".`);
+        } finally {
+          this.activeActionOfficerId.set(null);
+        }
       }
     });
   }
 
   async executeConfirmedAction() {
     const modal = this.confirmationModal();
-    this.confirmationModal.set(null);
-    if (modal && modal.action) {
+    if (!modal || !modal.action || this.isConfirmingAction()) return;
+    this.isConfirmingAction.set(true);
+    try {
       await modal.action();
+      this.confirmationModal.set(null);
+    } catch (e: any) {
+      this.toastMessage.set(e?.message || 'Action failed');
+    } finally {
+      this.isConfirmingAction.set(false);
     }
   }
 }

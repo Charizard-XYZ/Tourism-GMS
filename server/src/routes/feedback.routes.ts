@@ -11,7 +11,7 @@ const router = Router();
  */
 router.get('/', authenticateFirebaseToken, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const snapshot = await db.collection('feedbacks').get();
+    const snapshot = await db.collection('feedback').get();
     const feedbacks = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
     res.status(200).json({ success: true, feedbacks });
   } catch (error: any) {
@@ -22,89 +22,36 @@ router.get('/', authenticateFirebaseToken, async (req: AuthenticatedRequest, res
 /**
  * POST /api/feedback
  * Submit feedback on resolved grievance
- * Tourist can only submit feedback on resolved grievances. Submitting feedback closes the grievance.
  */
 router.post('/', authenticateFirebaseToken, validateBody(submitFeedbackSchema), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { uid, displayName, role } = req.user!;
+    const { uid, displayName } = req.user!;
     const { grievanceId, rating, comments, autoClose } = req.body;
 
-    const gRef = db.collection('grievances').doc(grievanceId);
-    const gDoc = await gRef.get();
-
-    if (!gDoc.exists) {
-      res.status(404).json({ success: false, message: 'Grievance not found.' });
-      return;
-    }
-
-    const gData = gDoc.data()!;
-
-    // Check ownership: Tourist must own the grievance, or Admin
-    if (role !== 'admin' && gData['touristId'] !== uid) {
-      res.status(403).json({ success: false, message: 'Forbidden: You can only submit feedback for your own grievances.' });
-      return;
-    }
-
-    // Must be in 'resolved' status (or 'closed' if already closed)
-    if (gData['status'] !== 'resolved' && gData['status'] !== 'closed') {
-      res.status(400).json({
-        success: false,
-        message: 'Feedback can only be provided for resolved grievances.'
-      });
-      return;
-    }
-
-    // Prevent duplicate feedback submissions
-    if (gData['feedbackId']) {
-      res.status(400).json({
-        success: false,
-        message: 'Feedback has already been submitted for this grievance.'
-      });
-      return;
-    }
-
-    const code = gData['grievanceCode'] || gData['trackingCode'] || '';
-    const touristName = displayName || gData['touristName'] || 'Tourist';
-    const now = new Date().toISOString();
-
-    const docRef = db.collection('feedbacks').doc();
+    const docRef = db.collection('feedback').doc();
     const feedbackDoc = {
       id: docRef.id,
-      feedbackId: docRef.id,
       grievanceId,
-      grievanceCode: code,
       touristId: uid,
-      touristName,
+      touristName: displayName || 'Tourist',
       rating,
-      comment: comments || '',
-      feedback: comments || '',
       comments: comments || '',
-      createdAt: now
+      createdAt: new Date().toISOString()
     };
 
-    const batch = db.batch();
-    // Save feedback in feedbacks collection ONLY
-    batch.set(docRef, feedbackDoc);
+    await docRef.set(feedbackDoc);
 
-    // Atomically transition grievance to 'closed' and attach feedback ID
-    const grievanceUpdates: Record<string, any> = {
-      feedbackId: docRef.id,
-      rating,
-      feedbackComments: comments || '',
-      updatedAt: now
-    };
-
-    if (autoClose !== false || gData['status'] === 'resolved') {
-      grievanceUpdates['status'] = 'closed';
-      grievanceUpdates['closedAt'] = now;
+    // Optionally auto-close grievance ticket
+    if (autoClose) {
+      const gRef = db.collection('grievances').doc(grievanceId);
+      await gRef.update({
+        status: 'closed',
+        updatedAt: new Date().toISOString()
+      });
     }
-
-    batch.update(gRef, grievanceUpdates);
-    await batch.commit();
 
     res.status(201).json({ success: true, message: 'Feedback submitted successfully', feedback: feedbackDoc });
   } catch (error: any) {
-    console.error('Error submitting feedback:', error);
     res.status(500).json({ success: false, message: 'Error submitting feedback.' });
   }
 });

@@ -5,11 +5,12 @@ import { RouterLink, Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { UserRole } from '../../core/models/user.model';
 import { ToastComponent } from '../../common/components/toast.component';
+import { IconComponent } from '../../common/components/icon.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ToastComponent],
+  imports: [CommonModule, FormsModule, RouterLink, ToastComponent, IconComponent],
   templateUrl: './login.component.html'
 })
 export class LoginComponent {
@@ -28,6 +29,7 @@ export class LoginComponent {
   isForgotPasswordOpen = signal<boolean>(false);
   resetEmail = '';
   hasResetSubmitted = signal<boolean>(false);
+  isResetLoading = signal<boolean>(false);
   resetError = signal<string | null>(null);
   resetSuccess = signal<string | null>(null);
 
@@ -40,6 +42,7 @@ export class LoginComponent {
   openForgotPasswordModal() {
     this.resetEmail = '';
     this.hasResetSubmitted.set(false);
+    this.isResetLoading.set(false);
     this.resetError.set(null);
     this.resetSuccess.set(null);
     this.isForgotPasswordOpen.set(true);
@@ -50,6 +53,7 @@ export class LoginComponent {
   }
 
   async onLogin() {
+    if (this.isLoading()) return;
     this.hasSubmitted.set(true);
     this.errorMessage.set(null);
 
@@ -65,13 +69,12 @@ export class LoginComponent {
 
     try {
       await this.authService.login(cleanEmail, this.selectedRole(), cleanPassword);
-      this.isLoading.set(false);
-
       const user = this.authService.currentUser();
       const userName = user?.displayName || cleanEmail;
       this.toastMessage.set(`Login successful! Welcome back, ${userName}. Redirecting to home...`);
 
       setTimeout(() => {
+        this.isLoading.set(false);
         this.router.navigate(['/home/hero-section'], { replaceUrl: true });
       }, 1200);
     } catch (err: any) {
@@ -81,6 +84,7 @@ export class LoginComponent {
   }
 
   async sendPasswordReset() {
+    if (this.isResetLoading()) return;
     this.hasResetSubmitted.set(true);
     this.resetError.set(null);
     this.resetSuccess.set(null);
@@ -88,16 +92,26 @@ export class LoginComponent {
     const cleanEmail = this.resetEmail.trim().toLowerCase();
 
     if (!cleanEmail) {
-      this.resetError.set('Please enter your email address.');
+      this.resetError.set('Please fill out all required fields.');
       return;
     }
 
     if (!this.isEmailValid(cleanEmail)) {
-      this.resetError.set('Please enter a valid email address (e.g. example@gmail.com).');
+      this.resetError.set('Invalid email format. Must be in format: username@gmail.com');
       return;
     }
 
+    this.isResetLoading.set(true);
+
     try {
+      // 1. Verify that email corresponds to a registered account in Firebase Auth
+      const isRegistered = await this.authService.checkEmailRegistered(cleanEmail);
+      if (!isRegistered) {
+        this.resetError.set('No registered account was found with this email address.');
+        return;
+      }
+
+      // 2. Dispatch password reset email via Firebase Auth
       await this.authService.sendPasswordResetEmail(cleanEmail);
       const roleName = this.selectedRole() === 'tourist' ? 'Tourist' : this.selectedRole() === 'officer' ? 'Officer' : 'Administrator';
       this.resetSuccess.set(`Password reset link dispatched via Firebase Auth to ${cleanEmail} for your ${roleName} account.`);
@@ -108,6 +122,8 @@ export class LoginComponent {
       }, 2500);
     } catch (err: any) {
       this.resetError.set(err.message || 'Failed to send password reset email.');
+    } finally {
+      this.isResetLoading.set(false);
     }
   }
 }

@@ -8,11 +8,12 @@ import { DepartmentService } from '../../core/services/department.service';
 import { Grievance, GrievanceStatus } from '../../core/models/complaint.model';
 import { StatusBadgeComponent } from '../../common/components/status-badge.component';
 import { ToastComponent } from '../../common/components/toast.component';
+import { IconComponent } from '../../common/components/icon.component';
 
 @Component({
   selector: 'app-grievance-processing',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent, ToastComponent],
+  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent, ToastComponent, IconComponent],
   template: `
     <div *ngIf="grievance" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
@@ -27,9 +28,7 @@ import { ToastComponent } from '../../common/components/toast.component';
         </div>
 
         <a routerLink="/officer/dashboard" class="px-4 py-2 bg-slate-800 text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-700 flex items-center space-x-1.5">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
+          <app-icon name="arrow-left" size="w-4 h-4"></app-icon>
           <span>Officer Desk</span>
         </a>
       </div>
@@ -82,8 +81,14 @@ import { ToastComponent } from '../../common/components/toast.component';
                   <input type="checkbox" [(ngModel)]="isInternalOnly" class="rounded text-amber-500" />
                   <span>Mark as Confidential Internal Note (Officer/Admin only)</span>
                 </label>
-                <button (click)="postNote()" [disabled]="!noteText.trim() || isPostingNote()" class="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50">
-                  {{ isPostingNote() ? 'Submitting...' : 'Save Note' }}
+                <button 
+                  (click)="postNote()" 
+                  [disabled]="!noteText.trim() || isPostingNote()" 
+                  class="px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center space-x-1.5 min-h-[36px] min-w-[110px]"
+                >
+                  <app-icon *ngIf="isPostingNote()" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0"></app-icon>
+                  <app-icon *ngIf="!isPostingNote()" name="send" size="w-3.5 h-3.5"></app-icon>
+                  <span>{{ isPostingNote() ? 'Saving...' : 'Save Note' }}</span>
                 </button>
               </div>
             </div>
@@ -94,9 +99,37 @@ import { ToastComponent } from '../../common/components/toast.component';
         <!-- Right 5 Cols: Officer Action Control Panel -->
         <div class="lg:col-span-5 space-y-6">
           
+          <!-- Cancelled Grievance Warning — disables all processing actions -->
+          <div *ngIf="isGrievanceCancelled()" class="bg-rose-50 border border-rose-200 rounded-3xl p-5 flex items-start space-x-4">
+            <div class="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+              <app-icon name="x-circle" size="w-5 h-5" class="text-rose-600"></app-icon>
+            </div>
+            <div>
+              <p class="text-xs font-extrabold text-rose-800 uppercase mb-1">Grievance Cancelled</p>
+              <p class="text-xs text-rose-700">
+                This grievance has been cancelled by the Tourist. Officers cannot process, update, or treat this grievance as an active assignment.
+              </p>
+            </div>
+          </div>
+
+          <!-- Not Assigned to Current Officer Warning -->
+          <div *ngIf="!isGrievanceCancelled() && !isAssignedToCurrentOfficer()" class="bg-amber-50 border border-amber-200 rounded-3xl p-5 flex items-start space-x-4">
+            <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+              <app-icon name="alert-triangle" size="w-5 h-5" class="text-amber-600"></app-icon>
+            </div>
+            <div>
+              <p class="text-xs font-extrabold text-amber-800 uppercase mb-1">Assigned to Another Officer</p>
+              <p class="text-xs text-amber-700">
+                This grievance is assigned to {{ grievance.assignedOfficerName || 'another officer' }}. Only the assigned officer can update this grievance's status.
+              </p>
+            </div>
+          </div>
+
           <!-- Department Inactive Warning — disables all update actions -->
-          <div *ngIf="isDepartmentInactive()" class="bg-rose-50 border border-rose-200 rounded-3xl p-5 flex items-start space-x-4">
-            <div class="flex-shrink-0 w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center text-rose-700 font-bold text-sm">!</div>
+          <div *ngIf="!isGrievanceCancelled() && isDepartmentInactive()" class="bg-rose-50 border border-rose-200 rounded-3xl p-5 flex items-start space-x-4">
+            <div class="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
+              <app-icon name="alert-circle" size="w-5 h-5" class="text-rose-600"></app-icon>
+            </div>
             <div>
               <p class="text-xs font-extrabold text-rose-800 uppercase mb-1">Department is Inactive</p>
               <p class="text-xs text-rose-700">
@@ -105,13 +138,14 @@ import { ToastComponent } from '../../common/components/toast.component';
             </div>
           </div>
 
-          <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6" [class.opacity-50]="isDepartmentInactive()" [class.pointer-events-none]="isDepartmentInactive()">
+          <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6" [class.opacity-50]="isDepartmentInactive() || isGrievanceCancelled() || !isAssignedToCurrentOfficer()" [class.pointer-events-none]="isDepartmentInactive() || isGrievanceCancelled() || !isAssignedToCurrentOfficer()">
             <h3 class="font-bold text-slate-900 text-base border-b pb-2">Status & Resolution Controls</h3>
 
             <!-- Status Dropdown -->
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Update Complaint Status</label>
               <select [(ngModel)]="selectedStatus" class="w-full px-4 py-2.5 border rounded-xl text-xs font-bold">
+                <option value="assigned">Assigned (Queue)</option>
                 <option value="in_progress">In Progress (Under Inquiry)</option>
                 <option value="resolved">Resolved (Complete)</option>
               </select>
@@ -122,8 +156,9 @@ import { ToastComponent } from '../../common/components/toast.component';
               <label class="block text-xs font-extrabold text-emerald-900 uppercase">Official Resolution Report & Uploaded Proof</label>
               <textarea [(ngModel)]="resolutionReport" rows="4" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Detail official findings, penalty issued, refund provided, or corrective action taken..." class="w-full px-3 py-2 bg-white border border-emerald-300 rounded-xl text-xs"></textarea>
 
-              <button type="button" (click)="simulateResolutionProof()" class="w-full py-2 bg-white border border-emerald-300 rounded-xl text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition">
-                + Attach Inspection Proof / PDF
+              <button type="button" (click)="simulateResolutionProof()" class="w-full py-2 bg-white border border-emerald-300 rounded-xl text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition inline-flex items-center justify-center space-x-1.5">
+                <app-icon name="plus" size="w-3.5 h-3.5"></app-icon>
+                <span>Attach Inspection Proof / PDF</span>
               </button>
 
               <div *ngIf="resolutionFiles.length > 0 || (grievance.resolutionAttachments && grievance.resolutionAttachments.length > 0)" class="text-xs text-emerald-800 space-y-1.5 pt-1">
@@ -137,8 +172,14 @@ import { ToastComponent } from '../../common/components/toast.component';
               </div>
             </div>
 
-            <button (click)="saveStatusUpdate()" class="w-full bg-amber-500 text-slate-950 py-3 rounded-xl font-extrabold text-xs hover:bg-amber-400 shadow-md">
-              Update Case Status & Notify Tourist
+            <button 
+              (click)="saveStatusUpdate()" 
+              [disabled]="isUpdatingStatus()"
+              class="w-full bg-amber-500 text-slate-950 py-3 rounded-xl font-extrabold text-xs hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed shadow-md inline-flex items-center justify-center space-x-1.5 min-h-[44px] min-w-[260px]"
+            >
+              <app-icon *ngIf="isUpdatingStatus()" name="loader" size="w-4 h-4" class="animate-spin shrink-0"></app-icon>
+              <app-icon *ngIf="!isUpdatingStatus()" name="check-circle" size="w-4 h-4"></app-icon>
+              <span>{{ isUpdatingStatus() ? 'Updating...' : 'Update Case Status & Notify Tourist' }}</span>
             </button>
           </div>
 
@@ -167,7 +208,6 @@ export class GrievanceProcessingComponent implements OnInit {
   isInternalOnly = true;
 
   toastMessage = signal<string | null>(null);
-  isPostingNote = signal<boolean>(false);
 
   async ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -184,10 +224,22 @@ export class GrievanceProcessingComponent implements OnInit {
         }
       }
       if (this.grievance) {
-        this.selectedStatus = (this.grievance.status === 'assigned' || this.grievance.status === 'submitted') ? 'in_progress' : this.grievance.status;
+        this.selectedStatus = this.grievance.status;
         this.resolutionReport = this.grievance.resolutionDetails || '';
       }
     }
+  }
+
+  isGrievanceCancelled(): boolean {
+    return this.grievance?.status === 'cancelled';
+  }
+
+  isAssignedToCurrentOfficer(): boolean {
+    if (!this.grievance) return false;
+    const user = this.authService.currentUser();
+    if (!user) return false;
+    const assignedId = this.grievance.assignedOfficerId;
+    return assignedId === user.uid || (!!user.email && assignedId === user.email);
   }
 
   isDepartmentInactive(): boolean {
@@ -200,16 +252,21 @@ export class GrievanceProcessingComponent implements OnInit {
     return dept.isActive === false;
   }
 
+  isUpdatingStatus = signal<boolean>(false);
+  isPostingNote = signal<boolean>(false);
+
   async postNote() {
     if (!this.grievance || !this.noteText.trim() || this.isPostingNote()) return;
+    if (this.isGrievanceCancelled()) {
+      this.toastMessage.set('Cancelled grievances cannot be updated or processed.');
+      return;
+    }
     this.isPostingNote.set(true);
     try {
       await this.grievanceService.addComment(this.grievance.id, this.noteText.trim(), this.isInternalOnly);
       this.noteText = '';
-      this.toastMessage.set('Note posted successfully.');
-    } catch (e: any) {
-      console.error('Post note error:', e);
-      this.toastMessage.set(e.error?.message || e.message || 'Failed to post note.');
+    } catch (err: any) {
+      this.toastMessage.set(err?.message || 'Failed to post note.');
     } finally {
       this.isPostingNote.set(false);
     }
@@ -224,17 +281,32 @@ export class GrievanceProcessingComponent implements OnInit {
     });
   }
 
-  saveStatusUpdate() {
-    if (!this.grievance) return;
+  async saveStatusUpdate() {
+    if (!this.grievance || this.isUpdatingStatus()) return;
+    if (this.isGrievanceCancelled()) {
+      this.toastMessage.set('Cancelled grievances cannot be updated or processed.');
+      return;
+    }
+    if (!this.isAssignedToCurrentOfficer()) {
+      this.toastMessage.set('Forbidden: Only the assigned officer can update this grievance.');
+      return;
+    }
     if (this.isDepartmentInactive()) {
       this.toastMessage.set('Department is inactive. Officers cannot update grievance progress.');
       return;
     }
-    this.grievanceService.updateStatus(this.grievance.id, this.selectedStatus, this.resolutionReport, this.resolutionFiles);
-    this.toastMessage.set(`Case status updated to ${this.selectedStatus.toUpperCase()}`);
-    
-    setTimeout(() => {
-      this.router.navigate(['/officer/dashboard']);
-    }, 1200);
+    this.isUpdatingStatus.set(true);
+    try {
+      await this.grievanceService.updateStatus(this.grievance.id, this.selectedStatus, this.resolutionReport, this.resolutionFiles);
+      this.toastMessage.set(`Case status updated to ${this.selectedStatus.toUpperCase()}`);
+      
+      setTimeout(() => {
+        this.isUpdatingStatus.set(false);
+        this.router.navigate(['/officer/dashboard']);
+      }, 1200);
+    } catch (err: any) {
+      this.isUpdatingStatus.set(false);
+      this.toastMessage.set(err?.message || 'Failed to update case status.');
+    }
   }
 }

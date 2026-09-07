@@ -42,12 +42,14 @@
               (click)="trackComplaint()"
               class="bg-[#A0C8C3] text-slate-950 px-6 py-3 rounded-xl font-extrabold text-sm hover:bg-teal-300 transition flex items-center justify-center space-x-2 shrink-0 shadow-lg"
             >
+              <app-icon name="search" size="w-4 h-4"></app-icon>
               <span>Track Status</span>
             </button>
           </div>
 
-          <div *ngIf="searchError()" class="mt-2 text-xs text-rose-400 font-medium text-left">
-            {{ searchError() }}
+          <div *ngIf="searchError()" class="mt-2 text-xs text-rose-400 font-medium text-left flex items-center space-x-1.5">
+            <app-icon name="alert-circle" size="w-3.5 h-3.5 text-rose-400 shrink-0"></app-icon>
+            <span>{{ searchError() }}</span>
           </div>
         </div>
 
@@ -58,13 +60,15 @@
               routerLink="/tourist/submit"
               class="bg-gradient-to-r from-[#A0C8C3] to-teal-400 text-slate-950 px-8 py-3.5 rounded-xl font-extrabold text-base hover:shadow-teal-500/20 hover:shadow-xl transition transform hover:-translate-y-0.5 flex items-center space-x-2"
             >
+              <app-icon name="plus" size="w-5 h-5"></app-icon>
               <span>File New Grievance</span>
             </a>
 
             <a 
               routerLink="/tourist/dashboard"
-              class="bg-slate-800 text-slate-200 border border-slate-700 px-6 py-3.5 rounded-xl font-bold text-base hover:bg-slate-700 hover:text-white transition"
+              class="bg-slate-800 text-slate-200 border border-slate-700 px-6 py-3.5 rounded-xl font-bold text-base hover:bg-slate-700 hover:text-white transition flex items-center space-x-2"
             >
+              <app-icon name="dashboard" size="w-5 h-5"></app-icon>
               <span>Dashboard</span>
             </a>
           </ng-container>
@@ -74,6 +78,7 @@
               routerLink="/officer/dashboard"
               class="bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 px-8 py-3.5 rounded-xl font-extrabold text-base hover:shadow-amber-500/20 hover:shadow-xl transition transform hover:-translate-y-0.5 flex items-center space-x-2"
             >
+              <app-icon name="clipboard-list" size="w-5 h-5"></app-icon>
               <span>Open Officer Queue</span>
             </a>
           </ng-container>
@@ -83,6 +88,7 @@
               routerLink="/admin/dashboard"
               class="bg-gradient-to-r from-[#A0C8C3] to-teal-400 text-slate-950 px-8 py-3.5 rounded-xl font-extrabold text-base hover:shadow-teal-500/20 hover:shadow-xl transition transform hover:-translate-y-0.5 flex items-center space-x-2"
             >
+              <app-icon name="shield" size="w-5 h-5"></app-icon>
               <span>Open Admin Dashboard</span>
             </a>
           </ng-container>
@@ -134,16 +140,18 @@
           <div class="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-800 justify-center text-center">
             <a 
               routerLink="/auth/login"
-              class="bg-gradient-to-r from-[#A0C8C3] to-teal-400 text-slate-950 px-8 py-3.5 rounded-xl font-extrabold text-sm hover:shadow-teal-500/20 hover:shadow-xl transition transform hover:-translate-y-0.5"
+              class="bg-gradient-to-r from-[#A0C8C3] to-teal-400 text-slate-950 px-8 py-3.5 rounded-xl font-extrabold text-sm hover:shadow-teal-500/20 hover:shadow-xl transition transform hover:-translate-y-0.5 flex items-center justify-center space-x-2"
             >
-              Sign In to File Grievance
+              <app-icon name="log-in" size="w-4 h-4"></app-icon>
+              <span>Sign In to File Grievance</span>
             </a>
 
             <a 
               routerLink="/auth/register"
-              class="bg-slate-800 text-slate-200 border border-slate-700 px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-slate-700 hover:text-white transition"
+              class="bg-slate-800 text-slate-200 border border-slate-700 px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-slate-700 hover:text-white transition flex items-center justify-center space-x-2"
             >
-              Register Tourist Account
+              <app-icon name="user-plus" size="w-4 h-4"></app-icon>
+              <span>Register Tourist Account</span>
             </a>
           </div>
 

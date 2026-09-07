@@ -1,9 +1,12 @@
-import { Injectable, signal, inject } from '@angular/core';
+import { Injectable, signal, inject, Injector } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { collection, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { Department, DepartmentOfficer } from '../models/department.model';
 import { AuditLogService } from './audit-log.service';
 import { AuthService } from './auth.service';
+import { FirebaseService } from './firebase.service';
+import { GrievanceService } from './grievance.service';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -13,12 +16,40 @@ export class DepartmentService {
   private http = inject(HttpClient);
   private auditLogService = inject(AuditLogService);
   private authService = inject(AuthService);
+  private firebaseService = inject(FirebaseService);
+  private injector = inject(Injector);
   private apiUrl = environment.apiBaseUrl;
 
   readonly departments = signal<Department[]>([]);
+  private deptUnsubscribe: Unsubscribe | null = null;
 
   constructor() {
     this.loadDepartmentsFromBackend();
+    this.startRealtimeDeptSync();
+  }
+
+  private startRealtimeDeptSync(): void {
+    try {
+      const colRef = collection(this.firebaseService.db, 'departments');
+      this.deptUnsubscribe = onSnapshot(colRef, () => {
+        this.loadDepartmentsFromBackend();
+      }, (err) => {
+        console.warn('Realtime department sync warning:', err?.message || err);
+      });
+    } catch (err) {
+      console.warn('Failed to attach realtime department listener:', err);
+    }
+  }
+
+  private syncGrievances(): void {
+    try {
+      const gs = this.injector.get(GrievanceService);
+      if (gs) {
+        gs.loadGrievancesFromBackend();
+      }
+    } catch {
+      // safe fallback
+    }
   }
 
   async loadDepartmentsFromBackend(): Promise<void> {
@@ -53,6 +84,7 @@ export class DepartmentService {
     }
 
     await this.loadDepartmentsFromBackend();
+    this.syncGrievances();
 
     const currentUser = this.authService.currentUser();
     if (currentUser) {
@@ -80,6 +112,7 @@ export class DepartmentService {
 
     await firstValueFrom(this.http.put(`${this.apiUrl}/departments/${id}`, updates));
     await this.loadDepartmentsFromBackend();
+    this.syncGrievances();
 
     const currentUser = this.authService.currentUser();
     if (currentUser) {
@@ -96,7 +129,7 @@ export class DepartmentService {
   }
 
   /**
-   * Add Officer to Department
+   * Add Officer to Department (Single)
    */
   async addOfficerToDepartment(departmentId: string, officer: Omit<DepartmentOfficer, 'id'>): Promise<void> {
     if (!this.authService.isAdmin()) {
@@ -117,40 +150,77 @@ export class DepartmentService {
   }
 
   /**
-   * Add Multiple Officers to Department in one operation (Admin Only)
+   * Assign Multiple Officers to Department at once (Admin Only)
    */
-  async addMultipleOfficersToDepartment(departmentId: string, officerIds: string[]): Promise<{ success: boolean; message: string; addedCount: number; skippedCount?: number }> {
+  async assignMultipleOfficersToDepartment(departmentId: string, officerIds: string[]): Promise<void> {
     if (!this.authService.isAdmin()) {
       throw new Error('Unauthorized: Only Administrators can modify department officers.');
     }
 
-    const res = await firstValueFrom(
-      this.http.post<{ success: boolean; message: string; addedCount: number; skippedCount?: number }>(
-        `${this.apiUrl}/departments/${departmentId}/officers`,
-        { officerIds }
-      )
-    );
+    if (!officerIds || officerIds.length === 0) {
+      throw new Error('Please select at least one officer.');
+    }
+
+    const res = await firstValueFrom(this.http.post<{ success: boolean; message: string; assignedOfficers: DepartmentOfficer[] }>(
+      `${this.apiUrl}/departments/${departmentId}/officers`,
+      { officerIds }
+    ));
+
+    if (!res || !res.success) {
+      throw new Error(res?.message || 'Failed to assign officers to department.');
+    }
 
     await this.loadDepartmentsFromBackend();
-    return res;
+    await this.authService.loadOfficersFromBackend();
+    this.syncGrievances();
+
+    const currentUser = this.authService.currentUser();
+    if (currentUser) {
+      this.auditLogService.log(
+        currentUser.uid,
+        currentUser.displayName,
+        currentUser.role,
+        'ASSIGN_OFFICERS',
+        'Departments',
+        departmentId,
+        `Assigned ${officerIds.length} officer(s) to department ID ${departmentId}`
+      );
+    }
   }
 
   /**
-   * Remove Officer from Department
+   * Remove Officer from Department (Admin Only)
+   * Updates department, unassigns officer profile, and redistributes active cases.
    */
   async removeOfficerFromDepartment(departmentId: string, officerId: string): Promise<void> {
     if (!this.authService.isAdmin()) {
       throw new Error('Unauthorized: Only Administrators can modify department officers.');
     }
 
-    const dept = this.departments().find(d => d.id === departmentId);
-    if (!dept) return;
+    const res = await firstValueFrom(this.http.delete<{ success: boolean; message: string }>(
+      `${this.apiUrl}/departments/${departmentId}/officers/${officerId}`
+    ));
 
-    const filtered = (dept.assignedOfficers || []).filter(o => o.id !== officerId && o.email !== officerId);
-    await this.updateDepartment(departmentId, {
-      assignedOfficers: filtered,
-      officerCount: filtered.length
-    });
+    if (!res || !res.success) {
+      throw new Error(res?.message || 'Failed to remove officer from department.');
+    }
+
+    await this.loadDepartmentsFromBackend();
+    await this.authService.loadOfficersFromBackend();
+    this.syncGrievances();
+
+    const currentUser = this.authService.currentUser();
+    if (currentUser) {
+      this.auditLogService.log(
+        currentUser.uid,
+        currentUser.displayName,
+        currentUser.role,
+        'REMOVE_OFFICER',
+        'Departments',
+        departmentId,
+        `Removed officer ${officerId} from department ID ${departmentId}`
+      );
+    }
   }
 
   async toggleDepartmentStatus(id: string): Promise<void> {
@@ -170,6 +240,7 @@ export class DepartmentService {
 
     await firstValueFrom(this.http.delete(`${this.apiUrl}/departments/${id}`));
     await this.loadDepartmentsFromBackend();
+    this.syncGrievances();
 
     const currentUser = this.authService.currentUser();
     if (currentUser) {

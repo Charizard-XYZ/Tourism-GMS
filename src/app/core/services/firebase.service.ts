@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { initializeApp, getApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -9,6 +10,7 @@ import { environment } from '../../../environments/environment';
 export class FirebaseService {
   private app: FirebaseApp;
   public auth: Auth;
+  public db: Firestore;
   readonly isConnected = signal<boolean>(true);
 
   constructor() {
@@ -18,5 +20,6 @@ export class FirebaseService {
       this.app = getApp();
     }
     this.auth = getAuth(this.app);
+    this.db = getFirestore(this.app);
   }
 }

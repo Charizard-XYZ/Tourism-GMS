@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import { db, adminAuth } from '../config/firebase-admin';
 import { authenticateFirebaseToken, AuthenticatedRequest } from '../middleware/auth.middleware';
 import { validateBody } from '../middleware/validate.middleware';
@@ -92,6 +92,73 @@ router.get('/me', authenticateFirebaseToken, async (req: AuthenticatedRequest, r
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Failed to fetch user profile.' });
+  }
+});
+
+/**
+ * POST /api/auth/check-email
+ * Verifies whether an email belongs to an existing registered user in Firebase Authentication.
+ * Security: Returns only { success: true, registered: boolean } without leaking account details, UID, or role.
+ * Does NOT create any Firestore user document.
+ */
+router.post('/check-email', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const rawEmail = req.body?.email;
+    if (!rawEmail || typeof rawEmail !== 'string') {
+      res.status(400).json({
+        success: false,
+        registered: false,
+        message: 'A valid email address string is required.'
+      });
+      return;
+    }
+
+    const cleanEmail = rawEmail.trim().toLowerCase();
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(cleanEmail)) {
+      res.status(400).json({
+        success: false,
+        registered: false,
+        message: 'Invalid email address format.'
+      });
+      return;
+    }
+
+    try {
+      const userRecord = await adminAuth.getUserByEmail(cleanEmail);
+      if (userRecord && !userRecord.disabled) {
+        res.status(200).json({
+          success: true,
+          registered: true
+        });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        registered: false
+      });
+    } catch (authErr: any) {
+      if (authErr.code === 'auth/user-not-found') {
+        res.status(200).json({
+          success: true,
+          registered: false
+        });
+        return;
+      }
+      console.warn('[CHECK-EMAIL] adminAuth lookup error:', authErr.code || authErr.message);
+      res.status(200).json({
+        success: true,
+        registered: false
+      });
+    }
+  } catch (error: any) {
+    console.error('[CHECK-EMAIL] Unexpected error:', error);
+    res.status(500).json({
+      success: false,
+      registered: false,
+      message: 'Failed to verify email address status.'
+    });
   }
 });
 

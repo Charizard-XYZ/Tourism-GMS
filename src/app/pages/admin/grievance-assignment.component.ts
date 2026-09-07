@@ -1,19 +1,20 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { DepartmentService } from '../../core/services/department.service';
 import { AuthService } from '../../core/services/auth.service';
 import { StatusBadgeComponent } from '../../common/components/status-badge.component';
 import { ToastComponent } from '../../common/components/toast.component';
+import { IconComponent } from '../../common/components/icon.component';
 import { Grievance } from '../../core/models/complaint.model';
 import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
 
 @Component({
   selector: 'app-grievance-assignment',
   standalone: true,
-  imports: [CommonModule, FormsModule, StatusBadgeComponent, ToastComponent],
+  imports: [CommonModule, FormsModule, StatusBadgeComponent, ToastComponent, IconComponent],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       
@@ -27,9 +28,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
       <!-- Search & Redressal Lifecycle Filter Bar -->
       <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs grid sm:grid-cols-3 gap-4">
         <div class="relative">
-          <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-          </svg>
+          <app-icon name="search" size="w-4 h-4" class="text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></app-icon>
           <input 
             type="text" 
             [(ngModel)]="searchKeyword" 
@@ -85,8 +84,8 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                 <span class="font-bold text-teal-800">{{ g.departmentName || g.category }}</span>
               </td>
               <td class="p-4 text-slate-600">
-                <span *ngIf="getDisplayedOfficerName(g)" class="font-bold text-slate-900">{{ getDisplayedOfficerName(g) }}</span>
-                <span *ngIf="!getDisplayedOfficerName(g)" class="text-rose-600 font-bold italic">Unassigned</span>
+                <span *ngIf="g.assignedOfficerName" class="font-bold text-slate-900">{{ g.assignedOfficerName }}</span>
+                <span *ngIf="!g.assignedOfficerName" class="text-rose-600 font-bold italic">Unassigned</span>
               </td>
               <td class="p-4">
                 <app-status-badge [status]="g.status"></app-status-badge>
@@ -102,10 +101,13 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                   </div>
                 </div>
               </td>
-              <td class="p-4 text-right space-x-2">
-                <button (click)="openCommentModal(g)" class="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-extrabold text-xs hover:bg-slate-800 transition shadow-sm">
-                  Comments ({{ grievanceService.getCommentsForGrievance(g.id).length }})
-                </button>
+              <td class="p-4 text-right">
+                <div class="flex items-center justify-end space-x-2">
+                  <button (click)="openCommentModal(g)" class="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-extrabold text-xs hover:bg-slate-800 transition shadow-sm inline-flex items-center space-x-1">
+                    <app-icon name="message-square" size="w-3.5 h-3.5"></app-icon>
+                    <span>Comments ({{ grievanceService.getCommentsForGrievance(g.id).length }})</span>
+                  </button>
+                </div>
               </td>
             </tr>
 
@@ -123,9 +125,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div class="flex items-center space-x-3">
             <div class="w-8 h-8 bg-rose-100 text-rose-700 rounded-xl flex items-center justify-center font-extrabold text-sm shrink-0">
-              <svg class="w-4 h-4 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-              </svg>
+              <app-icon name="alert-triangle" size="w-4 h-4" class="text-rose-600"></app-icon>
             </div>
             <div>
               <h2 class="text-base font-extrabold text-slate-900">Unassigned Grievance Tickets</h2>
@@ -182,25 +182,21 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
 
       <!-- Empty State if No Unassigned Tickets Exist -->
       <div *ngIf="getUnassignedActionRequired().length === 0" class="bg-white rounded-3xl p-6 border border-slate-200 text-center text-slate-400 text-xs shadow-xs">
-        <svg class="w-8 h-8 text-emerald-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
+        <app-icon name="check-circle" size="w-8 h-8" class="text-emerald-500 mx-auto mb-2"></app-icon>
         <p class="font-bold text-slate-700">All active grievances are assigned to departmental officers.</p>
         <p class="text-[11px] text-slate-400 mt-0.5">No unassigned tickets require immediate allocation.</p>
       </div>
 
       <!-- Admin Grievance Comments & Discussion Modal -->
-      <div *ngIf="commentModalGrievance" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto animate-fade-in">
+      <div *ngIf="commentModalGrievance" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto animate-modal-pop">
           <div class="flex justify-between items-center border-b pb-3">
             <div>
               <span class="text-[10px] font-mono font-bold text-slate-500">{{ commentModalGrievance.trackingCode }}</span>
               <h3 class="font-bold text-base text-slate-900">Admin Case Discussion & Comments</h3>
             </div>
             <button (click)="commentModalGrievance = null" class="text-slate-400 hover:text-slate-600 p-1">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
+              <app-icon name="x" size="w-5 h-5"></app-icon>
             </button>
           </div>
 
@@ -277,77 +273,85 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
               <button 
                 (click)="postAdminComment()" 
                 [disabled]="!adminCommentText.trim() || isPostingAdminComment()" 
-                class="px-4 py-2 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 transition shadow-xs"
+                class="px-4 py-2 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-xs inline-flex items-center space-x-1.5 min-h-[36px] min-w-[125px] justify-center"
               >
-                {{ isPostingAdminComment() ? 'Submitting...' : 'Post Comment' }}
+                <app-icon *ngIf="isPostingAdminComment()" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0"></app-icon>
+                <app-icon *ngIf="!isPostingAdminComment()" name="send" size="w-3.5 h-3.5"></app-icon>
+                <span>{{ isPostingAdminComment() ? 'Posting...' : 'Post Comment' }}</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Assign Officer Modal -->
-      <div *ngIf="selectedGrievance" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-fade-in">
-        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+      <!-- Admin Assign Officer Modal -->
+      <div *ngIf="assignModalGrievance" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-modal-pop">
           <div class="flex justify-between items-center border-b pb-3">
             <div>
-              <span class="text-[10px] font-mono font-bold text-slate-500">{{ selectedGrievance.trackingCode }}</span>
-              <h3 class="font-bold text-base text-slate-900">Assign / Reassign Officer</h3>
+              <span class="text-[10px] font-mono font-bold text-slate-500">{{ assignModalGrievance.trackingCode || assignModalGrievance.grievanceCode }}</span>
+              <h3 class="font-bold text-base text-slate-900">Assign Grievance to Officer</h3>
             </div>
-            <button (click)="selectedGrievance = null" class="text-slate-400 hover:text-slate-600 p-1">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
+            <button (click)="assignModalGrievance = null" class="text-slate-400 hover:text-slate-600 p-1">
+              <app-icon name="x" size="w-5 h-5"></app-icon>
             </button>
           </div>
 
-          <div class="space-y-3 text-xs">
-            <div>
-              <label class="block font-bold text-slate-700 uppercase mb-1">Target Department</label>
-              <select [(ngModel)]="targetDeptId" (change)="onDepartmentChange()" class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#A0C8C3]">
-                <option *ngFor="let d of departmentService.departments()" [value]="d.id">
-                  {{ d.name }} ({{ d.code }})
-                </option>
-              </select>
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 text-xs">
+            <div class="flex justify-between">
+              <span class="text-slate-500">Title:</span>
+              <span class="font-bold text-slate-900 text-right max-w-[280px] truncate">{{ assignModalGrievance.title }}</span>
             </div>
-
-            <div>
-              <label class="block font-bold text-slate-700 uppercase mb-1">Assigned Officer</label>
-              <select [(ngModel)]="targetOfficerId" class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#A0C8C3]">
-                <option *ngFor="let o of getOfficersForTargetDept()" [value]="o.id">
-                  {{ o.name }} ({{ o.email }})
-                </option>
-              </select>
-
-              <!-- Warning and Register Officer navigation when no officer is available -->
-              <div *ngIf="getOfficersForTargetDept().length === 0" class="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs space-y-2">
-                <p class="text-amber-800 font-medium">
-                  No active officers found for this department. Please assign or register an officer for this department first.
-                </p>
-                <button 
-                  type="button"
-                  (click)="navigateToRegisterOfficer()" 
-                  class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-[#0F172A] text-white rounded-lg text-xs font-bold hover:bg-slate-800 transition shadow-xs"
-                >
-                  <span>Register Officer</span>
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
-                  </svg>
-                </button>
-              </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Tourist:</span>
+              <span class="font-bold text-slate-800">{{ assignModalGrievance.touristName || 'Tourist' }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Department:</span>
+              <span class="font-bold text-teal-800">{{ assignModalGrievance.departmentName || assignModalGrievance.category }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Current Assignment:</span>
+              <span *ngIf="assignModalGrievance.assignedOfficerName" class="font-bold text-emerald-700">{{ assignModalGrievance.assignedOfficerName }}</span>
+              <span *ngIf="!assignModalGrievance.assignedOfficerName" class="font-bold text-rose-600 italic">Unassigned</span>
             </div>
           </div>
 
-          <div class="flex justify-end space-x-2 pt-4 border-t">
-            <button (click)="selectedGrievance = null" class="px-4 py-2 border border-slate-300 rounded-xl font-bold text-slate-700 hover:bg-slate-50">
+          <!-- If already assigned check -->
+          <div *ngIf="assignModalGrievance.assignedOfficerId && isGrievanceAssignedToValidDeptAndOfficer(assignModalGrievance)" class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 space-y-1">
+            <p class="font-bold">This grievance is already assigned to an Officer.</p>
+            <p class="text-[11px] text-amber-700">A single grievance can have only one active assigned officer at any given time.</p>
+          </div>
+
+          <!-- Select Officer Dropdown -->
+          <div *ngIf="!assignModalGrievance.assignedOfficerId || !isGrievanceAssignedToValidDeptAndOfficer(assignModalGrievance)" class="space-y-2">
+            <label class="block text-xs font-bold text-slate-700 uppercase">Select Operational Officer</label>
+            <div *ngIf="getEligibleOfficersForGrievance(assignModalGrievance).length > 0">
+              <select [(ngModel)]="selectedOfficerId" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-bold bg-white focus:ring-2 focus:ring-[#A0C8C3]">
+                <option value="">-- Choose Officer --</option>
+                <option *ngFor="let off of getEligibleOfficersForGrievance(assignModalGrievance)" [value]="off.id">
+                  {{ off.name }} ({{ off.designation || 'Officer' }})
+                </option>
+              </select>
+            </div>
+            <div *ngIf="getEligibleOfficersForGrievance(assignModalGrievance).length === 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800">
+              No eligible active officers available for this department. Please add officers to this department first.
+            </div>
+          </div>
+
+          <div class="flex justify-end space-x-2 pt-3 border-t">
+            <button (click)="assignModalGrievance = null" [disabled]="isAssigningGrievance()" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 disabled:opacity-50">
               Cancel
             </button>
             <button 
-              (click)="confirmAssignment()" 
-              [disabled]="!targetOfficerId"
-              class="px-5 py-2 bg-[#0F172A] text-white rounded-xl font-bold hover:bg-slate-800 disabled:opacity-50 transition shadow-sm"
+              *ngIf="!assignModalGrievance.assignedOfficerId || !isGrievanceAssignedToValidDeptAndOfficer(assignModalGrievance)"
+              (click)="confirmAssignGrievance()" 
+              [disabled]="!selectedOfficerId || isAssigningGrievance()" 
+              class="px-5 py-2 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-xs inline-flex items-center space-x-1.5 min-h-[36px] min-w-[130px] justify-center"
             >
-              Confirm Assignment
+              <app-icon *ngIf="isAssigningGrievance()" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0"></app-icon>
+              <app-icon *ngIf="!isAssigningGrievance()" name="user-check" size="w-3.5 h-3.5"></app-icon>
+              <span>{{ isAssigningGrievance() ? 'Assigning...' : 'Confirm Assignment' }}</span>
             </button>
           </div>
         </div>
@@ -360,20 +364,20 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
 })
 export class GrievanceAssignmentComponent implements OnInit {
   route = inject(ActivatedRoute);
-  router = inject(Router);
   grievanceService = inject(GrievanceService);
   departmentService = inject(DepartmentService);
   authService = inject(AuthService);
 
-  selectedGrievance: Grievance | null = null;
   commentModalGrievance: Grievance | null = null;
   adminCommentText = '';
   isAdminInternalOnly = false;
 
-  targetDeptId = '';
-  targetOfficerId = '';
-  isPostingAdminComment = signal<boolean>(false);
+  assignModalGrievance: Grievance | null = null;
+  selectedOfficerId = '';
+  isAssigningGrievance = signal<boolean>(false);
+
   toastMessage = signal<string | null>(null);
+  isPostingAdminComment = signal<boolean>(false);
 
   searchKeyword = '';
   departmentFilter = 'ALL';
@@ -381,11 +385,6 @@ export class GrievanceAssignmentComponent implements OnInit {
 
   onSearchChange(val: string) {
     this.searchKeyword = capitalizeFirstChar(val);
-  }
-
-  navigateToRegisterOfficer() {
-    this.selectedGrievance = null;
-    this.router.navigate(['/admin/officers']);
   }
 
   async ngOnInit() {
@@ -396,11 +395,98 @@ export class GrievanceAssignmentComponent implements OnInit {
     await this.grievanceService.loadGrievancesFromBackend();
   }
 
-  isGrievanceAssignedToValidDeptAndOfficer(g: Grievance): boolean {
+  openAssignModal(g: Grievance) {
+    if (g.assignedOfficerId && this.isGrievanceAssignedToValidDeptAndOfficer(g)) {
+      this.toastMessage.set('This grievance is already assigned to an Officer.');
+      return;
+    }
+    this.assignModalGrievance = g;
+    this.selectedOfficerId = '';
+    const eligible = this.getEligibleOfficersForGrievance(g);
+    if (eligible.length > 0) {
+      this.selectedOfficerId = eligible[0].id;
+    }
+  }
+
+  getEligibleOfficersForGrievance(g: Grievance): any[] {
     const depts = this.departmentService.departments();
     const registeredOfficers = this.authService.registeredOfficers();
-    const activeOfficers = registeredOfficers.filter(o => !o.isRevoked);
+    const activeOfficers = registeredOfficers.filter(o => !o.isRevoked && (o as any).isActive !== false);
 
+    const deptName = g.departmentName || g.category;
+    const targetDept = depts.find(d => 
+      d.id === g.departmentId || 
+      (deptName && d.name.toLowerCase().trim() === deptName.toLowerCase().trim()) ||
+      (deptName && d.code.toLowerCase().trim() === deptName.toLowerCase().trim())
+    );
+
+    if (targetDept) {
+      const deptOfficers = activeOfficers.filter(o =>
+        o.departmentId === targetDept.id ||
+        (o.departmentName && o.departmentName.toLowerCase().trim() === targetDept.name.toLowerCase().trim()) ||
+        (targetDept.assignedOfficers && targetDept.assignedOfficers.some((ao: any) => ao.id === o.id || (ao.email && o.email && ao.email.toLowerCase() === o.email.toLowerCase())))
+      );
+      if (deptOfficers.length > 0) return deptOfficers;
+    }
+
+    return activeOfficers;
+  }
+
+  async confirmAssignGrievance() {
+    if (!this.assignModalGrievance || !this.selectedOfficerId || this.isAssigningGrievance()) return;
+
+    if (this.assignModalGrievance.assignedOfficerId && this.isGrievanceAssignedToValidDeptAndOfficer(this.assignModalGrievance)) {
+      this.toastMessage.set('This grievance is already assigned to an Officer.');
+      this.assignModalGrievance = null;
+      return;
+    }
+
+    this.isAssigningGrievance.set(true);
+    try {
+      const allOfficers = this.authService.registeredOfficers();
+      const officer = allOfficers.find(o => o.id === this.selectedOfficerId);
+      const officerName = officer ? officer.name : 'Officer';
+
+      const depts = this.departmentService.departments();
+      const deptName = this.assignModalGrievance.departmentName || this.assignModalGrievance.category;
+      const targetDept = depts.find(d => 
+        d.id === this.assignModalGrievance?.departmentId || 
+        (deptName && d.name.toLowerCase().trim() === deptName.toLowerCase().trim())
+      );
+
+      const targetDeptId = targetDept?.id || this.assignModalGrievance.departmentId || officer?.departmentId || '';
+      const targetDeptName = targetDept?.name || this.assignModalGrievance.departmentName || officer?.departmentName || 'General Tourism';
+
+      await this.grievanceService.assignGrievance(
+        this.assignModalGrievance.id,
+        targetDeptId,
+        targetDeptName,
+        this.selectedOfficerId,
+        officerName
+      );
+
+      this.toastMessage.set(`Grievance ${this.assignModalGrievance.trackingCode || this.assignModalGrievance.grievanceCode} assigned to ${officerName}`);
+      this.assignModalGrievance = null;
+    } catch (e: any) {
+      this.toastMessage.set(e?.message || 'This grievance is already assigned to an Officer.');
+    } finally {
+      this.isAssigningGrievance.set(false);
+    }
+  }
+
+  isGrievanceAssignedToValidDeptAndOfficer(g: Grievance): boolean {
+    if (!g.assignedOfficerId) return false;
+
+    const registeredOfficers = this.authService.registeredOfficers();
+    const assignedOff = registeredOfficers.find(o => 
+      o.id === g.assignedOfficerId || 
+      o.email.toLowerCase().trim() === (g.assignedOfficerId || '').toLowerCase().trim() ||
+      o.name.toLowerCase().trim() === (g.assignedOfficerName || '').toLowerCase().trim()
+    );
+
+    if (!assignedOff || assignedOff.isRevoked || (assignedOff as any).isActive === false) return false;
+
+    const depts = this.departmentService.departments();
     const deptName = g.departmentName || g.category;
     const targetDept = depts.find(d => 
       d.id === g.departmentId || 
@@ -410,24 +496,11 @@ export class GrievanceAssignmentComponent implements OnInit {
 
     if (!targetDept || !targetDept.isActive) return false;
 
-    const deptActiveOfficers = activeOfficers.filter(o =>
-      o.departmentId === targetDept.id ||
-      (o.departmentName && o.departmentName.toLowerCase().trim() === targetDept.name.toLowerCase().trim())
-    );
+    const isInDept = assignedOff.departmentId === targetDept.id ||
+      (assignedOff.departmentName && assignedOff.departmentName.toLowerCase().trim() === targetDept.name.toLowerCase().trim()) ||
+      (targetDept.assignedOfficers && targetDept.assignedOfficers.some((ao: any) => ao.id === assignedOff.id || (ao.email && assignedOff.email && ao.email.toLowerCase() === assignedOff.email.toLowerCase())));
 
-    if (deptActiveOfficers.length === 0) return false;
-
-    if (!g.assignedOfficerId) return false;
-
-    const assignedOff = registeredOfficers.find(o => 
-      o.id === g.assignedOfficerId || 
-      o.email.toLowerCase().trim() === (g.assignedOfficerId || '').toLowerCase().trim() ||
-      o.name.toLowerCase().trim() === (g.assignedOfficerName || '').toLowerCase().trim()
-    );
-
-    if (!assignedOff || assignedOff.isRevoked) return false;
-
-    return true;
+    return !!isInDept;
   }
 
   filteredGrievances(): Grievance[] {
@@ -446,47 +519,20 @@ export class GrievanceAssignmentComponent implements OnInit {
         g.departmentName === this.departmentFilter ||
         g.category === this.departmentFilter;
 
-      const matchesLifecycle = this.lifecycleFilter === 'ALL' ? g.status !== 'cancelled' : g.status === this.lifecycleFilter;
+      const matchesLifecycle = this.lifecycleFilter === 'ALL' 
+        ? g.status !== 'cancelled' 
+        : g.status === this.lifecycleFilter;
 
       return matchesSearch && matchesDept && matchesLifecycle;
     });
   }
 
-  getDisplayedOfficerName(g: Grievance): string {
-    if (g.assignedOfficerName && g.assignedOfficerName.trim()) {
-      return g.assignedOfficerName;
-    }
-    if (g.assignedOfficerId && g.assignedOfficerId.trim()) {
-      const off = this.authService.registeredOfficers().find(o => o.id === g.assignedOfficerId);
-      if (off && off.name) return off.name;
-    }
-    return '';
-  }
-
-  /** Returns all unsolved grievances that are genuinely unassigned or have invalid assignments */
+  /** Returns all unsolved grievances with no assigned officer or unassigned due to dept/officer changes */
   getUnassignedActionRequired(): Grievance[] {
     const unsolvedStatuses = ['submitted', 'assigned', 'in_progress', 'reopened'];
-    const registeredOfficers = this.authService.registeredOfficers();
-
-    return this.grievanceService.grievances().filter(g => {
-      if (!unsolvedStatuses.includes(g.status)) return false;
-
-      const offId = (g.assignedOfficerId || '').trim();
-      if (!offId) return true;
-
-      const officer = registeredOfficers.find(o => o.id === offId);
-      if (!officer || officer.isRevoked || (officer as any).isActive === false) return true;
-
-      const gDeptId = g.departmentId || '';
-      const gDeptName = (g.departmentName || g.category || '').trim().toLowerCase();
-      const oDeptId = officer.departmentId || '';
-      const oDeptName = (officer.departmentName || '').trim().toLowerCase();
-
-      const matchesDept = (gDeptId && oDeptId && gDeptId === oDeptId) ||
-        (gDeptName && oDeptName && oDeptName !== 'unassigned' && gDeptName === oDeptName);
-
-      return !matchesDept;
-    });
+    return this.grievanceService.grievances().filter(g =>
+      unsolvedStatuses.includes(g.status) && (!g.assignedOfficerId || !this.isGrievanceAssignedToValidDeptAndOfficer(g))
+    );
   }
 
   /** Groups unassigned cases by their department category into single card structure */
@@ -506,22 +552,6 @@ export class GrievanceAssignmentComponent implements OnInit {
     return Object.values(groups);
   }
 
-  openAssignModal(g: Grievance) {
-    this.selectedGrievance = g;
-    const depts = this.departmentService.departments();
-    const matched = depts.find(d => d.id === g.departmentId || d.name === g.departmentName || d.name === g.category) || depts[0];
-
-    if (matched) {
-      this.targetDeptId = matched.id;
-    }
-
-    const officers = this.getOfficersForTargetDept();
-    if (officers.length > 0) {
-      this.targetOfficerId = officers[0].id;
-    } else {
-      this.targetOfficerId = '';
-    }
-  }
 
   openCommentModal(g: Grievance) {
     this.commentModalGrievance = g;
@@ -543,63 +573,12 @@ export class GrievanceAssignmentComponent implements OnInit {
       this.toastMessage.set(`Admin comment posted on ${this.commentModalGrievance.trackingCode}`);
       this.adminCommentText = '';
     } catch (e: any) {
-      console.error('Post admin comment error:', e);
-      this.toastMessage.set(e.error?.message || e.message || 'Failed to post comment.');
+      this.toastMessage.set(e?.message || 'Failed to post admin comment.');
     } finally {
       this.isPostingAdminComment.set(false);
     }
   }
 
-  onDepartmentChange() {
-    const officers = this.getOfficersForTargetDept();
-    if (officers.length > 0) {
-      this.targetOfficerId = officers[0].id;
-    } else {
-      this.targetOfficerId = '';
-    }
-  }
-
-  getOfficersForTargetDept() {
-    const dept = this.departmentService.departments().find(d => d.id === this.targetDeptId);
-    if (!dept) return this.authService.registeredOfficers();
-
-    const registered = this.authService.registeredOfficers().filter(o =>
-      o.departmentId === dept.id || o.departmentName === dept.name
-    );
-
-    if (registered.length > 0) {
-      return registered;
-    }
-
-    if (dept.assignedOfficers && dept.assignedOfficers.length > 0) {
-      return dept.assignedOfficers;
-    }
-
-    return [];
-  }
-
-  confirmAssignment() {
-    if (!this.selectedGrievance) return;
-    const dept = this.departmentService.departments().find(d => d.id === this.targetDeptId) || {
-      id: 'dept-default',
-      name: this.selectedGrievance.departmentName || this.selectedGrievance.category
-    };
-
-    const officers = this.getOfficersForTargetDept();
-    const officer = officers.find(o => o.id === this.targetOfficerId) || officers[0];
-    const officerName = officer ? officer.name : 'Officer';
-
-    this.grievanceService.assignGrievance(
-      this.selectedGrievance.id,
-      dept.id,
-      dept.name,
-      officer ? officer.id : '',
-      officerName
-    );
-
-    this.toastMessage.set(`Grievance ${this.selectedGrievance.trackingCode} assigned to ${officerName} (${dept.name})`);
-    this.selectedGrievance = null;
-  }
 
   getProgressLabel(status: string): string {
     switch (status) {

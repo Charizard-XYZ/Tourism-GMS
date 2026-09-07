@@ -7,11 +7,12 @@ import { AuthService } from '../../core/services/auth.service';
 import { ReportsService } from '../../core/services/reports.service';
 import { Grievance } from '../../core/models/complaint.model';
 import { ToastComponent } from '../../common/components/toast.component';
+import { IconComponent } from '../../common/components/icon.component';
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, ToastComponent],
+  imports: [CommonModule, RouterLink, ToastComponent, IconComponent],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
@@ -19,6 +20,7 @@ import { ToastComponent } from '../../common/components/toast.component';
       <div class="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div class="space-y-2">
           <div class="inline-flex items-center space-x-2 px-3 py-1 bg-rose-500/20 text-rose-300 rounded-full text-xs font-bold uppercase">
+            <app-icon name="shield" size="w-3.5 h-3.5"></app-icon>
             <span>Directorate Executive Dashboard</span>
           </div>
           <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
@@ -30,11 +32,13 @@ import { ToastComponent } from '../../common/components/toast.component';
         </div>
 
         <div class="flex flex-wrap gap-2 shrink-0">
-          <a routerLink="/admin/departments" class="bg-[#A0C8C3] text-slate-950 px-5 py-3 rounded-2xl font-extrabold text-xs hover:bg-teal-300 transition shadow-md">
-            Departments Directory
+          <a routerLink="/admin/departments" class="bg-[#A0C8C3] text-slate-950 px-5 py-3 rounded-2xl font-extrabold text-xs hover:bg-teal-300 transition shadow-md inline-flex items-center space-x-1.5">
+            <app-icon name="building" size="w-4 h-4"></app-icon>
+            <span>Departments Directory</span>
           </a>
-          <a routerLink="/admin/officers" class="bg-white text-slate-900 px-5 py-3 rounded-2xl font-extrabold text-xs hover:bg-slate-100 transition shadow-md">
-            Officers
+          <a routerLink="/admin/officers" class="bg-white text-slate-900 px-5 py-3 rounded-2xl font-extrabold text-xs hover:bg-slate-100 transition shadow-md inline-flex items-center space-x-1.5">
+            <app-icon name="users" size="w-4 h-4"></app-icon>
+            <span>Officers</span>
           </a>
         </div>
       </div>
@@ -81,45 +85,114 @@ import { ToastComponent } from '../../common/components/toast.component';
       <!-- Quick Action Desk Directives Grid -->
       <div class="grid lg:grid-cols-12 gap-8">
         
-        <!-- Unassigned Master Queue (12 Cols) -->
+        <!-- Unassigned Department Boxes Queue (12 Cols) -->
         <div class="lg:col-span-12 bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
           <div class="flex justify-between items-center border-b pb-3">
             <div>
               <h3 class="font-extrabold text-slate-900 text-lg">Action Required: Unassigned Grievance Tickets</h3>
-              <p class="text-xs text-slate-500">Departments with pending grievances awaiting Officer assignment.</p>
+              <p class="text-xs text-slate-500">Overview of incoming grievances grouped by responsible department category requiring officer allocation.</p>
             </div>
-            <a routerLink="/admin/grievances" class="text-xs font-bold text-teal-700 hover:underline flex items-center space-x-1">
-              <span>Go to Master Desk</span>
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
+            <a routerLink="/admin/departments" class="text-xs font-bold text-teal-700 hover:underline inline-flex items-center space-x-1">
+              <span>Manage Departments & Officers</span>
+              <app-icon name="arrow-right" size="w-3.5 h-3.5"></app-icon>
             </a>
           </div>
 
-          <div class="space-y-3">
-            <div *ngFor="let group of unassignedDepartmentGroups()" class="flex flex-col sm:flex-row sm:items-center justify-between p-5 bg-amber-50/50 border border-amber-200 rounded-2xl gap-4">
-              <div class="space-y-1">
-                <div class="flex items-center space-x-2">
-                  <span class="font-extrabold text-sm text-slate-900">{{ group.departmentName }}</span>
-                  <span class="px-2.5 py-0.5 bg-amber-200 text-amber-900 text-xs font-extrabold rounded-full">
-                    {{ group.count }} {{ group.count === 1 ? 'Unassigned Ticket' : 'Unassigned Tickets' }}
+          <!-- Department Boxes Grid -->
+          <div *ngIf="unassignedDepartmentBoxes().length > 0" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div *ngFor="let box of unassignedDepartmentBoxes()" class="bg-slate-50 rounded-2xl border border-slate-200 p-5 flex flex-col justify-between space-y-4 hover:shadow-md transition">
+              <div class="space-y-3">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <h4 class="font-bold text-base text-slate-900">{{ box.departmentName }}</h4>
+                    <span class="text-[10px] font-extrabold font-mono uppercase px-2 py-0.5 rounded" [class.bg-rose-100]="!box.departmentExists" [class.text-rose-800]="!box.departmentExists" [class.bg-amber-100]="box.departmentExists" [class.text-amber-800]="box.departmentExists">
+                      {{ box.departmentExists ? (box.officerCount === 0 ? 'No Officers Assigned' : 'Officers Pending') : 'Department Missing' }}
+                    </span>
+                  </div>
+                  <span class="px-2.5 py-1 bg-white border border-slate-300 text-slate-800 text-xs font-extrabold rounded-xl shadow-xs shrink-0">
+                    {{ box.grievances.length }} Unassigned
                   </span>
                 </div>
-                <p class="text-xs text-amber-800 font-medium">
-                  {{ group.actionMessage }}
-                </p>
+
+                <!-- Explanation Message -->
+                <div class="p-3 rounded-xl text-xs border" [class.bg-rose-50]="!box.departmentExists" [class.border-rose-200]="!box.departmentExists" [class.text-rose-800]="!box.departmentExists" [class.bg-amber-50]="box.departmentExists" [class.border-amber-200]="box.departmentExists" [class.text-amber-800]="box.departmentExists">
+                  <p class="font-bold leading-relaxed">{{ box.requirementMessage }}</p>
+                </div>
               </div>
 
-              <a routerLink="/admin/officers" class="px-4 py-2.5 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 shrink-0 text-center flex items-center space-x-1.5 self-start sm:self-auto shadow-sm">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                </svg>
-                <span>Register Officer</span>
-              </a>
+              <div class="pt-2 border-t border-slate-200/80 flex items-center justify-between">
+                <button (click)="openCheckGrievanceModal(box)" class="w-full py-2.5 bg-[#0F172A] text-white rounded-xl text-xs font-extrabold hover:bg-slate-800 transition flex items-center justify-center space-x-1.5 shadow-sm">
+                  <app-icon name="eye" size="w-4 h-4"></app-icon>
+                  <span>Check Grievance</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="unassignedDepartmentBoxes().length === 0" class="p-8 text-center text-slate-400 text-xs italic bg-slate-50 rounded-2xl">
+            All grievances are currently assigned to active Officers.
+          </div>
+        </div>
+
+        <!-- Check Grievance Modal -->
+        <div *ngIf="selectedDepartmentBoxModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div class="bg-white rounded-3xl max-w-3xl w-full p-6 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto animate-modal-pop">
+            <div class="flex justify-between items-center border-b pb-3">
+              <div>
+                <div class="flex items-center space-x-2">
+                  <h3 class="font-bold text-lg text-slate-900">{{ selectedDepartmentBoxModal.departmentName }}</h3>
+                  <span class="px-2 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-bold rounded-full">
+                    {{ selectedDepartmentBoxModal.grievances.length }} Unassigned
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500">{{ selectedDepartmentBoxModal.requirementMessage }}</p>
+              </div>
+              <button (click)="selectedDepartmentBoxModal = null" class="text-slate-400 hover:text-slate-600 p-1">
+                <app-icon name="x" size="w-5 h-5"></app-icon>
+              </button>
             </div>
 
-            <div *ngIf="unassignedDepartmentGroups().length === 0" class="p-8 text-center text-slate-400 text-xs italic bg-slate-50 rounded-2xl">
-              All grievances are currently assigned to active Officers.
+            <!-- Grievance Table -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-900 text-white uppercase text-[10px] font-bold">
+                  <tr>
+                    <th class="p-3">Grievance Code</th>
+                    <th class="p-3">Complaint Title</th>
+                    <th class="p-3">Tourist</th>
+                    <th class="p-3">Category / Dept</th>
+                    <th class="p-3">Filed Date</th>
+                    <th class="p-3">Status</th>
+                    <th class="p-3">Assignment State</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium">
+                  <tr *ngFor="let g of selectedDepartmentBoxModal.grievances" class="hover:bg-slate-50">
+                    <td class="p-3 font-mono font-bold text-slate-800">{{ g.grievanceCode || g.trackingCode }}</td>
+                    <td class="p-3 font-bold text-slate-900 max-w-xs truncate">{{ g.title }}</td>
+                    <td class="p-3 text-slate-600">
+                      <p class="font-bold text-slate-900">{{ g.touristName || 'Tourist' }}</p>
+                      <p class="text-[10px] text-slate-400 font-mono">{{ g.touristEmail || g.touristPhone || '' }}</p>
+                    </td>
+                    <td class="p-3 text-teal-800 font-bold">{{ g.departmentName || g.category }}</td>
+                    <td class="p-3 text-slate-500">{{ g.createdAt | date:'dd/MM/yyyy' }}</td>
+                    <td class="p-3">
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" [class.bg-amber-100]="g.status === 'submitted'" [class.text-amber-800]="g.status === 'submitted'" [class.bg-blue-100]="g.status === 'assigned'" [class.text-blue-800]="g.status === 'assigned'">
+                        {{ g.status }}
+                      </span>
+                    </td>
+                    <td class="p-3">
+                      <span class="px-2 py-0.5 bg-rose-100 text-rose-800 font-bold text-[10px] rounded uppercase">Unassigned</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="flex justify-end pt-3 border-t">
+              <button (click)="selectedDepartmentBoxModal = null" class="px-5 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200">
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -181,91 +254,86 @@ export class AdminDashboardComponent implements OnInit {
     };
   });
 
-  unassignedGrievances = computed(() => {
+  selectedDepartmentBoxModal: {
+    departmentName: string;
+    requirementMessage: string;
+    departmentExists: boolean;
+    officerCount: number;
+    grievances: Grievance[];
+  } | null = null;
+
+  openCheckGrievanceModal(box: any) {
+    this.selectedDepartmentBoxModal = box;
+  }
+
+  unassignedDepartmentBoxes = computed(() => {
     const allGrievances = this.grievanceService.grievances();
+    const allDepts = this.departmentService.departments();
     const registeredOfficers = this.authService.registeredOfficers();
+    const activeOfficers = registeredOfficers.filter(o => !o.isRevoked);
 
-    return allGrievances.filter(g => {
-      // Resolved, closed, or cancelled are never unassigned
+    // Group unassigned grievances by department category/name
+    const groups = new Map<string, {
+      departmentName: string;
+      departmentExists: boolean;
+      officerCount: number;
+      requirementMessage: string;
+      grievances: Grievance[];
+    }>();
+
+    for (const g of allGrievances) {
       if (g.status === 'resolved' || g.status === 'closed' || g.status === 'cancelled') {
-        return false;
+        continue;
       }
 
-      const offId = (g.assignedOfficerId || '').trim();
-      if (!offId) {
-        return true; // Genuinely unassigned
-      }
+      const deptName = (g.departmentName || g.category || (g as any).originalDepartmentName || 'General').trim();
+      const cleanDeptName = deptName.toLowerCase();
 
-      // Check the 4 conditions of valid assignment:
-      const officer = registeredOfficers.find(o => o.id === offId);
-      if (!officer) {
-        return true; // Officer does not exist
-      }
-      if (officer.isRevoked || (officer as any).isActive === false) {
-        return true; // Officer is not active/eligible
-      }
+      const targetDept = allDepts.find(d => 
+        (g.departmentId && d.id === g.departmentId) || 
+        d.name.toLowerCase().trim() === cleanDeptName ||
+        d.code.toLowerCase().trim() === cleanDeptName
+      );
 
-      const gDeptId = g.departmentId || '';
-      const gDeptName = (g.departmentName || g.category || '').trim().toLowerCase();
-      const oDeptId = officer.departmentId || '';
-      const oDeptName = (officer.departmentName || '').trim().toLowerCase();
+      // Find active officers for this department
+      const deptActiveOfficers = targetDept ? activeOfficers.filter(o =>
+        o.departmentId === targetDept.id ||
+        (o.departmentName && o.departmentName.toLowerCase().trim() === targetDept.name.toLowerCase().trim())
+      ) : [];
 
-      const matchesDept = (gDeptId && oDeptId && gDeptId === oDeptId) ||
-        (gDeptName && oDeptName && oDeptName !== 'unassigned' && gDeptName === oDeptName);
+      const assignedOff = g.assignedOfficerId ? registeredOfficers.find(o => 
+        o.id === g.assignedOfficerId || 
+        o.email.toLowerCase().trim() === (g.assignedOfficerId || '').toLowerCase().trim() ||
+        o.name.toLowerCase().trim() === (g.assignedOfficerName || '').toLowerCase().trim()
+      ) : null;
 
-      if (!matchesDept) {
-        return true; // Officer does not belong to grievance department
-      }
+      const isUnassigned = !g.assignedOfficerId || !assignedOff || assignedOff.isRevoked;
 
-      // All 4 conditions met: validly assigned!
-      return false;
-    });
-  });
-
-  unassignedDepartmentGroups = computed(() => {
-    const unassigned = this.unassignedGrievances();
-    const registeredOfficers = this.authService.registeredOfficers();
-    const departments = this.departmentService.departments();
-
-    const groupMap = new Map<string, { departmentName: string; departmentId: string; count: number; actionMessage: string }>();
-
-    for (const g of unassigned) {
-      const deptName = g.departmentName || g.category || 'General';
-      const deptId = g.departmentId || '';
-      const key = (deptId || deptName).toLowerCase();
-
-      if (!groupMap.has(key)) {
-        const targetDept = departments.find(d => 
-          (deptId && d.id === deptId) || 
-          (d.name && d.name.toLowerCase().trim() === deptName.toLowerCase().trim())
-        );
-        const effectiveDeptId = targetDept ? targetDept.id : deptId;
-        const effectiveDeptName = targetDept ? targetDept.name : deptName;
-
-        const deptOfficers = registeredOfficers.filter(o => 
-          (effectiveDeptId && o.departmentId === effectiveDeptId) ||
-          (o.departmentName && o.departmentName.toLowerCase().trim() === effectiveDeptName.toLowerCase().trim())
-        );
-
-        let actionMessage = 'Action Required: Register an Officer for this department.';
-        if (deptOfficers.length > 0) {
-          const hasEligible = deptOfficers.some(o => !o.isRevoked && (o as any).isActive !== false);
-          if (!hasEligible) {
-            actionMessage = 'Action Required: Activate or register an eligible Officer for this department.';
+      if (isUnassigned) {
+        if (!groups.has(cleanDeptName)) {
+          const deptExists = !!targetDept && targetDept.isActive !== false;
+          let requirementMsg = '';
+          if (!targetDept) {
+            requirementMsg = `${deptName} department doesn't exist.`;
+          } else if (deptActiveOfficers.length === 0) {
+            requirementMsg = `Add officers in ${targetDept.name} to assign these grievances.`;
+          } else {
+            requirementMsg = `Department has officers; automatic distribution pending.`;
           }
+
+          groups.set(cleanDeptName, {
+            departmentName: targetDept ? targetDept.name : deptName,
+            departmentExists: !!targetDept,
+            officerCount: deptActiveOfficers.length,
+            requirementMessage: requirementMsg,
+            grievances: []
+          });
         }
 
-        groupMap.set(key, {
-          departmentName: effectiveDeptName,
-          departmentId: effectiveDeptId,
-          count: 0,
-          actionMessage
-        });
+        groups.get(cleanDeptName)!.grievances.push(g);
       }
-
-      groupMap.get(key)!.count++;
     }
 
-    return Array.from(groupMap.values()).filter(group => group.count > 0);
+    return Array.from(groups.values());
   });
 }

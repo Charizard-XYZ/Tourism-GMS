@@ -4,12 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { StatusBadgeComponent } from '../../common/components/status-badge.component';
+import { IconComponent } from '../../common/components/icon.component';
 import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
 
 @Component({
   selector: 'app-assigned-grievances',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, RouterLink, StatusBadgeComponent, IconComponent],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <div class="flex justify-between items-center">
@@ -23,9 +24,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
       <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs grid sm:grid-cols-2 gap-4">
         <div class="relative">
           <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <app-icon name="search" size="w-4 h-4"></app-icon>
           </div>
           <input 
             type="text" 
@@ -44,6 +43,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
         <select [(ngModel)]="statusFilter" class="px-4 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3]">
           <option value="ALL">All Statuses</option>
           <option value="submitted">Submitted / Action Required</option>
+          <option value="assigned">Assigned</option>
           <option value="in_progress">Under Investigation / In Progress</option>
           <option value="resolved">Resolved</option>
           <option value="reopened">Reopened / Escalated</option>
@@ -72,9 +72,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
               <td class="p-4 text-right">
                 <a [routerLink]="['/officer/process', g.id]" class="px-3 py-1.5 bg-amber-400 text-slate-950 rounded-lg font-bold text-xs hover:bg-amber-300 inline-flex items-center space-x-1">
                   <span>Process Case</span>
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
+                  <app-icon name="arrow-right" size="w-3.5 h-3.5"></app-icon>
                 </a>
               </td>
             </tr>

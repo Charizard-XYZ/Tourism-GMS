@@ -6,13 +6,14 @@ import { AuthService } from '../../core/services/auth.service';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { Department } from '../../core/models/department.model';
 import { ToastComponent } from '../../common/components/toast.component';
-import { isPhoneTextInvalid } from '../../core/models/user.model';
+import { IconComponent } from '../../common/components/icon.component';
+import { isPhoneTextInvalid, formatPhoneNumber } from '../../core/models/user.model';
 import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
 
 @Component({
   selector: 'app-department-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToastComponent],
+  imports: [CommonModule, FormsModule, ToastComponent, IconComponent],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
@@ -20,15 +21,23 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
       <div class="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
         <div>
           <div class="inline-flex items-center space-x-2 px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-xs font-bold uppercase mb-1">
+            <app-icon name="building" size="w-3.5 h-3.5"></app-icon>
             <span>Directorate Admin Panel</span>
           </div>
           <h1 class="text-2xl font-extrabold text-slate-900">Department Directory & Officers</h1>
           <p class="text-xs text-slate-500">Configure Directorate Departments and assign Officers from the registered officers</p>
         </div>
 
-        <button (click)="openCreateModal()" class="px-5 py-2.5 bg-[#0F172A] text-white rounded-xl text-xs font-extrabold hover:bg-slate-800 shadow-lg flex items-center space-x-2">
-          <span>Create New Department</span>
-        </button>
+        <div class="flex items-center space-x-3">
+          <button (click)="openRegisterOfficerModal()" class="px-4 py-2.5 bg-white border border-slate-300 text-slate-800 rounded-xl text-xs font-extrabold hover:bg-slate-50 shadow-sm flex items-center space-x-2 transition">
+            <app-icon name="user-plus" size="w-4 h-4 text-slate-700"></app-icon>
+            <span>Register Officer</span>
+          </button>
+          <button (click)="openCreateModal()" class="px-5 py-2.5 bg-[#0F172A] text-white rounded-xl text-xs font-extrabold hover:bg-slate-800 shadow-lg flex items-center space-x-2 transition">
+            <app-icon name="plus" size="w-4 h-4"></app-icon>
+            <span>Create New Department</span>
+          </button>
+        </div>
       </div>
 
       <!-- Department Grid Cards -->
@@ -45,31 +54,52 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
               <!-- Status Switch Toggle -->
               <button 
                 (click)="toggleStatus(dept.id)"
+                [disabled]="togglingDeptId() === dept.id"
                 [class.bg-emerald-100]="dept.isActive"
                 [class.text-emerald-800]="dept.isActive"
                 [class.bg-rose-100]="!dept.isActive"
                 [class.text-rose-800]="!dept.isActive"
-                class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase transition"
+                class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase transition disabled:opacity-50 inline-flex items-center min-h-[26px] min-w-[85px] justify-center"
               >
-                {{ dept.isActive ? 'Active' : 'Inactive' }}
+                <app-icon *ngIf="togglingDeptId() === dept.id" name="loader" size="w-3 h-3" class="animate-spin mr-1 shrink-0"></app-icon>
+                <span>{{ togglingDeptId() === dept.id ? 'Updating...' : (dept.isActive ? 'Active' : 'Inactive') }}</span>
               </button>
             </div>
 
             <p class="text-xs text-slate-600 line-clamp-2">{{ dept.description }}</p>
 
             <div class="text-xs space-y-1 text-slate-500 font-mono bg-slate-50 p-3 rounded-xl">
-              <p>Phone: <span class="font-bold text-slate-800">{{ dept.contactPhone }}</span></p>
-              <p>Email: <span class="font-bold text-slate-800 truncate">{{ dept.contactEmail }}</span></p>
+              <p class="flex items-center space-x-2"><app-icon name="phone" size="w-3.5 h-3.5 text-slate-400"></app-icon><span>Phone: <span class="font-bold text-slate-800">{{ dept.contactPhone }}</span></span></p>
+              <p class="flex items-center space-x-2"><app-icon name="mail" size="w-3.5 h-3.5 text-slate-400"></app-icon><span>Email: <span class="font-bold text-slate-800 truncate">{{ dept.contactEmail }}</span></span></p>
             </div>
           </div>
 
           <!-- Multiple Assigned Officers Box -->
           <div class="space-y-2 border-t pt-3">
-            <div class="flex justify-between items-center">
-              <span class="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider">Assigned Officers ({{ dept.assignedOfficers?.length || 0 }})</span>
-              <button (click)="openQuickAddOfficerModal(dept)" class="text-[11px] font-extrabold text-teal-700 hover:underline">
-                + Add Officer
-              </button>
+            <div class="flex justify-between items-center flex-wrap gap-1.5">
+              <span class="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider flex items-center space-x-1">
+                <app-icon name="users" size="w-3.5 h-3.5 text-slate-500"></app-icon>
+                <span>Assigned Officers ({{ dept.assignedOfficers?.length || 0 }})</span>
+              </span>
+              <div class="flex items-center space-x-1.5">
+                <button 
+                  type="button" 
+                  (click)="openRegisterOfficerModal(dept)" 
+                  class="px-2 py-1 bg-[#0F172A] text-white rounded-lg text-[10px] font-bold hover:bg-slate-800 transition shadow-xs inline-flex items-center space-x-1"
+                  title="Register a new officer"
+                >
+                  <app-icon name="user-plus" size="w-3 h-3 text-slate-200"></app-icon>
+                  <span>Register Officer</span>
+                </button>
+                <button 
+                  type="button" 
+                  (click)="openQuickAddOfficerModal(dept)" 
+                  class="text-[11px] font-extrabold text-teal-700 hover:underline flex items-center space-x-1"
+                >
+                  <app-icon name="plus" size="w-3.5 h-3.5"></app-icon>
+                  <span>Add Officer</span>
+                </button>
+              </div>
             </div>
 
             <div *ngIf="dept.assignedOfficers && dept.assignedOfficers.length > 0" class="space-y-1.5 max-h-36 overflow-y-auto pr-1">
@@ -78,25 +108,35 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                   <p class="font-bold text-slate-900 truncate">{{ off.name }}</p>
                   <p class="text-[10px] text-slate-500 font-mono truncate">{{ off.email }}</p>
                 </div>
-                <button (click)="confirmRemoveOfficer(dept.id, off.id, off.name)" title="Remove Officer from Department" class="text-rose-600 font-bold p-1 hover:bg-rose-100 rounded text-xs flex items-center justify-center">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                <button (click)="confirmRemoveOfficer(dept.id, off.id, off.name)" [disabled]="isConfirmingAction() || activeActionDeptOfficerId() === (dept.id + '_' + off.id)" title="Remove Officer from Department" class="text-rose-600 font-bold px-1.5 py-1 hover:bg-rose-100 rounded text-xs transition flex items-center justify-center disabled:opacity-50 min-w-[28px] min-h-[28px]">
+                  <app-icon *ngIf="activeActionDeptOfficerId() === (dept.id + '_' + off.id)" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0"></app-icon>
+                  <app-icon *ngIf="activeActionDeptOfficerId() !== (dept.id + '_' + off.id)" name="user-x" size="w-3.5 h-3.5"></app-icon>
                 </button>
               </div>
             </div>
 
-            <div *ngIf="!dept.assignedOfficers || dept.assignedOfficers.length === 0" class="text-xs text-slate-400 italic p-2 bg-slate-50 rounded-xl">
-              No Officers assigned yet.
+            <div *ngIf="!dept.assignedOfficers || dept.assignedOfficers.length === 0" class="text-xs text-slate-400 italic p-2 bg-slate-50 rounded-xl flex items-center justify-between">
+              <span>No Officers assigned yet.</span>
+              <button 
+                type="button" 
+                (click)="openRegisterOfficerModal(dept)" 
+                class="text-[11px] font-extrabold text-teal-700 hover:underline inline-flex items-center space-x-1 not-italic"
+              >
+                <app-icon name="user-plus" size="w-3 h-3"></app-icon>
+                <span>Register Officer</span>
+              </button>
             </div>
           </div>
 
           <div class="pt-3 border-t flex space-x-2">
-            <button (click)="openEditModal(dept)" class="flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200">
-              Edit Dept
+            <button (click)="openEditModal(dept)" class="flex-1 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition flex items-center justify-center space-x-1.5">
+              <app-icon name="edit" size="w-3.5 h-3.5 text-slate-600"></app-icon>
+              <span>Edit Dept</span>
             </button>
-            <button (click)="confirmDeleteDepartment(dept.id, dept.name)" class="px-3 py-2 bg-rose-50 text-rose-700 rounded-xl text-xs font-bold hover:bg-rose-100">
-              Delete
+            <button (click)="confirmDeleteDepartment(dept.id, dept.name)" [disabled]="isConfirmingAction() || deletingDeptId() === dept.id" class="px-3 py-2 bg-rose-50 text-rose-700 rounded-xl text-xs font-bold hover:bg-rose-100 transition flex items-center justify-center space-x-1 disabled:opacity-50 min-h-[32px] min-w-[70px]">
+              <app-icon *ngIf="deletingDeptId() === dept.id" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0 text-rose-600"></app-icon>
+              <app-icon *ngIf="deletingDeptId() !== dept.id" name="trash" size="w-3.5 h-3.5 text-rose-600"></app-icon>
+              <span>{{ deletingDeptId() === dept.id ? 'Deleting...' : 'Delete' }}</span>
             </button>
           </div>
 
@@ -104,14 +144,12 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
       </div>
 
       <!-- Create / Edit Department Modal -->
-      <div *ngIf="isModalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-fade-in max-h-[90vh] overflow-y-auto">
+      <div *ngIf="isModalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-modal-pop max-h-[90vh] overflow-y-auto">
           <div class="flex justify-between items-center border-b pb-3">
             <h3 class="font-bold text-lg text-slate-900">{{ editingDeptId ? 'Edit Department' : 'Create New Department' }}</h3>
             <button (click)="isModalOpen.set(false)" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 transition">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <app-icon name="x" size="w-5 h-5"></app-icon>
             </button>
           </div>
 
@@ -159,7 +197,18 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
             <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
               <div class="flex justify-between items-center">
                 <span class="text-xs font-extrabold text-slate-800 uppercase">Assigned Officers</span>
-                <span class="text-[10px] text-slate-500">Total: {{ deptForm.assignedOfficers.length }}</span>
+                <div class="flex items-center space-x-2">
+                  <button 
+                    type="button" 
+                    (click)="openRegisterOfficerModal()" 
+                    class="px-2.5 py-1 bg-[#0F172A] text-white rounded-lg text-[11px] font-bold hover:bg-slate-800 transition shadow-xs inline-flex items-center space-x-1"
+                    title="Register a new officer"
+                  >
+                    <app-icon name="user-plus" size="w-3.5 h-3.5"></app-icon>
+                    <span>Register Officer</span>
+                  </button>
+                  <span class="text-[10px] text-slate-500">Total: {{ deptForm.assignedOfficers.length }}</span>
+                </div>
               </div>
 
               <!-- List of Added Officers -->
@@ -170,9 +219,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                     <span class="text-slate-500 text-[11px] ml-1 font-mono">({{ off.email }})</span>
                   </div>
                   <button type="button" (click)="removeOfficerFromForm(i)" class="text-rose-600 font-bold px-2 py-0.5 hover:bg-rose-50 rounded text-xs flex items-center space-x-1">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
+                    <app-icon name="trash" size="w-3.5 h-3.5"></app-icon>
                     <span>Remove</span>
                   </button>
                 </div>
@@ -196,136 +243,341 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                     [disabled]="!selectedOfficerIdForForm"
                     class="w-full py-2 bg-teal-700 text-white rounded-xl text-xs font-bold hover:bg-teal-800 disabled:opacity-50 flex items-center justify-center space-x-1.5"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
+                    <app-icon name="plus" size="w-4 h-4"></app-icon>
                     <span>Assign Selected Officer</span>
                   </button>
                 </div>
 
-                <div *ngIf="getUnassignedRegisteredOfficers().length === 0" class="text-xs text-amber-800 italic p-2 bg-amber-50 border border-amber-200 rounded-xl">
-                  No unassigned officers available. All registered officers are already assigned to operational departments.
+                <div *ngIf="getUnassignedRegisteredOfficers().length === 0" class="text-xs text-amber-800 italic p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between">
+                  <span>No unassigned officers available. All registered officers are already assigned to operational departments.</span>
+                  <button 
+                    type="button" 
+                    (click)="openRegisterOfficerModal()" 
+                    class="ml-2 px-2.5 py-1 bg-[#0F172A] text-white rounded-lg text-[11px] font-bold hover:bg-slate-800 shrink-0 inline-flex items-center space-x-1 not-italic"
+                  >
+                    <app-icon name="user-plus" size="w-3.5 h-3.5"></app-icon>
+                    <span>Register Officer</span>
+                  </button>
                 </div>
               </div>
             </div>
 
             <div class="flex space-x-3 pt-4 border-t">
-              <button type="button" (click)="isModalOpen.set(false)" class="flex-1 bg-slate-100 py-3 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
-              <button type="submit" class="flex-1 bg-[#0F172A] text-white py-3 rounded-xl text-xs font-extrabold hover:bg-slate-800">
-                {{ editingDeptId ? 'Update Department' : 'Save Department' }}
+              <button type="button" [disabled]="isSavingDept()" (click)="isModalOpen.set(false)" class="flex-1 bg-slate-100 py-3 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50">Cancel</button>
+              <button 
+                type="submit" 
+                [disabled]="isSavingDept()"
+                class="flex-1 bg-[#0F172A] text-white py-3 rounded-xl text-xs font-extrabold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center space-x-1.5 min-h-[44px] min-w-[160px]"
+              >
+                <app-icon *ngIf="isSavingDept()" name="loader" size="w-4 h-4" class="animate-spin shrink-0"></app-icon>
+                <span>{{ isSavingDept() ? (editingDeptId ? 'Updating...' : 'Adding Department...') : (editingDeptId ? 'Update Department' : 'Save Department') }}</span>
               </button>
             </div>
           </form>
         </div>
       </div>
 
-      <!-- Add Officers to Department Modal (Select Multiple Registered Unassigned Officers) -->
-      <div *ngIf="isQuickAddOfficerModalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in relative max-h-[90vh] flex flex-col">
-          <div class="flex justify-between items-center border-b pb-3 shrink-0">
-            <h3 class="font-bold text-base text-slate-900">Add Officers to {{ selectedDeptForAddOfficer?.name }}</h3>
-            <button (click)="closeQuickAddOfficerModal()" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 transition">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <p class="text-xs text-slate-500 shrink-0">Select registered officers who are currently unassigned to assign them to this department.</p>
-
-          <!-- Selection Count Badge & Select/Deselect All Actions -->
-          <div *ngIf="getUnassignedRegisteredOfficers().length > 0" class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200 shrink-0 text-xs">
-            <div class="flex items-center space-x-2">
-              <span class="font-extrabold text-slate-700">Selection</span>
-              <span class="px-2.5 py-0.5 bg-teal-100 text-teal-800 font-bold rounded-full text-xs">
-                {{ selectedOfficerIds.size }} {{ selectedOfficerIds.size === 1 ? 'Officer selected' : 'Officers selected' }}
-              </span>
+      <!-- Add Officers Modal (Multi-Select Support & Single Officer Compatibility) -->
+      <div *ngIf="isQuickAddOfficerModalOpen()" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-modal-pop relative">
+          <div class="flex justify-between items-center border-b pb-3">
+            <div>
+              <h3 class="font-bold text-base text-slate-900">Assign Officers to {{ selectedDeptForAddOfficer?.name }}</h3>
+              <p class="text-[11px] text-slate-500">Select one or multiple officers to assign to this department</p>
             </div>
             <div class="flex items-center space-x-2">
               <button 
-                type="button"
-                (click)="selectAllUnassignedOfficers()" 
-                class="text-xs font-bold text-teal-700 hover:text-teal-900 transition underline"
+                type="button" 
+                (click)="openRegisterOfficerModal()" 
+                class="px-3.5 py-1.5 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition shadow-sm inline-flex items-center space-x-1.5 shrink-0"
+                title="Register a new officer"
               >
-                Select All
+                <app-icon name="user-plus" size="w-3.5 h-3.5"></app-icon>
+                <span>Register Officer</span>
               </button>
-              <span class="text-slate-300">|</span>
-              <button 
-                type="button"
-                (click)="deselectAllOfficers()" 
-                class="text-xs font-bold text-slate-500 hover:text-slate-700 transition underline"
-              >
-                Deselect All
+              <button (click)="isQuickAddOfficerModalOpen.set(false)" [disabled]="isAssigningOfficers()" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 transition disabled:opacity-50">
+                <app-icon name="x" size="w-5 h-5"></app-icon>
               </button>
             </div>
           </div>
 
-          <!-- Officers Checkbox List -->
-          <div *ngIf="getUnassignedRegisteredOfficers().length > 0" class="space-y-2 overflow-y-auto max-h-60 pr-1 flex-1">
-            <label 
-              *ngFor="let off of getUnassignedRegisteredOfficers()" 
-              class="flex items-center justify-between p-3 rounded-xl border transition cursor-pointer hover:bg-slate-50"
+          <!-- Filter & Search Controls Bar -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <!-- Search Input -->
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <app-icon name="search" size="w-3.5 h-3.5"></app-icon>
+              </div>
+              <input 
+                type="text" 
+                [ngModel]="addOfficerSearchKeyword" 
+                (ngModelChange)="onAddOfficerSearchChange($event)"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                data-lpignore="true"
+                placeholder="Search officer name, ID, email..." 
+                class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#A0C8C3] focus:bg-white transition"
+              />
+            </div>
+
+            <!-- Department Filter Dropdown with SVG filter icon -->
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <app-icon name="filter" size="w-3.5 h-3.5"></app-icon>
+              </div>
+              <select 
+                [(ngModel)]="addOfficerDeptFilter" 
+                aria-label="Filter Officers by Department"
+                class="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#A0C8C3] focus:bg-white transition appearance-none cursor-pointer"
+              >
+                <option value="ALL">All Departments</option>
+                <option value="UNASSIGNED">Unassigned Officers</option>
+                <option *ngFor="let d of departmentService.departments()" [value]="d.id">
+                  {{ d.name }}
+                </option>
+              </select>
+              <div class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-slate-400">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Selection Controls Bar -->
+          <div *ngIf="getFilteredAvailableOfficers().length > 0" class="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
+            <label class="flex items-center space-x-2 cursor-pointer font-bold text-slate-700 select-none">
+              <input 
+                type="checkbox" 
+                [checked]="isAllSelected()" 
+                (change)="toggleSelectAll()" 
+                class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-4 h-4"
+              />
+              <span>Select All ({{ getFilteredAvailableOfficers().length }})</span>
+            </label>
+            <span class="text-[11px] font-extrabold text-teal-700">
+              {{ selectedOfficerIdsForAdd.size }} selected
+            </span>
+          </div>
+
+          <!-- Officer Selection List -->
+          <div *ngIf="getFilteredAvailableOfficers().length > 0" class="space-y-2 max-h-64 overflow-y-auto pr-1">
+            <div 
+              *ngFor="let off of getFilteredAvailableOfficers()" 
+              (click)="toggleOfficerSelection(off.id)"
               [class.border-teal-500]="isOfficerSelected(off.id)"
-              [class.bg-teal-50/50]="isOfficerSelected(off.id)"
-              [class.border-slate-200]="!isOfficerSelected(off.id)"
+              [class.bg-teal-50]="isOfficerSelected(off.id)"
+              [class.bg-white]="!isOfficerSelected(off.id)"
+              class="flex items-center justify-between p-3 rounded-2xl border transition cursor-pointer hover:border-teal-300"
             >
               <div class="flex items-center space-x-3 truncate pr-2">
                 <input 
                   type="checkbox" 
                   [checked]="isOfficerSelected(off.id)" 
-                  (change)="toggleOfficerSelection(off.id)" 
-                  class="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500 cursor-pointer"
+                  (click)="$event.stopPropagation()"
+                  (change)="toggleOfficerSelection(off.id)"
+                  class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-4 h-4"
                 />
                 <div class="truncate">
-                  <p class="font-bold text-xs text-slate-900 truncate">{{ off.name }}</p>
-                  <p class="text-[10px] text-slate-500 font-mono truncate">{{ off.email }}</p>
+                  <div class="flex items-center space-x-2">
+                    <span class="font-bold text-slate-900 text-xs truncate">{{ off.name }}</span>
+                    <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">{{ off.userCode || off.id }}</span>
+                  </div>
+                  <p class="text-[10px] text-slate-500 font-mono truncate">
+                    <span>{{ off.email }}</span>
+                    <span *ngIf="!isOfficerUnassigned(off)" class="text-amber-700 font-bold ml-1">• Dept: {{ getOfficerDepartmentName(off) }}</span>
+                  </p>
                 </div>
               </div>
-              <span class="text-[10px] font-mono text-slate-400 shrink-0">{{ off.userCode || off.id }}</span>
-            </label>
+
+              <!-- Status Badge -->
+              <div class="shrink-0 text-right">
+                <span 
+                  *ngIf="isOfficerUnassigned(off)" 
+                  class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800"
+                >
+                  Unassigned
+                </span>
+                <span 
+                  *ngIf="!isOfficerUnassigned(off)" 
+                  class="inline-block max-w-[170px] truncate px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 align-middle"
+                  title="Will be transferred from {{ getOfficerDepartmentName(off) }}"
+                >
+                  Transfer ({{ getOfficerDepartmentName(off) }})
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div *ngIf="getUnassignedRegisteredOfficers().length === 0" class="text-xs text-amber-800 italic p-3 bg-amber-50 border border-amber-200 rounded-xl">
-            No unassigned officers available. All registered officers are currently assigned to operational departments.
-          </div>
-
-          <div class="flex space-x-2 pt-2 border-t shrink-0">
-            <button (click)="closeQuickAddOfficerModal()" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
+          <div *ngIf="getAvailableOfficersForAssignment().length === 0" class="text-xs text-amber-800 p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2">
+            <p class="font-medium">No registered officers available to assign. All non-revoked officers are already in this department.</p>
             <button 
-              (click)="submitAddMultipleOfficers()" 
-              [disabled]="selectedOfficerIds.size === 0 || isAddingOfficers()" 
-              class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 flex items-center justify-center space-x-1.5 shadow-sm"
+              type="button" 
+              (click)="openRegisterOfficerModal()" 
+              class="px-3.5 py-1.5 bg-[#0F172A] text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition shadow-sm inline-flex items-center space-x-1.5"
             >
-              <span *ngIf="isAddingOfficers()">Adding Officers...</span>
-              <span *ngIf="!isAddingOfficers()">Add Selected Officers</span>
+              <app-icon name="user-plus" size="w-3.5 h-3.5"></app-icon>
+              <span>Register Officer</span>
+            </button>
+          </div>
+
+          <div *ngIf="getAvailableOfficersForAssignment().length > 0 && getFilteredAvailableOfficers().length === 0" class="text-xs text-slate-500 italic p-4 text-center bg-slate-50 border border-slate-200 rounded-2xl">
+            No officers found matching the selected department filter or search criteria.
+          </div>
+
+          <div class="flex space-x-2 pt-2 border-t">
+            <button (click)="isQuickAddOfficerModalOpen.set(false)" [disabled]="isAssigningOfficers()" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50">Cancel</button>
+            <button 
+              (click)="submitAddOfficers()" 
+              [disabled]="selectedOfficerIdsForAdd.size === 0 || isAssigningOfficers()" 
+              class="flex-1 bg-[#0F172A] text-white py-2.5 rounded-xl text-xs font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center space-x-1.5 min-h-[40px] min-w-[200px]"
+            >
+              <app-icon *ngIf="isAssigningOfficers()" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0"></app-icon>
+              <span>{{ isAssigningOfficers() ? (hasTransfersSelected() ? 'Transferring...' : (selectedOfficerIdsForAdd.size === 1 ? 'Adding Officer...' : 'Adding Officers...')) : ('Assign (' + selectedOfficerIdsForAdd.size + ') Selected Officer' + (selectedOfficerIdsForAdd.size === 1 ? '' : 's')) }}</span>
             </button>
           </div>
         </div>
       </div>
 
+      <!-- Register Officer Modal (Layer: z-[60] so it stacks over Assign Officers Modal) -->
+      <div *ngIf="isRegisterOfficerModalOpen()" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-modal-pop max-h-[90vh] overflow-y-auto">
+          <div class="flex justify-between items-center border-b pb-3">
+            <h3 class="font-bold text-lg text-slate-900">Register Officer</h3>
+            <button (click)="isRegisterOfficerModalOpen.set(false)" [disabled]="isRegisteringOfficer()" aria-label="Close modal" class="text-slate-400 hover:text-slate-600 transition disabled:opacity-50">
+              <app-icon name="x" size="w-5 h-5"></app-icon>
+            </button>
+          </div>
+
+          <form (submit)="promptRegisterOfficer()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Full Name *</label>
+              <input type="text" [ngModel]="newOfficer.name" (ngModelChange)="onNewOfficerNameChange($event)" name="reg_sec_name" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter full name" class="w-full px-3 py-2 border rounded-xl text-xs" />
+              <p *ngIf="hasRegisterSubmitted() && !newOfficer.name.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+              <p *ngIf="hasRegisterSubmitted() && isNameNumericInvalid(newOfficer.name)" class="text-[11px] text-rose-600 font-bold mt-1">Names can not be in number</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Official Email Address *</label>
+              <input type="email" [(ngModel)]="newOfficer.email" name="reg_sec_email" required autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="officer@sikkim.gov.in" class="w-full px-3 py-2 border rounded-xl text-xs" />
+              <p *ngIf="hasRegisterSubmitted() && !newOfficer.email.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+              <p *ngIf="hasRegisterSubmitted() && newOfficer.email.trim() && !isEmailValid(newOfficer.email)" class="text-[11px] text-rose-600 font-bold mt-1">Invalid email format.</p>
+            </div>
+
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Create Password *</label>
+                <div class="relative">
+                  <input 
+                    [type]="showOfficerPassword() ? 'text' : 'password'" 
+                    [(ngModel)]="newOfficer.password" 
+                    name="reg_sec_pass" 
+                    required 
+                    autocomplete="one-time-code"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    data-lpignore="true"
+                    placeholder="••••••••" 
+                    class="w-full px-3 py-2 pr-10 border rounded-xl text-xs font-mono" 
+                  />
+                  <button 
+                    type="button" 
+                    (click)="showOfficerPassword.set(!showOfficerPassword())" 
+                    aria-label="Toggle officer password visibility"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
+                  >
+                    {{ showOfficerPassword() ? 'Hide' : 'Show' }}
+                  </button>
+                </div>
+                <p *ngIf="hasRegisterSubmitted() && !newOfficer.password.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Confirm Password *</label>
+                <div class="relative">
+                  <input 
+                    [type]="showOfficerConfirmPassword() ? 'text' : 'password'" 
+                    [(ngModel)]="newOfficer.confirmPassword" 
+                    name="reg_confirm_sec_pass" 
+                    required 
+                    autocomplete="one-time-code"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    data-lpignore="true"
+                    placeholder="••••••••" 
+                    class="w-full px-3 py-2 pr-10 border rounded-xl text-xs font-mono" 
+                  />
+                  <button 
+                    type="button" 
+                    (click)="showOfficerConfirmPassword.set(!showOfficerConfirmPassword())" 
+                    aria-label="Toggle confirm password visibility"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
+                  >
+                    {{ showOfficerConfirmPassword() ? 'Hide' : 'Show' }}
+                  </button>
+                </div>
+                <p *ngIf="hasRegisterSubmitted() && !newOfficer.confirmPassword.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
+                <p *ngIf="hasRegisterSubmitted() && newOfficer.password.trim() && newOfficer.confirmPassword.trim() && newOfficer.password !== newOfficer.confirmPassword" class="text-[11px] text-rose-600 font-bold mt-1">Passwords do not match.</p>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Assign Target Department</label>
+              <select [(ngModel)]="newOfficer.departmentId" name="sec_dept_assign_val" class="w-full px-3 py-2 border rounded-xl text-xs bg-white font-bold">
+                <option value="">Leave Unassigned for now</option>
+                <option *ngFor="let d of departmentService.departments()" [value]="d.id">
+                  {{ d.name }} ({{ d.code }})
+                </option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Contact Phone</label>
+              <input type="text" [ngModel]="newOfficer.phone" (ngModelChange)="onNewOfficerPhoneChange($event)" name="sec_off_ph_val" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Enter mobile number" class="w-full px-3 py-2 border rounded-xl text-xs" />
+              <p *ngIf="hasRegisterSubmitted() && newOfficer.phone.trim() && isPhoneTextInvalid(newOfficer.phone)" class="text-[11px] text-rose-600 font-bold mt-1">Enter phone number</p>
+            </div>
+
+            <div class="flex space-x-3 pt-4 border-t">
+              <button type="button" [disabled]="isRegisteringOfficer()" (click)="isRegisterOfficerModalOpen.set(false)" class="flex-1 bg-slate-100 py-3 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50">Cancel</button>
+              <button 
+                type="submit" 
+                [disabled]="isRegisteringOfficer()"
+                class="flex-1 bg-[#0F172A] text-white py-3 rounded-xl text-xs font-extrabold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center space-x-1.5 min-h-[44px] min-w-[150px]"
+              >
+                <app-icon *ngIf="isRegisteringOfficer()" name="loader" size="w-4 h-4" class="animate-spin shrink-0"></app-icon>
+                <span>{{ isRegisteringOfficer() ? 'Registering...' : 'Register Officer' }}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
       <!-- Action Confirmation Dialog (Layer: z-[70]) -->
-      <div *ngIf="confirmationModal()" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 animate-fade-in">
-        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+      <div *ngIf="confirmationModal()" class="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 shadow-2xl animate-modal-pop">
           <div class="flex justify-between items-center border-b pb-3">
             <h3 class="font-bold text-base text-slate-900">{{ confirmationModal()?.title }}</h3>
-            <button (click)="confirmationModal.set(null)" aria-label="Close dialog" class="text-slate-400 hover:text-slate-600 transition">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <button (click)="confirmationModal.set(null)" [disabled]="isConfirmingAction()" aria-label="Close dialog" class="text-slate-400 hover:text-slate-600 transition disabled:opacity-50">
+              <app-icon name="x" size="w-5 h-5"></app-icon>
             </button>
           </div>
           <p class="text-xs text-slate-600">{{ confirmationModal()?.message }}</p>
           <div class="flex space-x-2 pt-3 border-t">
-            <button (click)="confirmationModal.set(null)" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600">
+            <button (click)="confirmationModal.set(null)" [disabled]="isConfirmingAction()" class="flex-1 bg-slate-100 py-2.5 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50">
               Cancel
             </button>
             <button 
               (click)="executeConfirmedAction()" 
-              [disabled]="isRemovingDept()"
+              [disabled]="isConfirmingAction()"
               [class]="confirmationModal()?.isDestructive ? 'bg-rose-600 hover:bg-rose-700' : 'bg-[#0F172A] hover:bg-slate-800'"
-              class="flex-1 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50"
+              class="flex-1 text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-1.5 min-h-[40px] min-w-[140px]"
             >
-              {{ isRemovingDept() ? 'Removing department...' : (confirmationModal()?.confirmBtnText || 'Confirm') }}
+              <app-icon *ngIf="isConfirmingAction()" name="loader" size="w-3.5 h-3.5" class="animate-spin shrink-0"></app-icon>
+              <span>{{ isConfirmingAction() ? (confirmationModal()?.loadingText || 'Processing...') : (confirmationModal()?.confirmBtnText || 'Confirm') }}</span>
             </button>
           </div>
         </div>
@@ -339,19 +591,40 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
 export class DepartmentManagementComponent {
   departmentService = inject(DepartmentService);
   authService = inject(AuthService);
-  grievanceService = inject(GrievanceService);
 
   isModalOpen = signal<boolean>(false);
   isQuickAddOfficerModalOpen = signal<boolean>(false);
   hasSubmitted = signal<boolean>(false);
-  isAddingOfficers = signal<boolean>(false);
   toastMessage = signal<string | null>(null);
+
+  isSavingDept = signal<boolean>(false);
+  isAssigningOfficers = signal<boolean>(false);
+  isConfirmingAction = signal<boolean>(false);
+  togglingDeptId = signal<string | null>(null);
+  activeActionDeptOfficerId = signal<string | null>(null);
+  deletingDeptId = signal<string | null>(null);
+
+  isRegisterOfficerModalOpen = signal<boolean>(false);
+  isRegisteringOfficer = signal<boolean>(false);
+  hasRegisterSubmitted = signal<boolean>(false);
+  showOfficerPassword = signal<boolean>(false);
+  showOfficerConfirmPassword = signal<boolean>(false);
+
+  newOfficer = {
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    departmentId: '',
+    phone: '',
+    designation: 'Officer'
+  };
 
   editingDeptId: string | null = null;
   selectedDeptForAddOfficer: Department | null = null;
 
   selectedOfficerIdForForm = '';
-  selectedOfficerIds = new Set<string>();
+  quickSelectedOfficerId = '';
 
   deptForm = {
     name: '',
@@ -373,7 +646,6 @@ export class DepartmentManagementComponent {
     const currentFormOfficerEmails = this.deptForm.assignedOfficers.map(o => o.email.toLowerCase());
 
     return this.authService.registeredOfficers().filter(off => {
-      if (off.isRevoked || (off as any).isActive === false) return false;
       if (currentFormOfficerIds.includes(off.id) || currentFormOfficerEmails.includes(off.email.toLowerCase())) {
         return false;
       }
@@ -453,58 +725,172 @@ export class DepartmentManagementComponent {
     this.deptForm.assignedOfficers.splice(index, 1);
   }
 
-  openQuickAddOfficerModal(dept: Department) {
-    this.selectedDeptForAddOfficer = dept;
-    this.selectedOfficerIds.clear();
-    this.isQuickAddOfficerModalOpen.set(true);
+  selectedOfficerIdsForAdd = new Set<string>();
+  addOfficerDeptFilter = 'ALL';
+  addOfficerSearchKeyword = '';
+
+  onAddOfficerSearchChange(val: string) {
+    this.addOfficerSearchKeyword = val;
   }
 
-  closeQuickAddOfficerModal() {
-    this.isQuickAddOfficerModalOpen.set(false);
-    this.selectedOfficerIds.clear();
-  }
+  getOfficerCurrentDepartment(off: any): Department | undefined {
+    // 1. Check if officer is listed in any active department's assignedOfficers array
+    const assignedDept = this.departmentService.departments().find(d =>
+      d.assignedOfficers?.some(o => o.id === off.id || (o.email && off.email && o.email.toLowerCase() === off.email.toLowerCase()))
+    );
+    if (assignedDept) return assignedDept;
 
-  toggleOfficerSelection(officerId: string) {
-    if (this.selectedOfficerIds.has(officerId)) {
-      this.selectedOfficerIds.delete(officerId);
-    } else {
-      this.selectedOfficerIds.add(officerId);
+    // 2. Check if officer has departmentId matching a department
+    if (off.departmentId && off.departmentId !== 'Unassigned') {
+      const deptById = this.departmentService.departments().find(d => d.id === off.departmentId);
+      if (deptById) return deptById;
     }
+
+    // 3. Check if officer has departmentName matching a department
+    if (off.departmentName && off.departmentName !== 'Unassigned') {
+      const deptByName = this.departmentService.departments().find(d => d.name.toLowerCase() === off.departmentName.toLowerCase());
+      if (deptByName) return deptByName;
+    }
+
+    return undefined;
   }
 
-  selectAllUnassignedOfficers() {
-    const unassigned = this.getUnassignedRegisteredOfficers();
-    unassigned.forEach(off => this.selectedOfficerIds.add(off.id));
+  getOfficerDepartmentName(off: any): string {
+    const dept = this.getOfficerCurrentDepartment(off);
+    if (dept) return dept.name;
+    if (off.departmentName && off.departmentName !== 'Unassigned') return off.departmentName;
+    return 'Unassigned';
   }
 
-  deselectAllOfficers() {
-    this.selectedOfficerIds.clear();
+  getAvailableOfficersForAssignment() {
+    if (!this.selectedDeptForAddOfficer) return [];
+    const targetDeptId = this.selectedDeptForAddOfficer.id;
+    const currentAssigned = this.selectedDeptForAddOfficer.assignedOfficers || [];
+    const currentAssignedIds = new Set(currentAssigned.map((o: any) => o.id));
+    const currentAssignedEmails = new Set(currentAssigned.map((o: any) => (o.email || '').toLowerCase()));
+
+    // Return non-revoked officers that are not already assigned to this target department
+    return this.authService.registeredOfficers().filter(off => {
+      if (off.isRevoked) return false;
+      if (currentAssignedIds.has(off.id)) return false;
+      if (off.email && currentAssignedEmails.has(off.email.toLowerCase())) return false;
+      // Also check if officer's departmentId is already targetDeptId
+      if (off.departmentId === targetDeptId) return false;
+      return true;
+    });
+  }
+
+  getFilteredAvailableOfficers() {
+    const available = this.getAvailableOfficersForAssignment();
+
+    return available.filter(off => {
+      // 1. Department filter
+      if (this.addOfficerDeptFilter !== 'ALL') {
+        if (this.addOfficerDeptFilter === 'UNASSIGNED') {
+          if (!this.isOfficerUnassigned(off)) {
+            return false;
+          }
+        } else {
+          // Specific department ID selected
+          const currentDept = this.getOfficerCurrentDepartment(off);
+          const filterDept = this.departmentService.departments().find(d => d.id === this.addOfficerDeptFilter);
+          const filterDeptName = filterDept?.name?.toLowerCase();
+
+          const matchesId = currentDept?.id === this.addOfficerDeptFilter || off.departmentId === this.addOfficerDeptFilter;
+          const matchesName = (currentDept && filterDeptName && currentDept.name.toLowerCase() === filterDeptName) ||
+                              (off.departmentName && filterDeptName && off.departmentName.toLowerCase() === filterDeptName);
+
+          if (!matchesId && !matchesName) {
+            return false;
+          }
+        }
+      }
+
+      // 2. Search keyword filter (works together with department filter)
+      if (this.addOfficerSearchKeyword.trim()) {
+        const kw = this.addOfficerSearchKeyword.trim().toLowerCase();
+        const matchesName = off.name && off.name.toLowerCase().includes(kw);
+        const matchesCode = (off.userCode && off.userCode.toLowerCase().includes(kw)) ||
+                            (off.officerCode && off.officerCode.toLowerCase().includes(kw)) ||
+                            (off.id && off.id.toLowerCase().includes(kw));
+        const matchesEmail = off.email && off.email.toLowerCase().includes(kw);
+        const matchesPhone = off.phone && off.phone.toLowerCase().includes(kw);
+
+        if (!matchesName && !matchesCode && !matchesEmail && !matchesPhone) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
+
+  isOfficerUnassigned(off: any): boolean {
+    return !this.getOfficerCurrentDepartment(off);
   }
 
   isOfficerSelected(officerId: string): boolean {
-    return this.selectedOfficerIds.has(officerId);
+    return this.selectedOfficerIdsForAdd.has(officerId);
   }
 
-  async submitAddMultipleOfficers() {
-    if (!this.selectedDeptForAddOfficer || this.selectedOfficerIds.size === 0) return;
-    if (this.isAddingOfficers()) return;
+  hasTransfersSelected(): boolean {
+    const available = this.getAvailableOfficersForAssignment();
+    return Array.from(this.selectedOfficerIdsForAdd).some(id => {
+      const off = available.find(o => o.id === id);
+      return off && !this.isOfficerUnassigned(off);
+    });
+  }
 
-    this.isAddingOfficers.set(true);
+  toggleOfficerSelection(officerId: string) {
+    if (this.selectedOfficerIdsForAdd.has(officerId)) {
+      this.selectedOfficerIdsForAdd.delete(officerId);
+    } else {
+      this.selectedOfficerIdsForAdd.add(officerId);
+    }
+  }
+
+  isAllSelected(): boolean {
+    const available = this.getFilteredAvailableOfficers();
+    return available.length > 0 && available.every(off => this.selectedOfficerIdsForAdd.has(off.id));
+  }
+
+  toggleSelectAll() {
+    const available = this.getFilteredAvailableOfficers();
+    if (this.isAllSelected()) {
+      available.forEach(off => this.selectedOfficerIdsForAdd.delete(off.id));
+    } else {
+      available.forEach(off => this.selectedOfficerIdsForAdd.add(off.id));
+    }
+  }
+
+  openQuickAddOfficerModal(dept: Department) {
+    this.selectedDeptForAddOfficer = dept;
+    this.selectedOfficerIdsForAdd.clear();
+    this.addOfficerDeptFilter = 'ALL';
+    this.addOfficerSearchKeyword = '';
+    this.isQuickAddOfficerModalOpen.set(true);
+  }
+
+  async submitAddOfficers() {
+    if (!this.selectedDeptForAddOfficer || this.selectedOfficerIdsForAdd.size === 0 || this.isAssigningOfficers()) return;
+
+    const officerIds = Array.from(this.selectedOfficerIdsForAdd);
     const deptId = this.selectedDeptForAddOfficer.id;
-    const officerIds = Array.from(this.selectedOfficerIds);
+    const deptName = this.selectedDeptForAddOfficer.name;
 
+    this.isAssigningOfficers.set(true);
     try {
-      const res = await this.departmentService.addMultipleOfficersToDepartment(deptId, officerIds);
-      await this.authService.loadOfficersFromBackend();
+      await this.departmentService.assignMultipleOfficersToDepartment(deptId, officerIds);
+      // Reload grievances so assignment status/redistribution synchronizes
       await this.grievanceService.loadGrievancesFromBackend();
 
-      this.toastMessage.set(res.message || 'Officers added to department successfully.');
-      this.closeQuickAddOfficerModal();
+      this.toastMessage.set(`Successfully assigned ${officerIds.length} officer(s) to ${deptName}.`);
+      this.isQuickAddOfficerModalOpen.set(false);
+      this.selectedOfficerIdsForAdd.clear();
     } catch (err: any) {
-      console.error('Error adding officers to department:', err);
-      this.toastMessage.set(err.message || 'Failed to add officers to department.');
+      this.toastMessage.set(err.message || 'Failed to assign officers.');
     } finally {
-      this.isAddingOfficers.set(false);
+      this.isAssigningOfficers.set(false);
     }
   }
 
@@ -513,14 +899,11 @@ export class DepartmentManagementComponent {
       const dept = this.departmentService.departments().find(d => d.id === deptId);
       const targetOfficer = dept?.assignedOfficers?.find(o => o.id === officerId);
 
-      await this.authService.updateOfficerByAdmin(officerId, {
-        departmentId: '',
-        departmentName: 'Unassigned'
-      });
-      await this.departmentService.loadDepartmentsFromBackend();
+      await this.departmentService.removeOfficerFromDepartment(deptId, officerId);
+      // Reload grievances to sync redistributed tickets immediately
       await this.grievanceService.loadGrievancesFromBackend();
 
-      this.toastMessage.set(`Officer "${targetOfficer?.name || officerId}" unassigned from department.`);
+      this.toastMessage.set(`Officer "${targetOfficer?.name || officerId}" removed from department. Active cases redistributed.`);
     } catch (err: any) {
       this.toastMessage.set(err.message || 'Action failed.');
     }
@@ -549,10 +932,132 @@ export class DepartmentManagementComponent {
     return isPhoneTextInvalid(val);
   }
 
+  openRegisterOfficerModal(dept?: Department) {
+    this.hasRegisterSubmitted.set(false);
+    this.showOfficerPassword.set(false);
+    this.showOfficerConfirmPassword.set(false);
+    const defaultDept = dept?.id || this.selectedDeptForAddOfficer?.id || (this.editingDeptId || '');
+    this.newOfficer = {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      departmentId: defaultDept,
+      phone: '',
+      designation: 'Officer'
+    };
+    this.isRegisterOfficerModalOpen.set(true);
+  }
+
+  onNewOfficerNameChange(val: string) {
+    this.newOfficer.name = capitalizeFirstChar(val);
+  }
+
+  onNewOfficerPhoneChange(val: string) {
+    this.newOfficer.phone = val;
+  }
+
+  async promptRegisterOfficer() {
+    if (this.isRegisteringOfficer()) return;
+    this.hasRegisterSubmitted.set(true);
+
+    if (!this.newOfficer.name.trim() || !this.newOfficer.email.trim()) {
+      this.toastMessage.set('Please fill out all required fields.');
+      return;
+    }
+
+    if (this.isNameNumericInvalid(this.newOfficer.name)) {
+      this.toastMessage.set('Names can not be in number');
+      return;
+    }
+
+    if (!this.isEmailValid(this.newOfficer.email)) {
+      this.toastMessage.set('Invalid email format. Please enter a valid officer email address (e.g. officer@sikkim.gov.in).');
+      return;
+    }
+
+    if (this.newOfficer.phone.trim() && this.isPhoneTextInvalid(this.newOfficer.phone)) {
+      this.toastMessage.set('Enter phone number');
+      return;
+    }
+
+    if (!this.newOfficer.password.trim() || !this.newOfficer.confirmPassword.trim()) {
+      this.toastMessage.set('Password is required for new registration.');
+      return;
+    }
+
+    if (this.newOfficer.password !== this.newOfficer.confirmPassword) {
+      this.toastMessage.set('Passwords do not match. Please verify.');
+      return;
+    }
+
+    this.isRegisteringOfficer.set(true);
+    const isUnassigned = !this.newOfficer.departmentId || this.newOfficer.departmentId === 'unassigned' || this.newOfficer.departmentId === '';
+    const dept = isUnassigned ? null : this.departmentService.departments().find(d => d.id === this.newOfficer.departmentId);
+    const deptId = dept ? dept.id : '';
+    const deptName = dept ? dept.name : 'Unassigned';
+    const formattedPhone = formatPhoneNumber(this.newOfficer.phone);
+
+    try {
+      const createdOfficer = await this.authService.registerOfficerByAdmin({
+        name: this.newOfficer.name.trim(),
+        email: this.newOfficer.email.trim(),
+        password: this.newOfficer.password.trim(),
+        designation: 'Officer',
+        departmentId: deptId,
+        departmentName: deptName,
+        phone: formattedPhone
+      });
+
+      await this.departmentService.loadDepartmentsFromBackend();
+      await this.grievanceService.loadGrievancesFromBackend();
+
+      // Refresh currently selected department
+      if (this.selectedDeptForAddOfficer) {
+        const refreshedDept = this.departmentService.departments().find(d => d.id === this.selectedDeptForAddOfficer!.id);
+        if (refreshedDept) {
+          this.selectedDeptForAddOfficer = refreshedDept;
+        }
+      }
+
+      // If Create/Edit Department modal is currently open, sync to deptForm.assignedOfficers
+      if (this.isModalOpen() && createdOfficer && createdOfficer.id) {
+        if (!this.deptForm.assignedOfficers.some(o => o.id === createdOfficer.id || o.email.toLowerCase() === createdOfficer.email.toLowerCase())) {
+          if (!createdOfficer.departmentId || createdOfficer.departmentId === this.editingDeptId) {
+            this.deptForm.assignedOfficers.push({
+              id: createdOfficer.id,
+              name: createdOfficer.name,
+              email: createdOfficer.email,
+              designation: createdOfficer.designation || 'Officer',
+              phone: createdOfficer.phone
+            });
+          }
+        }
+      }
+
+      // If registered unassigned, select the officer and clear search so they are immediately visible in the list
+      if (createdOfficer && createdOfficer.id) {
+        this.addOfficerSearchKeyword = '';
+        if (isUnassigned) {
+          this.selectedOfficerIdsForAdd.add(createdOfficer.id);
+        }
+      }
+
+      this.toastMessage.set(`Officer "${this.newOfficer.name}" registered successfully! Access granted.`);
+      this.isRegisterOfficerModalOpen.set(false);
+      this.newOfficer = { name: '', email: '', password: '', confirmPassword: '', departmentId: '', phone: '', designation: 'Officer' };
+    } catch (err: any) {
+      this.toastMessage.set(err.message || 'Registration failed.');
+    } finally {
+      this.isRegisteringOfficer.set(false);
+    }
+  }
+
   confirmationModal = signal<{
     title: string;
     message: string;
     confirmBtnText: string;
+    loadingText?: string;
     isDestructive?: boolean;
     action: () => Promise<void>;
   } | null>(null);
@@ -562,21 +1067,33 @@ export class DepartmentManagementComponent {
       title: 'Remove Officer from Department',
       message: `Are you sure you want to remove "${officerName}" from this department? The officer will become Unassigned.`,
       confirmBtnText: 'Yes, Remove',
+      loadingText: 'Removing...',
       isDestructive: true,
       action: async () => {
-        await this.removeOfficerFromDept(deptId, officerId);
+        this.activeActionDeptOfficerId.set(deptId + '_' + officerId);
+        try {
+          await this.removeOfficerFromDept(deptId, officerId);
+        } finally {
+          this.activeActionDeptOfficerId.set(null);
+        }
       }
     });
   }
 
   confirmDeleteDepartment(id: string, name: string) {
     this.confirmationModal.set({
-      title: 'Remove Department',
-      message: 'Are you sure you want to remove this department?',
-      confirmBtnText: 'Yes, Remove',
+      title: 'Delete Department',
+      message: `Are you sure you want to delete department "${name}"? Solved grievances will be preserved, and open cases will be moved to unassigned tickets.`,
+      confirmBtnText: 'Yes, Delete',
+      loadingText: 'Deleting...',
       isDestructive: true,
       action: async () => {
-        await this.deleteDepartment(id, name);
+        this.deletingDeptId.set(id);
+        try {
+          await this.deleteDepartment(id, name);
+        } finally {
+          this.deletingDeptId.set(null);
+        }
       }
     });
   }
@@ -613,6 +1130,7 @@ export class DepartmentManagementComponent {
         title: 'Save Changes Confirmation',
         message: `Are you sure you want to save these changes for department "${this.deptForm.name}"?`,
         confirmBtnText: 'Yes, Save Changes',
+        loadingText: 'Saving...',
         isDestructive: false,
         action: async () => {
           await this.executeSaveDepartment();
@@ -625,13 +1143,21 @@ export class DepartmentManagementComponent {
 
   async executeConfirmedAction() {
     const modal = this.confirmationModal();
-    this.confirmationModal.set(null);
-    if (modal && modal.action) {
+    if (!modal || !modal.action || this.isConfirmingAction()) return;
+    this.isConfirmingAction.set(true);
+    try {
       await modal.action();
+      this.confirmationModal.set(null);
+    } catch (e: any) {
+      this.toastMessage.set(e?.message || 'Operation failed');
+    } finally {
+      this.isConfirmingAction.set(false);
     }
   }
 
   async executeSaveDepartment() {
+    if (this.isSavingDept()) return;
+    this.isSavingDept.set(true);
     try {
       if (this.editingDeptId) {
         await this.departmentService.updateDepartment(this.editingDeptId, this.deptForm);
@@ -643,35 +1169,32 @@ export class DepartmentManagementComponent {
       this.isModalOpen.set(false);
     } catch (err: any) {
       this.toastMessage.set(err.message || 'Error executing action');
+    } finally {
+      this.isSavingDept.set(false);
     }
   }
 
   async toggleStatus(id: string) {
+    if (this.togglingDeptId()) return;
+    this.togglingDeptId.set(id);
     try {
       await this.departmentService.toggleDepartmentStatus(id);
       this.toastMessage.set(`Department status updated.`);
     } catch (err: any) {
-      this.toastMessage.set(err.message);
+      this.toastMessage.set(err?.message || 'Failed to update department status.');
+    } finally {
+      this.togglingDeptId.set(null);
     }
   }
 
-  isRemovingDept = signal<boolean>(false);
+  grievanceService = inject(GrievanceService);
 
   async deleteDepartment(id: string, name: string) {
-    if (this.isRemovingDept()) return;
-    this.isRemovingDept.set(true);
     try {
       await this.departmentService.deleteDepartment(id);
-      this.toastMessage.set('Department removed successfully.');
+      this.toastMessage.set(`Department "${name}" deleted successfully.`);
     } catch (err: any) {
-      const msg = (err.message || '').toLowerCase();
-      if (msg.includes('active') || msg.includes('record') || msg.includes('dependen')) {
-        this.toastMessage.set('This department cannot be removed because it is currently associated with active records.');
-      } else {
-        this.toastMessage.set('Unable to remove department. Please try again.');
-      }
-    } finally {
-      this.isRemovingDept.set(false);
+      this.toastMessage.set(err.message || 'Failed to delete department.');
     }
   }
 }

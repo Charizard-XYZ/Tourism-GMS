@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { IconComponent } from './icon.component';
 import { Grievance, GrievanceStatus } from '../../core/models/complaint.model';
 
 interface TimelineStep {
@@ -12,7 +13,7 @@ interface TimelineStep {
 @Component({
   selector: 'app-workflow-timeline',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   template: `
     <div class="w-full space-y-6 py-2">
       
@@ -62,9 +63,7 @@ interface TimelineStep {
               [class]="getStepCircleClass(step.key)"
               class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all duration-300 shadow-md"
             >
-              <svg *ngIf="isCompleted(step.key)" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-              </svg>
+              <app-icon *ngIf="isCompleted(step.key)" name="check" size="w-4 h-4"></app-icon>
               <span *ngIf="!isCompleted(step.key)">{{ idx + 1 }}</span>
             </div>
 
@@ -156,6 +155,7 @@ export class WorkflowTimelineComponent {
       case 'reopened': return 'bg-rose-500';
       case 'resolved': return 'bg-emerald-500';
       case 'closed': return 'bg-slate-600';
+      case 'cancelled': return 'bg-rose-500';
       default: return 'bg-teal-500';
     }
   }
@@ -169,6 +169,7 @@ export class WorkflowTimelineComponent {
       case 'reopened': return '3. Reopened Ticket under Re-investigation';
       case 'resolved': return '4. Resolution Executed & Proof Uploaded';
       case 'closed': return '5. Grievance Ticket Closed & Archived';
+      case 'cancelled': return 'Grievance Cancelled by Tourist';
       default: return this.grievance.status.toUpperCase();
     }
   }

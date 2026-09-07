@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, Router } from '@angular/router';
 import { HomeAboutSectionComponent } from '../home-about-section/home-about-section.component';
+import { IconComponent } from '../../../common/components/icon.component';
 import { GrievanceService } from '../../../core/services/grievance.service';
 import { DepartmentService } from '../../../core/services/department.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -10,7 +11,7 @@ import { AuthService } from '../../../core/services/auth.service';
 @Component({
   selector: 'app-hero-section',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, HomeAboutSectionComponent],
+  imports: [CommonModule, FormsModule, RouterLink, HomeAboutSectionComponent, IconComponent],
   templateUrl: './hero-section.component.html',
   styleUrl: './hero-section.component.css'
 })
