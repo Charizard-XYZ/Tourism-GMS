@@ -1,6 +1,6 @@
 export const environment = {
   production: true,
- apiUrl: 'https://tourism-gms-backend.onrender.com/api',
+ apiBaseUrl: 'https://tourism-gms-backend.onrender.com/api',
   firebase: {
     apiKey: 'AIzaSyCaZIXAbEaQNqUUawZHbt8S2HaVq-o23Zs',
     authDomain: 'tourism-gms.firebaseapp.com',
