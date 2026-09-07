@@ -26,6 +26,7 @@ function getTransporter() {
   return nodemailer.createTransport({
     host: smtpHost,
     port: smtpPort,
+    family: 4,
     secure: smtpSecure,
     auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined,
     tls: { rejectUnauthorized: false }
