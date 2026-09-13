@@ -508,7 +508,7 @@ export class GrievanceDetailComponent implements OnInit {
     if (!this.grievance || this.isSubmittingFeedback()) return;
     this.isSubmittingFeedback.set(true);
     try {
-      await this.grievanceService.submitFeedback(this.grievance.id, this.selectedRating, this.feedbackComments, true);
+      await this.grievanceService.submitFeedback(this.grievance.id, this.selectedRating, this.feedbackComments);
       this.grievance = this.grievanceService.getGrievanceById(this.grievance.id);
       this.isFeedbackModalOpen = false;
     } catch (e: any) {

@@ -344,6 +344,11 @@ router.patch('/:id/status', authenticateFirebaseToken, authorizeRoles('officer')
       return;
     }
 
+    if (gData['status'] === 'closed') {
+      res.status(400).json({ success: false, message: 'Closed grievances cannot be updated or processed.' });
+      return;
+    }
+
     if (req.user?.['isRevoked'] === true) {
       res.status(403).json({ success: false, message: 'Revoked officers lose authority to update grievances.' });
       return;
@@ -367,6 +372,113 @@ router.patch('/:id/status', authenticateFirebaseToken, authorizeRoles('officer')
           message: 'Department is inactive. Officers cannot update grievance progress.'
         });
         return;
+      }
+    }
+
+    // BUSINESS RULE: Officers cannot set grievance status to 'closed'.
+    // Closure happens ONLY when the original tourist submits feedback.
+    if (status === 'closed') {
+      res.status(403).json({
+        success: false,
+        message: 'Forbidden: Officers cannot set grievance status to closed. Closure happens only when the original tourist submits feedback.'
+      });
+      return;
+    }
+
+    // BUSINESS RULE: Officers cannot set grievance status back to 'assigned'.
+    // Assignment is managed by the system/admin.
+    if (status === 'assigned') {
+      res.status(403).json({
+        success: false,
+        message: 'Forbidden: Officers cannot set grievance status to assigned. Assignment is managed by the system.'
+      });
+      return;
+    }
+
+    // Strictly enforce valid status transitions for Officers: only 'in_progress' or 'resolved'
+    if (status !== 'in_progress' && status !== 'resolved') {
+      res.status(403).json({
+        success: false,
+        message: `Forbidden: Officers can only update status to 'in_progress' or 'resolved'.`
+      });
+      return;
+    }
+
+    // Validate resolution report and proof file requirements when resolving
+    if (status === 'resolved') {
+      if (!resolutionDetails || !resolutionDetails.trim()) {
+        res.status(400).json({
+          success: false,
+          message: 'Official resolution report is required when marking a grievance as resolved.'
+        });
+        return;
+      }
+
+      const existingAttachments = Array.isArray(gData['resolutionAttachments']) ? gData['resolutionAttachments'] : [];
+      const newAttachments = Array.isArray(resolutionAttachments) ? resolutionAttachments : [];
+      if (existingAttachments.length === 0 && newAttachments.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'A proof file is required when marking a grievance as resolved.'
+        });
+        return;
+      }
+    }
+
+    // Validate proof-file metadata and size constraints
+    if (resolutionAttachments && Array.isArray(resolutionAttachments)) {
+      const allowedExts = /\.(pdf|jpg|jpeg|png|webp)$/i;
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+      const maxSizeBytes = 10 * 1024 * 1024;
+
+      for (const att of resolutionAttachments) {
+        if (!att.name || !allowedExts.test(att.name)) {
+          res.status(400).json({
+            success: false,
+            message: `Invalid proof file format for "${att.name || 'unnamed'}". Only PDF and images (JPEG, PNG, WebP) are allowed.`
+          });
+          return;
+        }
+
+        if (!att.url || (!att.url.startsWith('https://') && !att.url.startsWith('http://'))) {
+          res.status(400).json({
+            success: false,
+            message: `Invalid proof file URL reference for "${att.name}".`
+          });
+          return;
+        }
+
+        if (att.type && !allowedTypes.includes(att.type)) {
+          res.status(400).json({
+            success: false,
+            message: `Invalid MIME type "${att.type}" for proof file "${att.name}".`
+          });
+          return;
+        }
+
+        if (att.size !== undefined && att.size !== null) {
+          if (typeof att.size === 'number' && att.size > maxSizeBytes) {
+            res.status(400).json({
+              success: false,
+              message: `Proof file "${att.name}" exceeds maximum allowed size of 10 MB.`
+            });
+            return;
+          }
+          if (typeof att.size === 'string') {
+            const match = att.size.match(/^([\d.]+)\s*(MB|KB|GB|B)$/i);
+            if (match) {
+              const val = parseFloat(match[1]);
+              const unit = match[2].toUpperCase();
+              if (unit === 'GB' || (unit === 'MB' && val > 10)) {
+                res.status(400).json({
+                  success: false,
+                  message: `Proof file "${att.name}" exceeds maximum allowed size of 10 MB.`
+                });
+                return;
+              }
+            }
+          }
+        }
       }
     }
 

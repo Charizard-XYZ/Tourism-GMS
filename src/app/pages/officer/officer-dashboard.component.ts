@@ -60,16 +60,16 @@ import { IconComponent } from '../../common/components/icon.component';
             <app-icon name="check-circle" size="w-4 h-4" class="text-emerald-500"></app-icon>
           </div>
           <p class="text-3xl font-extrabold text-emerald-600">{{ resolvedCount() }}</p>
-          <p class="text-[11px] text-slate-400">Successfully closed</p>
+          <p class="text-[11px] text-slate-400">Resolved, awaiting feedback</p>
         </div>
 
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
           <div class="flex items-center justify-between">
-            <p class="text-xs font-bold text-sky-600 uppercase">Resolution Rate</p>
+            <p class="text-xs font-bold text-sky-600 uppercase">Successfully Closed</p>
             <app-icon name="bar-chart" size="w-4 h-4" class="text-sky-500"></app-icon>
           </div>
-          <p class="text-3xl font-extrabold text-sky-600">{{ resolutionRate() }}%</p>
-          <p class="text-[11px] text-slate-400">On-time resolution rate</p>
+          <p class="text-3xl font-extrabold text-sky-600">{{ closedCount() }}</p>
+          <p class="text-[11px] text-slate-400">Closed after tourist feedback</p>
         </div>
       </div>
 
@@ -125,7 +125,7 @@ export class OfficerDashboardComponent implements OnInit {
   }
 
   assignedCount(): number {
-    return this.grievanceService.roleGrievances().length;
+    return this.grievanceService.allOfficerGrievances().length;
   }
 
   pendingCount(): number {
@@ -133,11 +133,10 @@ export class OfficerDashboardComponent implements OnInit {
   }
 
   resolvedCount(): number {
-    return this.grievanceService.roleGrievances().filter(g => g.status === 'resolved' || g.status === 'closed').length;
+    return this.grievanceService.allOfficerGrievances().filter(g => g.status === 'resolved').length;
   }
 
-  resolutionRate(): number {
-    const total = this.assignedCount();
-    return total > 0 ? Math.round((this.resolvedCount() / total) * 100) : 100;
+  closedCount(): number {
+    return this.grievanceService.allOfficerGrievances().filter(g => g.status === 'closed').length;
   }
 }

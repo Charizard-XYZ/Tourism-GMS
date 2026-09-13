@@ -48,6 +48,7 @@ export interface Grievance {
   resolutionDetails?: string;
   resolutionAttachments?: GrievanceAttachment[];
   resolvedAt?: string;
+  closedAt?: string;
 
   rating?: number;
   feedbackComments?: string;

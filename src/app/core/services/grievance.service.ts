@@ -169,6 +169,29 @@ export class GrievanceService {
     }
   });
 
+  /**
+   * All grievances assigned to the current officer, including resolved and closed.
+   * Excludes only cancelled. Used for accurate dashboard total/statistics counts.
+   */
+  readonly allOfficerGrievances = computed(() => {
+    const user = this.authService.currentUser();
+    const list = this.grievances();
+    if (!user || user.role !== 'officer') return [];
+
+    const cleanEmail = (user.email || '').trim().toLowerCase();
+    const cleanName = (user.displayName || '').trim().toLowerCase();
+    return list.filter(g => {
+      if (g.status === 'cancelled') return false;
+
+      const assignedId = (g.assignedOfficerId || '').trim();
+      const assignedName = (g.assignedOfficerName || '').trim().toLowerCase();
+
+      return (assignedId === user.uid) ||
+        (cleanEmail && assignedId.toLowerCase() === cleanEmail) ||
+        (cleanName && assignedName === cleanName);
+    });
+  });
+
   getGrievanceById(id: string): Grievance | undefined {
     return this.grievances().find(g => g.id === id || g.trackingCode === id || g.grievanceCode === id);
   }
@@ -311,12 +334,11 @@ export class GrievanceService {
   /**
    * Submit Feedback / Rating (Tourist)
    */
-  async submitFeedback(grievanceId: string, rating: number, comments: string, autoClose: boolean = true): Promise<void> {
+  async submitFeedback(grievanceId: string, rating: number, comments: string): Promise<void> {
     await firstValueFrom(this.http.post(`${this.apiUrl}/feedback`, {
       grievanceId,
       rating,
-      comments,
-      autoClose
+      comments
     }));
     await this.loadGrievancesFromBackend();
     await this.loadFeedbacksFromBackend();

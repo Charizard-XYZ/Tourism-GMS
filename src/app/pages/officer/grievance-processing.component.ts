@@ -160,17 +160,20 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
             <div>
               <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Update Complaint Status</label>
               <select [(ngModel)]="selectedStatus" class="w-full px-4 py-2.5 border rounded-xl text-xs font-bold">
-                <option value="assigned">Assigned (Queue)</option>
                 <option value="in_progress">In Progress (Under Inquiry)</option>
                 <option value="resolved">Resolved (Complete)</option>
-                <option value="closed">Closed (Archive)</option>
               </select>
             </div>
 
-            <!-- Resolution Details Input (Required if resolved or closed) -->
-            <div *ngIf="selectedStatus === 'resolved' || selectedStatus === 'closed' || (grievance.resolutionAttachments && grievance.resolutionAttachments.length > 0)" class="space-y-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
-              <label class="block text-xs font-extrabold text-emerald-900 uppercase">Official Resolution Report & Uploaded Proof</label>
-              <textarea [(ngModel)]="resolutionReport" rows="4" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Detail official findings, penalty issued, refund provided, or corrective action taken..." class="w-full px-3 py-2 bg-white border border-emerald-300 rounded-xl text-xs"></textarea>
+            <!-- Resolution Details & Inspection Proof Attachment -->
+            <div class="space-y-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+              <!-- Official Resolution Report (Required when resolving) -->
+              <div *ngIf="selectedStatus === 'resolved' || resolutionReport.length > 0 || (grievance.resolutionDetails && grievance.resolutionDetails.length > 0)" class="space-y-1">
+                <label class="block text-xs font-extrabold text-emerald-900 uppercase">Official Resolution Report</label>
+                <textarea [(ngModel)]="resolutionReport" rows="4" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Detail official findings, penalty issued, refund provided, or corrective action taken..." class="w-full px-3 py-2 bg-white border border-emerald-300 rounded-xl text-xs"></textarea>
+              </div>
+
+              <label class="block text-xs font-extrabold text-emerald-900 uppercase">Inspection Proof / Resolution Document</label>
 
               <!-- Hidden Real File Input -->
               <input 
@@ -184,50 +187,54 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
               <!-- ATTACH INSPECTION PROOF UI: Explicit States -->
               <div class="space-y-2">
                 <!-- State 1: No file selected & not uploading -->
-                <div *ngIf="uploadState() === 'idle'">
-                  <button 
-                    type="button" 
-                    (click)="triggerFileInput()" 
-                    class="w-full py-2.5 bg-white border-2 border-dashed border-emerald-300 rounded-xl text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition inline-flex items-center justify-center space-x-1.5 shadow-xs"
-                  >
-                    <app-icon name="plus" size="w-3.5 h-3.5"></app-icon>
-                    <span>Attach Inspection Proof / PDF</span>
-                  </button>
-                  <p class="text-[10px] text-emerald-700 text-center mt-1">Accepted: PDF (.pdf) or Images (.jpg, .png, .webp), max 10MB</p>
+                <div *ngIf="!selectedFile && uploadState() !== 'uploading'" class="p-3 bg-white border border-emerald-300 rounded-xl space-y-2">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2 min-w-0">
+                      <app-icon name="file-text" size="w-4 h-4" class="text-slate-400 shrink-0"></app-icon>
+                      <span class="text-xs text-slate-600 font-medium">No file selected</span>
+                    </div>
+                    <button 
+                      type="button" 
+                      (click)="triggerFileInput()" 
+                      class="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg text-xs font-bold text-emerald-800 transition inline-flex items-center space-x-1.5 shadow-xs"
+                    >
+                      <app-icon name="plus" size="w-3.5 h-3.5"></app-icon>
+                      <span>Attach Proof / PDF</span>
+                    </button>
+                  </div>
+                  <p class="text-[10px] text-emerald-700">Accepted: PDF (.pdf) or Images (.jpg, .png, .webp), max 10MB</p>
                 </div>
 
-                <!-- State 2: File selected (Pending Upload) -->
-                <div *ngIf="uploadState() === 'selected' && selectedFile" class="p-3 bg-white border border-emerald-300 rounded-xl space-y-2">
+                <!-- State 2: File selected (Pending automated upload on submit) -->
+                <div *ngIf="selectedFile && uploadState() !== 'uploading'" class="p-3 bg-white border border-emerald-300 rounded-xl space-y-2">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-2 min-w-0">
                       <app-icon name="file-text" size="w-4 h-4" class="text-emerald-700 shrink-0"></app-icon>
                       <div class="min-w-0">
-                        <p class="text-xs font-bold text-slate-800 truncate">{{ selectedFile.name }}</p>
+                        <p class="text-xs font-bold text-slate-800 truncate">Selected: {{ selectedFile.name }}</p>
                         <p class="text-[10px] text-slate-500">{{ formatFileSize(selectedFile.size) }}</p>
                       </div>
                     </div>
-                    <button type="button" (click)="cancelSelectedFile()" class="text-slate-400 hover:text-rose-600 p-1" title="Cancel selection">
-                      <app-icon name="x" size="w-4 h-4"></app-icon>
-                    </button>
+                    <div class="flex items-center space-x-1 shrink-0">
+                      <button 
+                        type="button" 
+                        (click)="triggerFileInput()" 
+                        class="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition"
+                        title="Change file"
+                      >
+                        Change
+                      </button>
+                      <button 
+                        type="button" 
+                        (click)="cancelSelectedFile()" 
+                        class="text-slate-400 hover:text-rose-600 p-1" 
+                        title="Remove selection"
+                      >
+                        <app-icon name="x" size="w-4 h-4"></app-icon>
+                      </button>
+                    </div>
                   </div>
-
-                  <div class="flex space-x-2 pt-1">
-                    <button 
-                      type="button" 
-                      (click)="uploadSelectedProofFile()" 
-                      class="flex-1 py-1.5 bg-emerald-700 text-white rounded-lg text-xs font-bold hover:bg-emerald-800 transition inline-flex items-center justify-center space-x-1.5 shadow-xs"
-                    >
-                      <app-icon name="upload" size="w-3.5 h-3.5"></app-icon>
-                      <span>Upload Proof File</span>
-                    </button>
-                    <button 
-                      type="button" 
-                      (click)="triggerFileInput()" 
-                      class="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition"
-                    >
-                      Change
-                    </button>
-                  </div>
+                  <p class="text-[10px] text-emerald-700">Will be uploaded automatically when updating case status.</p>
                 </div>
 
                 <!-- State 3: Uploading (Progress) -->
@@ -235,7 +242,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
                   <div class="flex items-center justify-between text-xs font-bold text-emerald-900">
                     <span class="inline-flex items-center space-x-1.5">
                       <app-icon name="loader" size="w-3.5 h-3.5" class="animate-spin text-emerald-700"></app-icon>
-                      <span>Uploading {{ selectedFile?.name || 'Inspection Proof' }}...</span>
+                      <span>Uploading proof... ({{ selectedFile?.name }})</span>
                     </span>
                     <span>{{ uploadProgress() }}%</span>
                   </div>
@@ -244,19 +251,8 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
                   </div>
                 </div>
 
-                <!-- State 4: Upload Success Alert -->
-                <div *ngIf="uploadState() === 'success'" class="p-2.5 bg-emerald-100/70 border border-emerald-300 rounded-xl flex items-center justify-between text-xs text-emerald-900 animate-fade-in">
-                  <div class="flex items-center space-x-1.5">
-                    <app-icon name="check-circle" size="w-4 h-4" class="text-emerald-700 shrink-0"></app-icon>
-                    <span class="font-bold">Inspection proof uploaded successfully!</span>
-                  </div>
-                  <button type="button" (click)="triggerFileInput()" class="text-[11px] font-bold text-emerald-800 underline hover:text-emerald-950">
-                    Attach Another
-                  </button>
-                </div>
-
-                <!-- State 5: Upload Failed Alert -->
-                <div *ngIf="uploadState() === 'error'" class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl space-y-1 text-xs text-rose-800 animate-fade-in">
+                <!-- State 4: Upload / Validation Failed Alert -->
+                <div *ngIf="uploadErrorMessage()" class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl space-y-1 text-xs text-rose-800 animate-fade-in">
                   <div class="flex items-start justify-between">
                     <div class="flex items-start space-x-1.5">
                       <app-icon name="alert-circle" size="w-4 h-4" class="text-rose-600 shrink-0 mt-0.5"></app-icon>
@@ -265,7 +261,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
                         <p class="text-[11px] text-rose-700">{{ uploadErrorMessage() }}</p>
                       </div>
                     </div>
-                    <button type="button" (click)="uploadState.set('idle'); uploadErrorMessage.set('')" class="text-rose-400 hover:text-rose-700 p-1">
+                    <button type="button" (click)="uploadErrorMessage.set('')" class="text-rose-400 hover:text-rose-700 p-1">
                       <app-icon name="x" size="w-3.5 h-3.5"></app-icon>
                     </button>
                   </div>
@@ -302,12 +298,13 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
             <button 
               (click)="saveStatusUpdate()" 
-              [disabled]="isUpdatingStatus() || uploadState() === 'uploading'"
+              [disabled]="isUpdatingStatus() || uploadState() === 'uploading' || isSuccess()"
               class="w-full bg-amber-500 text-slate-950 py-3 rounded-xl font-extrabold text-xs hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed shadow-md inline-flex items-center justify-center space-x-1.5 min-h-[44px] min-w-[260px]"
             >
-              <app-icon *ngIf="isUpdatingStatus()" name="loader" size="w-4 h-4" class="animate-spin shrink-0"></app-icon>
-              <app-icon *ngIf="!isUpdatingStatus()" name="check-circle" size="w-4 h-4"></app-icon>
-              <span>{{ isUpdatingStatus() ? 'Updating...' : 'Update Case Status & Notify Tourist' }}</span>
+              <app-icon *ngIf="uploadState() === 'uploading' || isUpdatingStatus()" name="loader" size="w-4 h-4" class="animate-spin shrink-0"></app-icon>
+              <app-icon *ngIf="uploadState() !== 'uploading' && !isUpdatingStatus() && !isSuccess()" name="check-circle" size="w-4 h-4"></app-icon>
+              <app-icon *ngIf="isSuccess()" name="check-circle" size="w-4 h-4" class="text-emerald-950"></app-icon>
+              <span>{{ mainButtonLabel() }}</span>
             </button>
           </div>
 
@@ -342,9 +339,10 @@ export class GrievanceProcessingComponent implements OnInit {
 
   // File Upload Reactive State
   selectedFile: File | null = null;
-  uploadState = signal<'idle' | 'selected' | 'uploading' | 'success' | 'error'>('idle');
+  uploadState = signal<'idle' | 'selected' | 'uploading' | 'error'>('idle');
   uploadProgress = signal<number>(0);
   uploadErrorMessage = signal<string>('');
+  isSuccess = signal<boolean>(false);
 
   async ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -484,72 +482,22 @@ export class GrievanceProcessingComponent implements OnInit {
     this.resolutionFiles.splice(index, 1);
   }
 
-  async uploadSelectedProofFile(): Promise<void> {
-    if (!this.selectedFile || !this.grievance) return;
-
-    const fileToUpload = this.selectedFile;
-    const grievanceId = this.grievance.id;
-    const sanitizedName = fileToUpload.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `inspection-proofs/${grievanceId}/${Date.now()}_${sanitizedName}`;
-
-    this.uploadState.set('uploading');
-    this.uploadProgress.set(5);
-
-    try {
-      const storageRef = ref(this.firebaseService.storage, storagePath);
-      const uploadTask = uploadBytesResumable(storageRef, fileToUpload, {
-        contentType: fileToUpload.type || 'application/pdf',
-        customMetadata: {
-          grievanceId,
-          officerUid: this.authService.currentUser()?.uid || '',
-          originalName: fileToUpload.name
-        }
-      });
-
-      await new Promise<void>((resolve, reject) => {
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            this.uploadProgress.set(Math.max(5, Math.min(98, progress)));
-          },
-          (error) => {
-            reject(error);
-          },
-          () => {
-            resolve();
-          }
-        );
-      });
-
-      const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-      this.uploadProgress.set(100);
-
-      const newAttachment: GrievanceAttachment = {
-        name: fileToUpload.name,
-        url: downloadUrl,
-        size: this.formatFileSize(fileToUpload.size),
-        type: fileToUpload.type || 'application/pdf'
-      };
-
-      this.resolutionFiles.push(newAttachment);
-      this.uploadState.set('success');
-      this.selectedFile = null;
-
-      if (this.fileInputRef && this.fileInputRef.nativeElement) {
-        this.fileInputRef.nativeElement.value = '';
-      }
-
-      this.toastMessage.set(`Inspection proof "${newAttachment.name}" uploaded successfully.`);
-    } catch (err: any) {
-      console.error('Failed to upload inspection proof to Firebase Storage:', err);
-      this.uploadState.set('error');
-      this.uploadErrorMessage.set(err?.message || 'Failed to upload inspection proof file. Please check your connection and try again.');
+  mainButtonLabel(): string {
+    if (this.isSuccess()) {
+      return 'Case updated and tourist notified';
     }
+    if (this.uploadState() === 'uploading') {
+      return 'Uploading proof...';
+    }
+    if (this.isUpdatingStatus()) {
+      return 'Updating Case...';
+    }
+    return 'Update Case Status & Notify Tourist';
   }
 
-  async saveStatusUpdate() {
-    if (!this.grievance || this.isUpdatingStatus()) return;
+  async saveStatusUpdate(): Promise<void> {
+    if (!this.grievance || this.isUpdatingStatus() || this.uploadState() === 'uploading' || this.isSuccess()) return;
+
     if (this.isGrievanceCancelled()) {
       this.toastMessage.set('Cancelled grievances cannot be updated or processed.');
       return;
@@ -566,15 +514,112 @@ export class GrievanceProcessingComponent implements OnInit {
       this.toastMessage.set('Department is inactive. Officers cannot update grievance progress.');
       return;
     }
+    // BUSINESS RULE: Officers cannot set status to 'closed' or 'assigned'
+    if (this.selectedStatus === 'closed' || this.selectedStatus === 'assigned') {
+      this.toastMessage.set('Officers cannot set grievance status to closed or assigned.');
+      return;
+    }
+
+    // Check whether a proof file and resolution report are required
+    if (this.selectedStatus === 'resolved') {
+      if (!this.resolutionReport || !this.resolutionReport.trim()) {
+        this.toastMessage.set('Official resolution report is required when resolving a grievance.');
+        return;
+      }
+
+      const hasExistingProof = (this.resolutionFiles && this.resolutionFiles.length > 0) ||
+                               (this.grievance.resolutionAttachments && this.grievance.resolutionAttachments.length > 0);
+      const hasSelectedFile = !!this.selectedFile;
+
+      if (!hasExistingProof && !hasSelectedFile) {
+        this.toastMessage.set('A proof file is required when marking a grievance as resolved. Please attach an inspection proof or PDF report.');
+        return;
+      }
+    }
+
+    // AUTO-UPLOAD WORKFLOW: If a real proof file has been selected, upload it automatically
+    let uploadedAttachments = [...this.resolutionFiles];
+    if (this.selectedFile) {
+      const fileToUpload = this.selectedFile;
+      const grievanceId = this.grievance.id;
+      const sanitizedName = fileToUpload.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storagePath = `inspection-proofs/${grievanceId}/${Date.now()}_${sanitizedName}`;
+
+      this.uploadState.set('uploading');
+      this.uploadProgress.set(10);
+      this.uploadErrorMessage.set('');
+
+      try {
+        const storageRef = ref(this.firebaseService.storage, storagePath);
+        const uploadTask = uploadBytesResumable(storageRef, fileToUpload, {
+          contentType: fileToUpload.type || 'application/pdf',
+          customMetadata: {
+            grievanceId,
+            officerUid: this.authService.currentUser()?.uid || '',
+            originalName: fileToUpload.name
+          }
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+              this.uploadProgress.set(Math.max(10, Math.min(95, progress)));
+            },
+            (error) => {
+              reject(error);
+            },
+            () => {
+              resolve();
+            }
+          );
+        });
+
+        const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+        this.uploadProgress.set(100);
+
+        const newAttachment: GrievanceAttachment = {
+          name: fileToUpload.name,
+          url: downloadUrl,
+          size: this.formatFileSize(fileToUpload.size),
+          type: fileToUpload.type || 'application/pdf'
+        };
+
+        uploadedAttachments.push(newAttachment);
+        this.resolutionFiles = [...uploadedAttachments];
+        this.selectedFile = null;
+        this.uploadState.set('idle');
+
+        if (this.fileInputRef && this.fileInputRef.nativeElement) {
+          this.fileInputRef.nativeElement.value = '';
+        }
+      } catch (uploadErr: any) {
+        console.error('Failed to upload inspection proof to Firebase Storage:', uploadErr);
+        this.uploadState.set('error');
+        this.uploadErrorMessage.set(uploadErr?.message || 'Failed to upload proof file. Please check your connection and retry.');
+        this.toastMessage.set('Failed to upload proof file. Please retry.');
+        // Do NOT proceed to update status or notify tourist; keep selectedFile for retry
+        return;
+      }
+    }
+
     this.isUpdatingStatus.set(true);
     try {
-      await this.grievanceService.updateStatus(this.grievance.id, this.selectedStatus, this.resolutionReport, this.resolutionFiles);
-      this.toastMessage.set(`Case status updated to ${this.selectedStatus.toUpperCase()}`);
-      
+      await this.grievanceService.updateStatus(
+        this.grievance.id,
+        this.selectedStatus,
+        this.resolutionReport.trim(),
+        uploadedAttachments
+      );
+
+      this.isSuccess.set(true);
+      this.toastMessage.set('Case updated and tourist notified');
+
       setTimeout(() => {
         this.isUpdatingStatus.set(false);
         this.router.navigate(['/officer/dashboard']);
-      }, 1200);
+      }, 1500);
     } catch (err: any) {
       this.isUpdatingStatus.set(false);
       this.toastMessage.set(err?.message || 'Failed to update case status.');

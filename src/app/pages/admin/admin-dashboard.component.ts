@@ -70,8 +70,8 @@ import { IconComponent } from '../../common/components/icon.component';
 
           <div class="p-5 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-1">
             <span class="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider">Resolved / Closed</span>
-            <p class="text-3xl font-extrabold text-emerald-800">{{ grievanceOverviewStats().resolved }}</p>
-            <p class="text-[11px] text-emerald-600">Successfully completed</p>
+            <p class="text-3xl font-extrabold text-emerald-800">{{ grievanceOverviewStats().resolved + grievanceOverviewStats().closed }}</p>
+            <p class="text-[11px] text-emerald-600">{{ grievanceOverviewStats().resolved }} resolved · {{ grievanceOverviewStats().closed }} closed</p>
           </div>
 
           <div class="p-5 bg-rose-50/60 rounded-2xl border border-rose-200 space-y-1">
@@ -249,7 +249,8 @@ export class AdminDashboardComponent implements OnInit {
     return {
       active: list.filter(g => g.status === 'assigned' || g.status === 'submitted').length,
       inProgress: list.filter(g => g.status === 'in_progress').length,
-      resolved: list.filter(g => g.status === 'resolved' || g.status === 'closed').length,
+      resolved: list.filter(g => g.status === 'resolved').length,
+      closed: list.filter(g => g.status === 'closed').length,
       reopened: list.filter(g => g.status === 'reopened').length
     };
   });

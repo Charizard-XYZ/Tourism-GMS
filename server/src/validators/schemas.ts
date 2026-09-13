@@ -83,14 +83,19 @@ export const assignGrievanceSchema = z.object({
   officerName: z.string().min(1, 'Officer name is required')
 });
 
+const allowedProofExtensions = /\.(pdf|jpg|jpeg|png|webp)$/i;
+const allowedProofMimeTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+
 export const updateGrievanceStatusSchema = z.object({
-  status: z.enum(['submitted', 'assigned', 'in_progress', 'resolved', 'closed', 'reopened', 'cancelled']),
+  status: z.enum(['submitted', 'in_progress', 'resolved', 'reopened', 'cancelled']),
   resolutionDetails: z.string().optional(),
   resolutionAttachments: z.array(z.object({
-    name: z.string(),
-    url: z.string(),
-    type: z.string().optional(),
-    size: z.string().optional()
+    name: z.string().min(1, 'Proof file name is required').regex(allowedProofExtensions, 'Proof file must be a PDF or image (.pdf, .jpg, .jpeg, .png, .webp)'),
+    url: z.string().url('Proof file URL must be a valid URL'),
+    type: z.string().optional().refine(t => !t || allowedProofMimeTypes.includes(t), {
+      message: 'Proof file type must be PDF or image (JPEG, PNG, WebP)'
+    }),
+    size: z.union([z.string(), z.number()]).optional()
   })).optional()
 });
 
@@ -104,5 +109,5 @@ export const submitFeedbackSchema = z.object({
   grievanceId: z.string().min(1, 'Grievance ID is required'),
   rating: z.number().min(1).max(5),
   comments: z.string().trim().optional().default(''),
-  autoClose: z.boolean().optional().default(true)
+  resolutionSatisfactory: z.boolean().optional().default(true)
 });
