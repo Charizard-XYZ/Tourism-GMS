@@ -84,10 +84,11 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
               <button 
                 type="button" 
                 (click)="showPassword.set(!showPassword())" 
-                aria-label="Toggle password visibility"
+                [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                [title]="showPassword() ? 'Hide password' : 'Show password'"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none"
               >
-                <app-icon name="eye" size="w-4 h-4"></app-icon>
+                <app-icon [name]="showPassword() ? 'eye-off' : 'eye'" size="w-4 h-4"></app-icon>
               </button>
             </div>
             <p *ngIf="hasSubmitted() && !password.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
@@ -112,10 +113,11 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
               <button 
                 type="button" 
                 (click)="showConfirmPassword.set(!showConfirmPassword())" 
-                aria-label="Toggle confirm password visibility"
+                [attr.aria-label]="showConfirmPassword() ? 'Hide confirm password' : 'Show confirm password'"
+                [title]="showConfirmPassword() ? 'Hide confirm password' : 'Show confirm password'"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none"
               >
-                <app-icon name="eye" size="w-4 h-4"></app-icon>
+                <app-icon [name]="showConfirmPassword() ? 'eye-off' : 'eye'" size="w-4 h-4"></app-icon>
               </button>
             </div>
             <p *ngIf="hasSubmitted() && !confirmPassword.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>

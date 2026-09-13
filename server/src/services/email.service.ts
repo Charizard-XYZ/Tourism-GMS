@@ -13,6 +13,8 @@ import {
 
 dotenv.config();
 
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
+
 /**
  * Reads SMTP credentials dynamically from environment variables
  */
@@ -23,14 +25,15 @@ function getTransporter() {
   const smtpUser = process.env['SMTP_USER'] || '';
   const smtpPass = process.env['SMTP_PASSWORD'] || '';
 
-  return nodemailer.createTransport({
+  const transportOptions: SMTPTransport.Options = {
     host: smtpHost,
     port: smtpPort,
-    family: 4,
     secure: smtpSecure,
     auth: smtpUser && smtpPass ? { user: smtpUser, pass: smtpPass } : undefined,
     tls: { rejectUnauthorized: false }
-  });
+  };
+
+  return nodemailer.createTransport(transportOptions);
 }
 
 const defaultFrom = process.env['SMTP_FROM'] || '"Tourism-GMS Redressal Portal" <noreply@tourism-gms.gov.in>';

@@ -459,10 +459,10 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                   <button 
                     type="button" 
                     (click)="showOfficerPassword.set(!showOfficerPassword())" 
-                    aria-label="Toggle officer password visibility"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
+                    [attr.aria-label]="showOfficerPassword() ? 'Hide password' : 'Show password'"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none flex items-center justify-center"
                   >
-                    {{ showOfficerPassword() ? 'Hide' : 'Show' }}
+                    <app-icon [name]="showOfficerPassword() ? 'eye-off' : 'eye'" size="w-4 h-4"></app-icon>
                   </button>
                 </div>
                 <p *ngIf="hasRegisterSubmitted() && !newOfficer.password.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
@@ -487,10 +487,10 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                   <button 
                     type="button" 
                     (click)="showOfficerConfirmPassword.set(!showOfficerConfirmPassword())" 
-                    aria-label="Toggle confirm password visibility"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
+                    [attr.aria-label]="showOfficerConfirmPassword() ? 'Hide password' : 'Show password'"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none flex items-center justify-center"
                   >
-                    {{ showOfficerConfirmPassword() ? 'Hide' : 'Show' }}
+                    <app-icon [name]="showOfficerConfirmPassword() ? 'eye-off' : 'eye'" size="w-4 h-4"></app-icon>
                   </button>
                 </div>
                 <p *ngIf="hasRegisterSubmitted() && !newOfficer.confirmPassword.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>

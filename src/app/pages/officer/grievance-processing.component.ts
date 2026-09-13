@@ -1,14 +1,16 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { GrievanceService } from '../../core/services/grievance.service';
 import { AuthService } from '../../core/services/auth.service';
 import { DepartmentService } from '../../core/services/department.service';
-import { Grievance, GrievanceStatus } from '../../core/models/complaint.model';
+import { FirebaseService } from '../../core/services/firebase.service';
+import { Grievance, GrievanceStatus, GrievanceAttachment } from '../../core/models/complaint.model';
 import { StatusBadgeComponent } from '../../common/components/status-badge.component';
 import { ToastComponent } from '../../common/components/toast.component';
 import { IconComponent } from '../../common/components/icon.component';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 @Component({
   selector: 'app-grievance-processing',
@@ -99,6 +101,19 @@ import { IconComponent } from '../../common/components/icon.component';
         <!-- Right 5 Cols: Officer Action Control Panel -->
         <div class="lg:col-span-5 space-y-6">
           
+          <!-- Closed Grievance Warning — disables all processing actions -->
+          <div *ngIf="isGrievanceClosed()" class="bg-slate-100 border border-slate-300 rounded-3xl p-5 flex items-start space-x-4">
+            <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
+              <app-icon name="check-circle" size="w-5 h-5" class="text-slate-700"></app-icon>
+            </div>
+            <div>
+              <p class="text-xs font-extrabold text-slate-900 uppercase mb-1">Grievance Closed</p>
+              <p class="text-xs text-slate-600">
+                This grievance has been officially closed. It is kept for historical records and can no longer be processed or updated.
+              </p>
+            </div>
+          </div>
+
           <!-- Cancelled Grievance Warning — disables all processing actions -->
           <div *ngIf="isGrievanceCancelled()" class="bg-rose-50 border border-rose-200 rounded-3xl p-5 flex items-start space-x-4">
             <div class="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
@@ -113,7 +128,7 @@ import { IconComponent } from '../../common/components/icon.component';
           </div>
 
           <!-- Not Assigned to Current Officer Warning -->
-          <div *ngIf="!isGrievanceCancelled() && !isAssignedToCurrentOfficer()" class="bg-amber-50 border border-amber-200 rounded-3xl p-5 flex items-start space-x-4">
+          <div *ngIf="!isGrievanceCancelled() && !isGrievanceClosed() && !isAssignedToCurrentOfficer()" class="bg-amber-50 border border-amber-200 rounded-3xl p-5 flex items-start space-x-4">
             <div class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
               <app-icon name="alert-triangle" size="w-5 h-5" class="text-amber-600"></app-icon>
             </div>
@@ -126,7 +141,7 @@ import { IconComponent } from '../../common/components/icon.component';
           </div>
 
           <!-- Department Inactive Warning — disables all update actions -->
-          <div *ngIf="!isGrievanceCancelled() && isDepartmentInactive()" class="bg-rose-50 border border-rose-200 rounded-3xl p-5 flex items-start space-x-4">
+          <div *ngIf="!isGrievanceCancelled() && !isGrievanceClosed() && isDepartmentInactive()" class="bg-rose-50 border border-rose-200 rounded-3xl p-5 flex items-start space-x-4">
             <div class="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
               <app-icon name="alert-circle" size="w-5 h-5" class="text-rose-600"></app-icon>
             </div>
@@ -138,7 +153,7 @@ import { IconComponent } from '../../common/components/icon.component';
             </div>
           </div>
 
-          <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6" [class.opacity-50]="isDepartmentInactive() || isGrievanceCancelled() || !isAssignedToCurrentOfficer()" [class.pointer-events-none]="isDepartmentInactive() || isGrievanceCancelled() || !isAssignedToCurrentOfficer()">
+          <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6" [class.opacity-50]="isDepartmentInactive() || isGrievanceCancelled() || isGrievanceClosed() || !isAssignedToCurrentOfficer()" [class.pointer-events-none]="isDepartmentInactive() || isGrievanceCancelled() || isGrievanceClosed() || !isAssignedToCurrentOfficer()">
             <h3 class="font-bold text-slate-900 text-base border-b pb-2">Status & Resolution Controls</h3>
 
             <!-- Status Dropdown -->
@@ -148,33 +163,146 @@ import { IconComponent } from '../../common/components/icon.component';
                 <option value="assigned">Assigned (Queue)</option>
                 <option value="in_progress">In Progress (Under Inquiry)</option>
                 <option value="resolved">Resolved (Complete)</option>
+                <option value="closed">Closed (Archive)</option>
               </select>
             </div>
 
-            <!-- Resolution Details Input (Required if resolved) -->
-            <div *ngIf="selectedStatus === 'resolved' || (grievance.resolutionAttachments && grievance.resolutionAttachments.length > 0)" class="space-y-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+            <!-- Resolution Details Input (Required if resolved or closed) -->
+            <div *ngIf="selectedStatus === 'resolved' || selectedStatus === 'closed' || (grievance.resolutionAttachments && grievance.resolutionAttachments.length > 0)" class="space-y-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
               <label class="block text-xs font-extrabold text-emerald-900 uppercase">Official Resolution Report & Uploaded Proof</label>
               <textarea [(ngModel)]="resolutionReport" rows="4" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Detail official findings, penalty issued, refund provided, or corrective action taken..." class="w-full px-3 py-2 bg-white border border-emerald-300 rounded-xl text-xs"></textarea>
 
-              <button type="button" (click)="simulateResolutionProof()" class="w-full py-2 bg-white border border-emerald-300 rounded-xl text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition inline-flex items-center justify-center space-x-1.5">
-                <app-icon name="plus" size="w-3.5 h-3.5"></app-icon>
-                <span>Attach Inspection Proof / PDF</span>
-              </button>
+              <!-- Hidden Real File Input -->
+              <input 
+                type="file" 
+                #fileInput 
+                (change)="onFileSelected($event)" 
+                accept=".pdf,application/pdf,image/jpeg,image/png,image/webp" 
+                class="hidden" 
+              />
 
+              <!-- ATTACH INSPECTION PROOF UI: Explicit States -->
+              <div class="space-y-2">
+                <!-- State 1: No file selected & not uploading -->
+                <div *ngIf="uploadState() === 'idle'">
+                  <button 
+                    type="button" 
+                    (click)="triggerFileInput()" 
+                    class="w-full py-2.5 bg-white border-2 border-dashed border-emerald-300 rounded-xl text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition inline-flex items-center justify-center space-x-1.5 shadow-xs"
+                  >
+                    <app-icon name="plus" size="w-3.5 h-3.5"></app-icon>
+                    <span>Attach Inspection Proof / PDF</span>
+                  </button>
+                  <p class="text-[10px] text-emerald-700 text-center mt-1">Accepted: PDF (.pdf) or Images (.jpg, .png, .webp), max 10MB</p>
+                </div>
+
+                <!-- State 2: File selected (Pending Upload) -->
+                <div *ngIf="uploadState() === 'selected' && selectedFile" class="p-3 bg-white border border-emerald-300 rounded-xl space-y-2">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2 min-w-0">
+                      <app-icon name="file-text" size="w-4 h-4" class="text-emerald-700 shrink-0"></app-icon>
+                      <div class="min-w-0">
+                        <p class="text-xs font-bold text-slate-800 truncate">{{ selectedFile.name }}</p>
+                        <p class="text-[10px] text-slate-500">{{ formatFileSize(selectedFile.size) }}</p>
+                      </div>
+                    </div>
+                    <button type="button" (click)="cancelSelectedFile()" class="text-slate-400 hover:text-rose-600 p-1" title="Cancel selection">
+                      <app-icon name="x" size="w-4 h-4"></app-icon>
+                    </button>
+                  </div>
+
+                  <div class="flex space-x-2 pt-1">
+                    <button 
+                      type="button" 
+                      (click)="uploadSelectedProofFile()" 
+                      class="flex-1 py-1.5 bg-emerald-700 text-white rounded-lg text-xs font-bold hover:bg-emerald-800 transition inline-flex items-center justify-center space-x-1.5 shadow-xs"
+                    >
+                      <app-icon name="upload" size="w-3.5 h-3.5"></app-icon>
+                      <span>Upload Proof File</span>
+                    </button>
+                    <button 
+                      type="button" 
+                      (click)="triggerFileInput()" 
+                      class="px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold hover:bg-slate-200 transition"
+                    >
+                      Change
+                    </button>
+                  </div>
+                </div>
+
+                <!-- State 3: Uploading (Progress) -->
+                <div *ngIf="uploadState() === 'uploading'" class="p-3 bg-white border border-emerald-300 rounded-xl space-y-2">
+                  <div class="flex items-center justify-between text-xs font-bold text-emerald-900">
+                    <span class="inline-flex items-center space-x-1.5">
+                      <app-icon name="loader" size="w-3.5 h-3.5" class="animate-spin text-emerald-700"></app-icon>
+                      <span>Uploading {{ selectedFile?.name || 'Inspection Proof' }}...</span>
+                    </span>
+                    <span>{{ uploadProgress() }}%</span>
+                  </div>
+                  <div class="w-full bg-emerald-100 rounded-full h-2 overflow-hidden">
+                    <div class="bg-emerald-600 h-2 rounded-full transition-all duration-200" [style.width.%]="uploadProgress()"></div>
+                  </div>
+                </div>
+
+                <!-- State 4: Upload Success Alert -->
+                <div *ngIf="uploadState() === 'success'" class="p-2.5 bg-emerald-100/70 border border-emerald-300 rounded-xl flex items-center justify-between text-xs text-emerald-900 animate-fade-in">
+                  <div class="flex items-center space-x-1.5">
+                    <app-icon name="check-circle" size="w-4 h-4" class="text-emerald-700 shrink-0"></app-icon>
+                    <span class="font-bold">Inspection proof uploaded successfully!</span>
+                  </div>
+                  <button type="button" (click)="triggerFileInput()" class="text-[11px] font-bold text-emerald-800 underline hover:text-emerald-950">
+                    Attach Another
+                  </button>
+                </div>
+
+                <!-- State 5: Upload Failed Alert -->
+                <div *ngIf="uploadState() === 'error'" class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl space-y-1 text-xs text-rose-800 animate-fade-in">
+                  <div class="flex items-start justify-between">
+                    <div class="flex items-start space-x-1.5">
+                      <app-icon name="alert-circle" size="w-4 h-4" class="text-rose-600 shrink-0 mt-0.5"></app-icon>
+                      <div>
+                        <p class="font-bold">File validation / upload error</p>
+                        <p class="text-[11px] text-rose-700">{{ uploadErrorMessage() }}</p>
+                      </div>
+                    </div>
+                    <button type="button" (click)="uploadState.set('idle'); uploadErrorMessage.set('')" class="text-rose-400 hover:text-rose-700 p-1">
+                      <app-icon name="x" size="w-3.5 h-3.5"></app-icon>
+                    </button>
+                  </div>
+                  <div class="pt-1 flex justify-end">
+                    <button type="button" (click)="triggerFileInput()" class="px-2.5 py-1 bg-white border border-rose-300 rounded-lg font-bold text-[11px] hover:bg-rose-100 transition">
+                      Choose Another File
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Attached Resolution Proof Files List (Real uploaded references) -->
               <div *ngIf="resolutionFiles.length > 0 || (grievance.resolutionAttachments && grievance.resolutionAttachments.length > 0)" class="text-xs text-emerald-800 space-y-1.5 pt-1">
                 <p class="font-bold text-[11px] text-emerald-900 uppercase">Attached Resolution Proof Files:</p>
                 <div class="flex flex-wrap gap-2">
-                  <a *ngFor="let f of (resolutionFiles.length > 0 ? resolutionFiles : grievance.resolutionAttachments)" [href]="f.url" target="_blank" class="px-3 py-1.5 bg-white border border-emerald-300 rounded-xl text-xs font-bold text-emerald-900 flex items-center space-x-1.5 hover:bg-emerald-100 transition shadow-sm">
-                    <span>{{ f.name }}</span>
-                    <span *ngIf="f.size" class="text-[10px] text-emerald-600 font-semibold">({{ f.size }})</span>
-                  </a>
+                  <div *ngFor="let f of (resolutionFiles.length > 0 ? resolutionFiles : grievance.resolutionAttachments); let idx = index" class="px-3 py-1.5 bg-white border border-emerald-300 rounded-xl text-xs font-bold text-emerald-900 flex items-center space-x-2 hover:bg-emerald-100 transition shadow-sm">
+                    <a [href]="f.url" target="_blank" class="hover:underline flex items-center space-x-1.5">
+                      <span>{{ f.name }}</span>
+                      <span *ngIf="f.size" class="text-[10px] text-emerald-600 font-semibold">({{ f.size }})</span>
+                    </a>
+                    <button 
+                      *ngIf="resolutionFiles.length > 0 && !isGrievanceClosed() && !isGrievanceCancelled()" 
+                      type="button" 
+                      (click)="removeResolutionFile(idx)" 
+                      class="text-slate-400 hover:text-rose-600 ml-1" 
+                      title="Remove file"
+                    >
+                      <app-icon name="x" size="w-3 h-3"></app-icon>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
 
             <button 
               (click)="saveStatusUpdate()" 
-              [disabled]="isUpdatingStatus()"
+              [disabled]="isUpdatingStatus() || uploadState() === 'uploading'"
               class="w-full bg-amber-500 text-slate-950 py-3 rounded-xl font-extrabold text-xs hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed shadow-md inline-flex items-center justify-center space-x-1.5 min-h-[44px] min-w-[260px]"
             >
               <app-icon *ngIf="isUpdatingStatus()" name="loader" size="w-4 h-4" class="animate-spin shrink-0"></app-icon>
@@ -198,16 +326,25 @@ export class GrievanceProcessingComponent implements OnInit {
   grievanceService = inject(GrievanceService);
   authService = inject(AuthService);
   departmentService = inject(DepartmentService);
+  firebaseService = inject(FirebaseService);
+
+  @ViewChild('fileInput') fileInputRef?: ElementRef<HTMLInputElement>;
 
   grievance?: Grievance;
   selectedStatus: GrievanceStatus = 'in_progress';
   resolutionReport = '';
-  resolutionFiles: any[] = [];
+  resolutionFiles: GrievanceAttachment[] = [];
   
   noteText = '';
   isInternalOnly = true;
 
   toastMessage = signal<string | null>(null);
+
+  // File Upload Reactive State
+  selectedFile: File | null = null;
+  uploadState = signal<'idle' | 'selected' | 'uploading' | 'success' | 'error'>('idle');
+  uploadProgress = signal<number>(0);
+  uploadErrorMessage = signal<string>('');
 
   async ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
@@ -226,12 +363,19 @@ export class GrievanceProcessingComponent implements OnInit {
       if (this.grievance) {
         this.selectedStatus = this.grievance.status;
         this.resolutionReport = this.grievance.resolutionDetails || '';
+        if (this.grievance.resolutionAttachments && this.grievance.resolutionAttachments.length > 0) {
+          this.resolutionFiles = [...this.grievance.resolutionAttachments];
+        }
       }
     }
   }
 
   isGrievanceCancelled(): boolean {
     return this.grievance?.status === 'cancelled';
+  }
+
+  isGrievanceClosed(): boolean {
+    return this.grievance?.status === 'closed';
   }
 
   isAssignedToCurrentOfficer(): boolean {
@@ -257,8 +401,8 @@ export class GrievanceProcessingComponent implements OnInit {
 
   async postNote() {
     if (!this.grievance || !this.noteText.trim() || this.isPostingNote()) return;
-    if (this.isGrievanceCancelled()) {
-      this.toastMessage.set('Cancelled grievances cannot be updated or processed.');
+    if (this.isGrievanceCancelled() || this.isGrievanceClosed()) {
+      this.toastMessage.set('Closed or cancelled grievances cannot be updated or processed.');
       return;
     }
     this.isPostingNote.set(true);
@@ -272,19 +416,146 @@ export class GrievanceProcessingComponent implements OnInit {
     }
   }
 
-  simulateResolutionProof() {
-    this.resolutionFiles.push({
-      name: `Officer_Inspection_Report_${Date.now().toString().slice(-4)}.pdf`,
-      url: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=600',
-      size: '920 KB',
-      type: 'application/pdf'
-    });
+  triggerFileInput(): void {
+    if (this.fileInputRef && this.fileInputRef.nativeElement) {
+      this.fileInputRef.nativeElement.click();
+    }
+  }
+
+  formatFileSize(bytes: number): string {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) {
+      return;
+    }
+
+    const file = input.files[0];
+    this.uploadErrorMessage.set('');
+
+    // Allowed inspection proof file types: PDF and images (JPEG, PNG, WebP)
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    const extension = file.name.split('.').pop()?.toLowerCase() || '';
+    const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp'];
+
+    const isTypeAllowed = allowedTypes.includes(file.type) || allowedExtensions.includes(extension);
+
+    if (!isTypeAllowed) {
+      this.selectedFile = null;
+      this.uploadState.set('error');
+      this.uploadErrorMessage.set(`Unsupported file format (.${extension || 'unknown'}). Allowed: PDF (.pdf), JPEG (.jpg), PNG (.png), or WebP (.webp).`);
+      input.value = '';
+      return;
+    }
+
+    // Maximum file size: 10 MB
+    const maxSizeBytes = 10 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      this.selectedFile = null;
+      this.uploadState.set('error');
+      this.uploadErrorMessage.set(`File size exceeds 10 MB limit (${this.formatFileSize(file.size)}). Please select a smaller file.`);
+      input.value = '';
+      return;
+    }
+
+    this.selectedFile = file;
+    this.uploadState.set('selected');
+    this.uploadProgress.set(0);
+  }
+
+  cancelSelectedFile(): void {
+    this.selectedFile = null;
+    this.uploadState.set('idle');
+    this.uploadProgress.set(0);
+    this.uploadErrorMessage.set('');
+    if (this.fileInputRef && this.fileInputRef.nativeElement) {
+      this.fileInputRef.nativeElement.value = '';
+    }
+  }
+
+  removeResolutionFile(index: number): void {
+    if (this.isGrievanceClosed() || this.isGrievanceCancelled()) return;
+    this.resolutionFiles.splice(index, 1);
+  }
+
+  async uploadSelectedProofFile(): Promise<void> {
+    if (!this.selectedFile || !this.grievance) return;
+
+    const fileToUpload = this.selectedFile;
+    const grievanceId = this.grievance.id;
+    const sanitizedName = fileToUpload.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = `inspection-proofs/${grievanceId}/${Date.now()}_${sanitizedName}`;
+
+    this.uploadState.set('uploading');
+    this.uploadProgress.set(5);
+
+    try {
+      const storageRef = ref(this.firebaseService.storage, storagePath);
+      const uploadTask = uploadBytesResumable(storageRef, fileToUpload, {
+        contentType: fileToUpload.type || 'application/pdf',
+        customMetadata: {
+          grievanceId,
+          officerUid: this.authService.currentUser()?.uid || '',
+          originalName: fileToUpload.name
+        }
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+            this.uploadProgress.set(Math.max(5, Math.min(98, progress)));
+          },
+          (error) => {
+            reject(error);
+          },
+          () => {
+            resolve();
+          }
+        );
+      });
+
+      const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+      this.uploadProgress.set(100);
+
+      const newAttachment: GrievanceAttachment = {
+        name: fileToUpload.name,
+        url: downloadUrl,
+        size: this.formatFileSize(fileToUpload.size),
+        type: fileToUpload.type || 'application/pdf'
+      };
+
+      this.resolutionFiles.push(newAttachment);
+      this.uploadState.set('success');
+      this.selectedFile = null;
+
+      if (this.fileInputRef && this.fileInputRef.nativeElement) {
+        this.fileInputRef.nativeElement.value = '';
+      }
+
+      this.toastMessage.set(`Inspection proof "${newAttachment.name}" uploaded successfully.`);
+    } catch (err: any) {
+      console.error('Failed to upload inspection proof to Firebase Storage:', err);
+      this.uploadState.set('error');
+      this.uploadErrorMessage.set(err?.message || 'Failed to upload inspection proof file. Please check your connection and try again.');
+    }
   }
 
   async saveStatusUpdate() {
     if (!this.grievance || this.isUpdatingStatus()) return;
     if (this.isGrievanceCancelled()) {
       this.toastMessage.set('Cancelled grievances cannot be updated or processed.');
+      return;
+    }
+    if (this.isGrievanceClosed()) {
+      this.toastMessage.set('This grievance has been closed and cannot be modified.');
       return;
     }
     if (!this.isAssignedToCurrentOfficer()) {

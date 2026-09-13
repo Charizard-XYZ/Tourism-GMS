@@ -182,10 +182,11 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                   <button 
                     type="button" 
                     (click)="showPassword.set(!showPassword())" 
-                    aria-label="Toggle officer password visibility"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
+                    [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                    [title]="showPassword() ? 'Hide password' : 'Show password'"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none"
                   >
-                    {{ showPassword() ? 'Hide' : 'Show' }}
+                    <app-icon [name]="showPassword() ? 'eye-off' : 'eye'" size="w-4 h-4"></app-icon>
                   </button>
                 </div>
                 <p *ngIf="hasSubmitted() && !editingOfficerId() && !newOfficer.password.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
@@ -210,10 +211,11 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                   <button 
                     type="button" 
                     (click)="showConfirmPassword.set(!showConfirmPassword())" 
-                    aria-label="Toggle confirm password visibility"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
+                    [attr.aria-label]="showConfirmPassword() ? 'Hide confirm password' : 'Show confirm password'"
+                    [title]="showConfirmPassword() ? 'Hide confirm password' : 'Show confirm password'"
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none"
                   >
-                    {{ showConfirmPassword() ? 'Hide' : 'Show' }}
+                    <app-icon [name]="showConfirmPassword() ? 'eye-off' : 'eye'" size="w-4 h-4"></app-icon>
                   </button>
                 </div>
                 <p *ngIf="hasSubmitted() && !editingOfficerId() && !newOfficer.confirmPassword.trim()" class="text-[11px] text-rose-600 font-bold mt-1">Please fill out all required fields.</p>
@@ -329,12 +331,23 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
           <p class="text-xs text-slate-600">Please enter your Administrator password to authorize changing this officer's password.</p>
           <div>
             <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Your Admin Password</label>
-            <input 
-              type="password" 
-              [(ngModel)]="adminVerifyPassword" 
-              placeholder="••••••••" 
-              class="w-full px-3 py-2 border rounded-xl text-xs font-mono"
-            />
+            <div class="relative">
+              <input 
+                [type]="showAdminVerifyPassword() ? 'text' : 'password'" 
+                [(ngModel)]="adminVerifyPassword" 
+                placeholder="••••••••" 
+                class="w-full px-3 py-2 pr-10 border rounded-xl text-xs font-mono"
+              />
+              <button 
+                type="button" 
+                (click)="showAdminVerifyPassword.set(!showAdminVerifyPassword())" 
+                [attr.aria-label]="showAdminVerifyPassword() ? 'Hide admin password' : 'Show admin password'"
+                [title]="showAdminVerifyPassword() ? 'Hide admin password' : 'Show admin password'"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none"
+              >
+                <app-icon [name]="showAdminVerifyPassword() ? 'eye-off' : 'eye'" size="w-4 h-4"></app-icon>
+              </button>
+            </div>
             <p *ngIf="adminVerifyError()" class="text-[11px] text-rose-600 font-bold mt-1">{{ adminVerifyError() }}</p>
           </div>
           <div class="flex space-x-2 pt-2 border-t">
@@ -402,6 +415,7 @@ export class OfficerManagementComponent {
 
   // Admin password gate for officer password changes
   isAdminPasswordModalOpen = signal<boolean>(false);
+  showAdminVerifyPassword = signal<boolean>(false);
   adminVerifyPassword = '';
   adminVerifyError = signal<string | null>(null);
   isVerifyingAdmin = signal<boolean>(false);

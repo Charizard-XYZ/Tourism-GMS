@@ -384,10 +384,11 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                       <button 
                         type="button" 
                         (click)="showPreviousPassword.set(!showPreviousPassword())"
-                        aria-label="Toggle previous password visibility"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
+                        [attr.aria-label]="showPreviousPassword() ? 'Hide previous password' : 'Show previous password'"
+                        [title]="showPreviousPassword() ? 'Hide previous password' : 'Show previous password'"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none"
                       >
-                        {{ showPreviousPassword() ? 'Hide' : 'Show' }}
+                        <app-icon [name]="showPreviousPassword() ? 'eye-off' : 'eye'" size="w-4 h-4"></app-icon>
                       </button>
                     </div>
                     <button 
@@ -418,15 +419,16 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                         [(ngModel)]="newPassword" 
                         name="new_pass_input"
                         placeholder="Enter new password (min 6 characters)"
-                        class="w-full px-4 py-2.5 pr-12 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3] focus:outline-none"
+                        class="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3] focus:outline-none"
                       />
                       <button 
                         type="button" 
                         (click)="showNewPassword.set(!showNewPassword())"
-                        aria-label="Toggle new password visibility"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
+                        [attr.aria-label]="showNewPassword() ? 'Hide new password' : 'Show new password'"
+                        [title]="showNewPassword() ? 'Hide new password' : 'Show new password'"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none"
                       >
-                        {{ showNewPassword() ? 'Hide' : 'Show' }}
+                        <app-icon [name]="showNewPassword() ? 'eye-off' : 'eye'" size="w-4 h-4"></app-icon>
                       </button>
                     </div>
                   </div>
@@ -439,15 +441,16 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                         [(ngModel)]="confirmPassword" 
                         name="confirm_pass_input"
                         placeholder="Re-enter new password"
-                        class="w-full px-4 py-2.5 pr-12 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3] focus:outline-none"
+                        class="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#A0C8C3] focus:outline-none"
                       />
                       <button 
                         type="button" 
                         (click)="showConfirmPassword.set(!showConfirmPassword())"
-                        aria-label="Toggle confirm new password visibility"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-1 focus:outline-none"
+                        [attr.aria-label]="showConfirmPassword() ? 'Hide confirm password' : 'Show confirm password'"
+                        [title]="showConfirmPassword() ? 'Hide confirm password' : 'Show confirm password'"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 focus:outline-none"
                       >
-                        {{ showConfirmPassword() ? 'Hide' : 'Show' }}
+                        <app-icon [name]="showConfirmPassword() ? 'eye-off' : 'eye'" size="w-4 h-4"></app-icon>
                       </button>
                     </div>
                   </div>
@@ -692,7 +695,7 @@ export class ProfileComponent {
     );
 
     return {
-      assigned: myAssigned.length,
+      assigned: myAssigned.filter(g => g.status !== 'closed' && g.status !== 'cancelled').length,
       pending: myAssigned.filter(g => g.status === 'assigned' || g.status === 'in_progress').length,
       reopened: myAssigned.filter(g => g.status === 'reopened').length,
       solved: myAssigned.filter(g => g.status === 'resolved' || g.status === 'closed').length
@@ -707,7 +710,7 @@ export class ProfileComponent {
     const activeOfficers = registeredOfficers.filter(o => !o.isRevoked);
 
     const unassigned = all.filter(g => {
-      if (g.status === 'resolved' || g.status === 'closed') return false;
+      if (g.status === 'resolved' || g.status === 'closed' || g.status === 'cancelled') return false;
       const deptName = g.departmentName || g.category;
       const targetDept = depts.find(d => d.id === g.departmentId || (deptName && d.name.toLowerCase().trim() === deptName.toLowerCase().trim()));
       if (!targetDept || !targetDept.isActive) return true;
@@ -718,7 +721,7 @@ export class ProfileComponent {
     });
 
     return {
-      assigned: all.filter(g => !!g.assignedOfficerId && g.status !== 'submitted').length,
+      assigned: all.filter(g => !!g.assignedOfficerId && g.status !== 'submitted' && g.status !== 'closed' && g.status !== 'cancelled').length,
       pending: all.filter(g => g.status === 'assigned' || g.status === 'in_progress').length,
       solved: all.filter(g => g.status === 'resolved' || g.status === 'closed').length,
       reopened: all.filter(g => g.status === 'reopened').length,

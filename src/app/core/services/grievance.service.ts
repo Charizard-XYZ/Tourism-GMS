@@ -153,8 +153,8 @@ export class GrievanceService {
       const cleanEmail = (user.email || '').trim().toLowerCase();
       const cleanName = (user.displayName || '').trim().toLowerCase();
       return list.filter(g => {
-        // Exclude cancelled grievances from Officer active/assigned views
-        if (g.status === 'cancelled') return false;
+        // Exclude cancelled and closed grievances from Officer active/process workqueue
+        if (g.status === 'cancelled' || g.status === 'closed') return false;
 
         const assignedId = (g.assignedOfficerId || '').trim();
         const assignedName = (g.assignedOfficerName || '').trim().toLowerCase();
@@ -229,6 +229,22 @@ export class GrievanceService {
       resolutionDetails,
       resolutionAttachments: resolutionFiles
     }));
+
+    // Optimistically update local grievance signal immediately
+    this.grievances.update(list => list.map(g => {
+      if (g.id === grievanceId || g.trackingCode === grievanceId || g.grievanceCode === grievanceId) {
+        return {
+          ...g,
+          status: newStatus,
+          resolutionDetails: resolutionDetails !== undefined ? resolutionDetails : g.resolutionDetails,
+          resolutionAttachments: resolutionFiles !== undefined ? resolutionFiles : g.resolutionAttachments,
+          resolvedAt: newStatus === 'resolved' ? (g.resolvedAt || new Date().toISOString()) : g.resolvedAt,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return g;
+    }));
+
     await this.loadGrievancesFromBackend();
   }
 

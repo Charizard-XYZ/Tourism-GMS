@@ -208,7 +208,7 @@ export class GrievanceSubmissionComponent {
     const user = this.authService.currentUser();
     if (!user) {
       this.isSubmitting.set(false);
-      this.toastMessage.set('Authentication session missing. Please sign in again.');
+      this.toastMessage.set('Authentication session missing. Please sign Up again.');
       return;
     }
 
