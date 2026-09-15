@@ -121,7 +121,7 @@ import { IconComponent } from '../../common/components/icon.component';
             <div class="space-y-4">
               <div *ngFor="let c of grievanceService.getCommentsForGrievance(grievance.id)" class="p-4 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
                 <div class="flex justify-between items-center">
-                  <span class="font-bold text-xs text-slate-900">{{ c.userName }}</span>
+                  <span class="font-bold text-xs text-slate-900">{{ getCommentAuthor(c) }}</span>
                   <span class="text-[10px] text-slate-400">{{ c.createdAt | date:'dd/MM/yyyy, hh:mm a' }}</span>
                 </div>
                 <p class="text-xs text-slate-700 leading-snug">{{ c.commentText }}</p>
@@ -389,6 +389,10 @@ export class GrievanceDetailComponent implements OnInit {
   isPostingComment = signal<boolean>(false);
   isSubmittingFeedback = signal<boolean>(false);
   isReopening = signal<boolean>(false);
+
+  getCommentAuthor(c: any): string {
+    return this.grievanceService.getCommentAuthor(c);
+  }
 
   async executeCancelGrievance() {
     if (!this.grievance || this.isCancelling()) return;

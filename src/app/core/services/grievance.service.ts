@@ -118,7 +118,14 @@ export class GrievanceService {
       const url = grievanceId ? `${this.apiUrl}/comments?grievanceId=${grievanceId}` : `${this.apiUrl}/comments`;
       const res = await firstValueFrom(this.http.get<{ success: boolean; comments: GrievanceComment[] }>(url));
       if (res && res.success && Array.isArray(res.comments)) {
-        this.comments.set(res.comments);
+        if (grievanceId) {
+          this.comments.update(prev => {
+            const others = prev.filter(c => c.grievanceId !== grievanceId);
+            return [...others, ...res.comments];
+          });
+        } else {
+          this.comments.set(res.comments);
+        }
       }
     } catch (e) {
       console.warn('Failed to load comments from backend:', e);
@@ -209,6 +216,55 @@ export class GrievanceService {
       if (userRole === 'tourist' && c.isInternalOnly) return false;
       return true;
     });
+  }
+
+  /**
+   * Format comment author identity strictly as: Full Name (Role)
+   * e.g. "Khushi (Tourist)", "Rahul Sharma (Officer)", "Abhishek Kumar (Admin)"
+   */
+  getCommentAuthor(comment: GrievanceComment): string {
+    if (!comment) return 'User';
+
+    let name = (comment.userName || '').trim();
+    let rawRole = (comment.userRole || '').trim().toLowerCase();
+
+    // If name is missing or looks like UID or placeholder 'User', resolve from profile data
+    if (!name || name === 'User' || (name.length > 25 && !name.includes(' '))) {
+      const cur = this.authService.currentUser();
+      if (cur && (cur.uid === comment.userId || cur.email === comment.userName)) {
+        name = cur.displayName || (cur as any).fullName || (cur as any).name || name;
+        if (!rawRole) rawRole = (cur.role || '').toLowerCase();
+      } else {
+        const off = this.authService.registeredOfficers().find(o => o.id === comment.userId || o.email === comment.userName);
+        if (off) {
+          name = off.name || name;
+          if (!rawRole) rawRole = 'officer';
+        }
+      }
+    }
+
+    if (!name || (name.length > 25 && !name.includes(' '))) {
+      name = 'User';
+    }
+
+    // Determine normalized role with proper capitalization: Tourist, Officer, Admin
+    let roleFormatted = 'Tourist';
+    if (rawRole === 'admin') {
+      roleFormatted = 'Admin';
+    } else if (rawRole === 'officer') {
+      roleFormatted = 'Officer';
+    } else if (rawRole === 'tourist') {
+      roleFormatted = 'Tourist';
+    } else {
+      // Check if user matches any registered officer
+      if (this.authService.registeredOfficers().some(o => o.id === comment.userId || o.name === name)) {
+        roleFormatted = 'Officer';
+      } else {
+        roleFormatted = 'Tourist';
+      }
+    }
+
+    return `${name} (${roleFormatted})`;
   }
 
   /**

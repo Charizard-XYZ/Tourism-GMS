@@ -232,7 +232,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
             <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
               <div *ngFor="let c of grievanceService.getCommentsForGrievance(selectedCase.id)" class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
                 <div class="flex justify-between items-center">
-                  <span class="font-bold text-slate-900">{{ c.userName }}</span>
+                  <span class="font-bold text-slate-900 text-xs">{{ getCommentAuthor(c) }}</span>
                   <div class="flex items-center space-x-1.5">
                     <span *ngIf="c.isInternalOnly" class="px-1.5 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-bold rounded">Internal</span>
                     <span class="text-[10px] text-slate-400">{{ c.createdAt | date:'dd/MM/yyyy, hh:mm a' }}</span>
@@ -285,6 +285,10 @@ export class OfficerHistoryComponent implements OnInit {
 
   openDetailModal(g: Grievance) {
     this.selectedCase = g;
+  }
+
+  getCommentAuthor(c: any): string {
+    return this.grievanceService.getCommentAuthor(c);
   }
 
   readonly filteredHistory = computed(() => {

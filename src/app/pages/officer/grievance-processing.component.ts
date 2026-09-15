@@ -66,7 +66,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
               <div *ngFor="let c of grievanceService.getCommentsForGrievance(grievance.id)" [class.bg-amber-50]="c.isInternalOnly" [class.bg-slate-50]="!c.isInternalOnly" class="p-3.5 rounded-2xl border border-slate-100 space-y-1">
                 <div class="flex justify-between items-center">
                   <span class="font-bold text-xs text-slate-900">
-                    {{ c.userName }} 
+                    {{ getCommentAuthor(c) }} 
                     <span *ngIf="c.isInternalOnly" class="px-1.5 py-0.5 bg-amber-200 text-amber-900 text-[9px] rounded font-extrabold ml-1">INTERNAL NOTE</span>
                   </span>
                   <span class="text-[10px] text-slate-400">{{ c.createdAt | date:'dd/MM/yyyy, hh:mm a' }}</span>
@@ -343,6 +343,10 @@ export class GrievanceProcessingComponent implements OnInit {
   uploadProgress = signal<number>(0);
   uploadErrorMessage = signal<string>('');
   isSuccess = signal<boolean>(false);
+
+  getCommentAuthor(c: any): string {
+    return this.grievanceService.getCommentAuthor(c);
+  }
 
   async ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');

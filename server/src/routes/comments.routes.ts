@@ -19,17 +19,73 @@ router.get('/', authenticateFirebaseToken, async (req: AuthenticatedRequest, res
     }
 
     const snapshot = await query.get();
-    const comments = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+    const rawComments = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     // Filter out internal comments for tourists
-    const filtered = comments.filter((c: any) => {
+    const filtered = rawComments.filter((c: any) => {
       if (req.user!.role === 'tourist' && c.isInternalOnly) return false;
       return true;
     });
 
-    filtered.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    // Cache user profiles to resolve real names and roles for comments
+    const userCache = new Map<string, { name: string; role: string }>();
 
-    res.status(200).json({ success: true, comments: filtered });
+    if (req.user) {
+      userCache.set(req.user.uid, {
+        name: req.user.displayName || '',
+        role: req.user.role
+      });
+    }
+
+    const comments = await Promise.all(filtered.map(async (c: any) => {
+      let userName = (c.userName || '').trim();
+      let userRole = (c.userRole || '').trim().toLowerCase();
+
+      const needsName = !userName || userName === 'User' || (userName.length > 25 && !userName.includes(' '));
+      const needsRole = !userRole || !['tourist', 'officer', 'admin'].includes(userRole);
+
+      if ((needsName || needsRole) && c.userId) {
+        if (!userCache.has(c.userId)) {
+          try {
+            const userDoc = await db.collection('users').doc(c.userId).get();
+            if (userDoc.exists) {
+              const uData = userDoc.data() || {};
+              userCache.set(c.userId, {
+                name: uData['fullName'] || uData['name'] || uData['displayName'] || '',
+                role: (uData['role'] || '').toLowerCase()
+              });
+            } else {
+              const uidQuery = await db.collection('users').where('uid', '==', c.userId).limit(1).get();
+              if (!uidQuery.empty) {
+                const uData = uidQuery.docs[0].data() || {};
+                userCache.set(c.userId, {
+                  name: uData['fullName'] || uData['name'] || uData['displayName'] || '',
+                  role: (uData['role'] || '').toLowerCase()
+                });
+              }
+            }
+          } catch (err) {
+            console.warn(`Could not resolve user profile for comment userId: ${c.userId}`, err);
+          }
+        }
+
+        const cached = userCache.get(c.userId);
+        if (cached) {
+          if (cached.name && needsName) userName = cached.name;
+          if (cached.role && needsRole) userRole = cached.role;
+        }
+      }
+
+      return {
+        ...c,
+        userName: userName || 'User',
+        userRole: userRole || 'tourist'
+      };
+    }));
+
+    comments.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    res.status(200).json({ success: true, comments });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Error retrieving comments.' });
   }
@@ -43,12 +99,28 @@ router.post('/', authenticateFirebaseToken, validateBody(createCommentSchema), a
     const { uid, role, displayName } = req.user!;
     const { grievanceId, commentText, isInternalOnly } = req.body;
 
+    let authorName = (displayName || '').trim();
+    if (!authorName || authorName === 'User') {
+      try {
+        const userDoc = await db.collection('users').doc(uid).get();
+        if (userDoc.exists) {
+          const u = userDoc.data() || {};
+          authorName = u['fullName'] || u['name'] || u['displayName'] || '';
+        }
+      } catch (e) {
+        // Fallback to displayName or email
+      }
+    }
+    if (!authorName && req.user?.email) {
+      authorName = req.user.email.split('@')[0];
+    }
+
     const docRef = db.collection('comments').doc();
     const newComment = {
       id: docRef.id,
       grievanceId,
       userId: uid,
-      userName: displayName || 'User',
+      userName: authorName || 'User',
       userRole: role,
       commentText,
       isInternalOnly: role === 'tourist' ? false : (isInternalOnly || false),

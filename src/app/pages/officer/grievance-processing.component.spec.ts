@@ -77,6 +77,7 @@ describe('GrievanceProcessingComponent - Proof Auto-Upload Workflow', () => {
       fetchGrievanceById: vi.fn().mockResolvedValue({ ...grievanceRecord }),
       updateStatus: vi.fn().mockResolvedValue(undefined),
       getCommentsForGrievance: vi.fn().mockReturnValue([]),
+      getCommentAuthor: vi.fn((c: any) => `${c?.userName || 'User'} (${c?.userRole ? c.userRole.charAt(0).toUpperCase() + c.userRole.slice(1) : 'Officer'})`),
       addComment: vi.fn().mockResolvedValue(undefined)
     };
 
@@ -323,5 +324,42 @@ describe('GrievanceProcessingComponent - Proof Auto-Upload Workflow', () => {
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('Attached Resolution Proof Files');
     expect(compiled.textContent).toContain('prior-inspection.pdf');
+  });
+
+  it('13. formats comment author as Full Name (Role)', () => {
+    const touristComment = {
+      id: 'c1',
+      grievanceId: testGrievanceId,
+      userId: 'u1',
+      userName: 'Khushi',
+      userRole: 'tourist' as const,
+      commentText: 'My complaint update',
+      isInternalOnly: false,
+      createdAt: new Date().toISOString()
+    };
+    const officerComment = {
+      id: 'c2',
+      grievanceId: testGrievanceId,
+      userId: 'u2',
+      userName: 'Rahul Sharma',
+      userRole: 'officer' as const,
+      commentText: 'Officer inquiry note',
+      isInternalOnly: true,
+      createdAt: new Date().toISOString()
+    };
+    const adminComment = {
+      id: 'c3',
+      grievanceId: testGrievanceId,
+      userId: 'u3',
+      userName: 'Abhishek Kumar',
+      userRole: 'admin' as const,
+      commentText: 'Admin directive',
+      isInternalOnly: true,
+      createdAt: new Date().toISOString()
+    };
+
+    expect(component.getCommentAuthor(touristComment)).toBe('Khushi (Tourist)');
+    expect(component.getCommentAuthor(officerComment)).toBe('Rahul Sharma (Officer)');
+    expect(component.getCommentAuthor(adminComment)).toBe('Abhishek Kumar (Admin)');
   });
 });

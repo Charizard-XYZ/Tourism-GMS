@@ -293,7 +293,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
           <div class="space-y-3 max-h-60 overflow-y-auto pr-1">
             <div *ngFor="let c of grievanceService.getCommentsForGrievance(commentModalGrievance.id)" class="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1">
               <div class="flex justify-between items-center">
-                <span class="font-bold text-slate-900">{{ c.userName }}</span>
+                <span class="font-bold text-slate-900 text-xs">{{ getCommentAuthor(c) }}</span>
                 <div class="flex items-center space-x-1.5">
                   <span *ngIf="c.isInternalOnly" class="px-2 py-0.5 bg-amber-100 text-amber-800 text-[9px] font-extrabold uppercase rounded">Internal Note</span>
                   <span class="text-[10px] text-slate-400">{{ c.createdAt | date:'dd/MM/yyyy, hh:mm a' }}</span>
@@ -442,6 +442,10 @@ export class GrievanceAssignmentComponent implements OnInit {
 
   onSearchChange(val: string) {
     this.searchKeyword = capitalizeFirstChar(val);
+  }
+
+  getCommentAuthor(c: any): string {
+    return this.grievanceService.getCommentAuthor(c);
   }
 
   async ngOnInit() {
