@@ -189,8 +189,8 @@ import { IconComponent } from '../../common/components/icon.component';
             </div>
           </div>
 
-          <!-- Action Box: Reopen & Feedback Buttons (Side-by-Side) -->
-          <div *ngIf="grievance.status === 'resolved' || grievance.status === 'closed'" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+          <!-- Action Box: Reopen & Feedback Buttons (Visible ONLY when Resolved, NOT when Closed) -->
+          <div *ngIf="grievance.status === 'resolved'" class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
             <h4 class="font-bold text-xs text-slate-700 uppercase">Resolution Feedback & Escalation Actions</h4>
             <p class="text-xs text-slate-500">Provide your resolution feedback rating or reopen this ticket if the resolution requires further action.</p>
             
@@ -205,9 +205,12 @@ import { IconComponent } from '../../common/components/icon.component';
                 <app-icon name="star" size="w-3.5 h-3.5"></app-icon>
               </button>
             </div>
+          </div>
 
-            <!-- Display Recorded Feedback & Rating if already submitted -->
-            <div *ngIf="grievance.rating" class="mt-3 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs space-y-1.5">
+          <!-- Recorded Resolution Feedback (Read-Only display for Closed Grievances) -->
+          <div *ngIf="grievance.status === 'closed' && grievance.rating" class="bg-white p-6 rounded-3xl border border-emerald-200 shadow-sm space-y-3">
+            <h4 class="font-bold text-xs text-emerald-800 uppercase">Resolution Feedback Recorded</h4>
+            <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs space-y-1.5">
               <div class="flex justify-between items-center">
                 <span class="font-bold text-emerald-900 uppercase text-[10px]">Your Submitted Rating:</span>
                 <div class="flex items-center space-x-0.5 text-amber-500">

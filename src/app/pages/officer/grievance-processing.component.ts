@@ -165,10 +165,10 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
               </select>
             </div>
 
-            <!-- Resolution Details & Inspection Proof Attachment -->
-            <div class="space-y-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
+            <!-- Resolution Details & Inspection Proof Attachment (Visible ONLY when Resolved/Complete) -->
+            <div *ngIf="selectedStatus === 'resolved'" class="space-y-3 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl">
               <!-- Official Resolution Report (Required when resolving) -->
-              <div *ngIf="selectedStatus === 'resolved' || resolutionReport.length > 0 || (grievance.resolutionDetails && grievance.resolutionDetails.length > 0)" class="space-y-1">
+              <div class="space-y-1">
                 <label class="block text-xs font-extrabold text-emerald-900 uppercase">Official Resolution Report</label>
                 <textarea [(ngModel)]="resolutionReport" rows="4" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" placeholder="Detail official findings, penalty issued, refund provided, or corrective action taken..." class="w-full px-3 py-2 bg-white border border-emerald-300 rounded-xl text-xs"></textarea>
               </div>
@@ -550,40 +550,68 @@ export class GrievanceProcessingComponent implements OnInit {
       this.uploadErrorMessage.set('');
 
       try {
-        const storageRef = ref(this.firebaseService.storage, storagePath);
-        const uploadTask = uploadBytesResumable(storageRef, fileToUpload, {
-          contentType: fileToUpload.type || 'application/pdf',
-          customMetadata: {
-            grievanceId,
-            officerUid: this.authService.currentUser()?.uid || '',
-            originalName: fileToUpload.name
-          }
-        });
+        let downloadUrl = '';
+        let attachmentSize = this.formatFileSize(fileToUpload.size);
+        let attachmentType = fileToUpload.type || 'application/pdf';
 
-        await new Promise<void>((resolve, reject) => {
-          uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-              const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-              this.uploadProgress.set(Math.max(10, Math.min(95, progress)));
-            },
-            (error) => {
-              reject(error);
-            },
-            () => {
-              resolve();
+        try {
+          const storageRef = ref(this.firebaseService.storage, storagePath);
+          const uploadTask = uploadBytesResumable(storageRef, fileToUpload, {
+            contentType: fileToUpload.type || 'application/pdf',
+            customMetadata: {
+              grievanceId,
+              officerUid: this.authService.currentUser()?.uid || '',
+              originalName: fileToUpload.name
             }
-          );
-        });
+          });
 
-        const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+          await new Promise<void>((resolve, reject) => {
+            uploadTask.on(
+              'state_changed',
+              (snapshot) => {
+                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                this.uploadProgress.set(Math.max(10, Math.min(95, progress)));
+              },
+              (error) => {
+                reject(error);
+              },
+              () => {
+                resolve();
+              }
+            );
+          });
+
+          downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+        } catch (directStorageErr: any) {
+          const errCode = directStorageErr?.code || '';
+          const errMsg = directStorageErr?.message || '';
+          const isBucketUnavailable = errCode === 'storage/unknown' ||
+                                      errCode === 'storage/retry-limit-exceeded' ||
+                                      errCode === 'storage/object-not-found' ||
+                                      errMsg.includes('404') ||
+                                      errMsg.includes('bucket') ||
+                                      errMsg.includes('absent') ||
+                                      errMsg.includes('backend upload');
+
+          if (isBucketUnavailable && typeof this.grievanceService.uploadProofFile === 'function') {
+            console.warn('Direct Firebase Storage bucket unavailable, utilizing authorized backend upload:', directStorageErr);
+            this.uploadProgress.set(50);
+            const backendAttachment = await this.grievanceService.uploadProofFile(grievanceId, fileToUpload);
+            downloadUrl = backendAttachment.url;
+            attachmentSize = backendAttachment.size || attachmentSize;
+            attachmentType = backendAttachment.type || attachmentType;
+          } else {
+            throw directStorageErr;
+          }
+        }
+
         this.uploadProgress.set(100);
 
         const newAttachment: GrievanceAttachment = {
           name: fileToUpload.name,
           url: downloadUrl,
-          size: this.formatFileSize(fileToUpload.size),
-          type: fileToUpload.type || 'application/pdf'
+          size: attachmentSize,
+          type: attachmentType
         };
 
         uploadedAttachments.push(newAttachment);
@@ -595,7 +623,7 @@ export class GrievanceProcessingComponent implements OnInit {
           this.fileInputRef.nativeElement.value = '';
         }
       } catch (uploadErr: any) {
-        console.error('Failed to upload inspection proof to Firebase Storage:', uploadErr);
+        console.error('Failed to upload inspection proof:', uploadErr);
         this.uploadState.set('error');
         this.uploadErrorMessage.set(uploadErr?.message || 'Failed to upload proof file. Please check your connection and retry.');
         this.toastMessage.set('Failed to upload proof file. Please retry.');

@@ -8,13 +8,14 @@ import { AuthService } from '../../core/services/auth.service';
 import { StatusBadgeComponent } from '../../common/components/status-badge.component';
 import { ToastComponent } from '../../common/components/toast.component';
 import { IconComponent } from '../../common/components/icon.component';
+import { WorkflowTimelineComponent } from '../../common/components/workflow-timeline.component';
 import { Grievance } from '../../core/models/complaint.model';
 import { capitalizeFirstChar } from '../../core/directives/capitalize-first.directive';
 
 @Component({
   selector: 'app-grievance-assignment',
   standalone: true,
-  imports: [CommonModule, FormsModule, StatusBadgeComponent, ToastComponent, IconComponent],
+  imports: [CommonModule, FormsModule, StatusBadgeComponent, ToastComponent, IconComponent, WorkflowTimelineComponent],
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       
@@ -77,7 +78,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 font-medium">
-            <tr *ngFor="let g of filteredGrievances()" class="hover:bg-slate-50">
+            <tr *ngFor="let g of filteredGrievances()" (click)="openCommentModal(g)" class="hover:bg-slate-50 cursor-pointer transition">
               <td class="p-4 font-mono font-bold text-slate-800">{{ g.trackingCode }}</td>
               <td class="p-4 max-w-xs font-bold text-slate-900 truncate">{{ g.title }}</td>
               <td class="p-4">
@@ -103,9 +104,9 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
               </td>
               <td class="p-4 text-right">
                 <div class="flex items-center justify-end space-x-2">
-                  <button (click)="openCommentModal(g)" class="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-extrabold text-xs hover:bg-slate-800 transition shadow-sm inline-flex items-center space-x-1">
+                  <button (click)="$event.stopPropagation(); openCommentModal(g)" class="px-3 py-1.5 bg-slate-900 text-white rounded-lg font-extrabold text-xs hover:bg-slate-800 transition shadow-sm inline-flex items-center space-x-1">
                     <app-icon name="message-square" size="w-3.5 h-3.5"></app-icon>
-                    <span>Comments ({{ grievanceService.getCommentsForGrievance(g.id).length }})</span>
+                    <span>Details & Comments ({{ grievanceService.getCommentsForGrievance(g.id).length }})</span>
                   </button>
                 </div>
               </td>
@@ -164,7 +165,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200/60 font-medium">
-                  <tr *ngFor="let g of group.grievances" class="hover:bg-white/80 transition">
+                  <tr *ngFor="let g of group.grievances" (click)="openCommentModal(g)" class="hover:bg-white/80 transition cursor-pointer">
                     <td class="p-3 font-mono font-bold text-slate-800">{{ g.grievanceCode || g.trackingCode }}</td>
                     <td class="p-3 font-bold text-slate-900 max-w-xs truncate">{{ g.title }}</td>
                     <td class="p-3 text-slate-600">{{ g.touristName || 'Tourist' }}</td>
@@ -187,19 +188,64 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
         <p class="text-[11px] text-slate-400 mt-0.5">No unassigned tickets require immediate allocation.</p>
       </div>
 
-      <!-- Admin Grievance Comments & Discussion Modal -->
+      <!-- Admin Grievance Details, Timeline & Discussion Modal -->
       <div *ngIf="commentModalGrievance" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
-        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto animate-modal-pop">
-          <div class="flex justify-between items-center border-b pb-3">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto animate-modal-pop">
+          <!-- Modal Header -->
+          <div class="flex justify-between items-start border-b pb-3">
             <div>
-              <span class="text-[10px] font-mono font-bold text-slate-500">{{ commentModalGrievance.trackingCode }}</span>
-              <h3 class="font-bold text-base text-slate-900">Admin Case Discussion & Comments</h3>
+              <div class="flex items-center space-x-2">
+                <span class="text-xs font-mono font-bold text-slate-500">{{ commentModalGrievance.trackingCode || (commentModalGrievance.grievanceCode) }}</span>
+                <app-status-badge [status]="commentModalGrievance.status"></app-status-badge>
+                <span *ngIf="commentModalGrievance.isEscalated" class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-extrabold uppercase rounded">Escalated</span>
+              </div>
+              <h3 class="font-bold text-lg text-slate-900 mt-1">{{ commentModalGrievance.title }}</h3>
             </div>
             <button (click)="commentModalGrievance = null" class="text-slate-400 hover:text-slate-600 p-1">
               <app-icon name="x" size="w-5 h-5"></app-icon>
             </button>
           </div>
 
+          <!-- Live Step-by-Step Workflow Timeline -->
+          <div class="bg-white rounded-2xl border border-slate-200 p-3 shadow-xs">
+            <h4 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Grievance Redressal Timeline</h4>
+            <app-workflow-timeline [grievance]="commentModalGrievance"></app-workflow-timeline>
+          </div>
+
+          <!-- Officer Assignment & Metadata Grid -->
+          <div class="grid sm:grid-cols-2 gap-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs">
+            <div>
+              <span class="text-slate-500 block text-[10px] font-bold uppercase">Department</span>
+              <span class="font-bold text-teal-800 text-sm">{{ commentModalGrievance.departmentName || commentModalGrievance.category }}</span>
+            </div>
+            <div>
+              <span class="text-slate-500 block text-[10px] font-bold uppercase">Assigned Officer</span>
+              <div class="flex items-center space-x-2 mt-0.5">
+                <span *ngIf="commentModalGrievance.assignedOfficerName" class="font-bold text-slate-900">{{ commentModalGrievance.assignedOfficerName }}</span>
+                <span *ngIf="!commentModalGrievance.assignedOfficerName" class="text-rose-600 font-bold italic">Unassigned</span>
+                <button 
+                  *ngIf="!commentModalGrievance.assignedOfficerId || !isGrievanceAssignedToValidDeptAndOfficer(commentModalGrievance)"
+                  (click)="openAssignModal(commentModalGrievance); commentModalGrievance = null" 
+                  class="px-2 py-0.5 bg-teal-700 hover:bg-teal-800 text-white rounded text-[10px] font-bold inline-flex items-center space-x-1"
+                >
+                  <app-icon name="user-check" size="w-3 h-3"></app-icon>
+                  <span>Assign</span>
+                </button>
+              </div>
+            </div>
+            <div>
+              <span class="text-slate-500 block text-[10px] font-bold uppercase">Tourist Info</span>
+              <span class="font-bold text-slate-800">{{ commentModalGrievance.touristName || 'Tourist' }}</span>
+              <span *ngIf="commentModalGrievance.touristEmail" class="text-slate-500 block text-[11px] font-mono">{{ commentModalGrievance.touristEmail }}</span>
+            </div>
+            <div>
+              <span class="text-slate-500 block text-[10px] font-bold uppercase">Location & Date</span>
+              <span class="font-bold text-slate-800">{{ commentModalGrievance.location }}</span>
+              <span class="text-slate-500 block text-[11px]">Filed: {{ commentModalGrievance.createdAt | date:'dd/MM/yyyy, hh:mm a' }}</span>
+            </div>
+          </div>
+
+          <!-- Grievance Description & Tourist Attachments -->
           <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
             <h4 class="text-xs font-extrabold text-slate-800 uppercase">Grievance Description & Tourist Attachments</h4>
             <p class="text-xs text-slate-700 leading-relaxed whitespace-pre-line">{{ commentModalGrievance.description }}</p>
@@ -218,18 +264,29 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
 
           <!-- Display Official Resolution Report & Uploaded Proof Files for Admin -->
           <div *ngIf="commentModalGrievance.resolutionDetails || (commentModalGrievance.resolutionAttachments && commentModalGrievance.resolutionAttachments.length > 0)" class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
-            <h4 class="text-xs font-extrabold text-emerald-900 uppercase">Official Report & Uploaded Proof File</h4>
+            <h4 class="text-xs font-extrabold text-emerald-900 uppercase">Official Resolution Report & Uploaded Proof File</h4>
             <p *ngIf="commentModalGrievance.resolutionDetails" class="text-xs text-emerald-950 leading-relaxed whitespace-pre-line">{{ commentModalGrievance.resolutionDetails }}</p>
 
             <div *ngIf="commentModalGrievance.resolutionAttachments && commentModalGrievance.resolutionAttachments.length > 0" class="pt-1">
               <p class="text-[11px] font-bold text-emerald-800 uppercase mb-1.5">Uploaded Officer Proof / Inspection Reports:</p>
               <div class="flex flex-wrap gap-2">
                 <a *ngFor="let att of commentModalGrievance.resolutionAttachments" [href]="att.url" target="_blank" class="px-3.5 py-1.5 bg-white border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold flex items-center space-x-1.5 hover:bg-emerald-100 transition shadow-sm">
+                  <app-icon name="file-text" size="w-3.5 h-3.5"></app-icon>
                   <span>{{ att.name }}</span>
                   <span *ngIf="att.size" class="text-[10px] text-emerald-600 font-semibold">({{ att.size }})</span>
                 </a>
               </div>
             </div>
+          </div>
+
+          <!-- Tourist Feedback (if provided) -->
+          <div *ngIf="commentModalGrievance.rating" class="p-4 bg-white rounded-2xl border border-emerald-200 text-xs space-y-1">
+            <p class="font-bold text-emerald-900">Tourist Feedback Rating & Comments:</p>
+            <div class="flex items-center space-x-1.5 text-amber-500 font-bold text-sm">
+              <app-icon name="star" size="w-4 h-4"></app-icon>
+              <span>{{ commentModalGrievance.rating }} / 5 Stars</span>
+            </div>
+            <p *ngIf="commentModalGrievance.feedbackComments" class="text-slate-600 italic">"{{ commentModalGrievance.feedbackComments }}"</p>
           </div>
 
           <!-- Comment List -->
@@ -393,6 +450,16 @@ export class GrievanceAssignmentComponent implements OnInit {
       this.searchKeyword = searchParam;
     }
     await this.grievanceService.loadGrievancesFromBackend();
+
+    this.route.queryParamMap.subscribe(params => {
+      const idParam = params.get('id') || params.get('code');
+      if (idParam) {
+        const target = this.grievanceService.getGrievanceById(idParam);
+        if (target) {
+          this.openCommentModal(target);
+        }
+      }
+    });
   }
 
   openAssignModal(g: Grievance) {

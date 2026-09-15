@@ -188,6 +188,15 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                 <div class="flex items-center space-x-2">
                   <button 
                     type="button" 
+                    (click)="openAddOfficerFromEditModal()" 
+                    class="px-2.5 py-1 bg-teal-700 text-white rounded-lg text-[11px] font-bold hover:bg-teal-800 transition shadow-xs inline-flex items-center space-x-1"
+                    title="Assign registered officers to this department"
+                  >
+                    <app-icon name="plus" size="w-3.5 h-3.5"></app-icon>
+                    <span>Add Officer</span>
+                  </button>
+                  <button 
+                    type="button" 
                     (click)="openRegisterOfficerModal()" 
                     class="px-2.5 py-1 bg-[#0F172A] text-white rounded-lg text-[11px] font-bold hover:bg-slate-800 transition shadow-xs inline-flex items-center space-x-1"
                     title="Register a new officer"
@@ -236,8 +245,20 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
                   </button>
                 </div>
 
-                <div *ngIf="getUnassignedRegisteredOfficers().length === 0" class="text-xs text-amber-800 italic p-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between">
-                  <span>No unassigned officers available. All registered officers are already assigned to operational departments.</span>
+                <div *ngIf="getUnassignedRegisteredOfficers().length === 0" class="text-xs text-amber-900 p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between">
+                  <div>
+                    <span class="font-bold">Please register officer</span>
+                    <p class="text-[11px] text-amber-700">No unassigned officers available. Please register an officer.</p>
+                  </div>
+                  <button 
+                    type="button" 
+                    (click)="openRegisterOfficerModal()" 
+                    class="px-2.5 py-1 bg-[#0F172A] text-white rounded-lg text-[11px] font-bold hover:bg-slate-800 transition shadow-xs inline-flex items-center space-x-1 shrink-0 ml-2"
+                    title="Register a new officer"
+                  >
+                    <app-icon name="user-plus" size="w-3.5 h-3.5"></app-icon>
+                    <span>Register Officer</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -381,7 +402,7 @@ import { capitalizeFirstChar } from '../../core/directives/capitalize-first.dire
           </div>
 
           <div *ngIf="getAvailableOfficersForAssignment().length === 0" class="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
-            <p class="text-xs font-medium text-amber-800">No registered officers available to assign. All non-revoked officers are already in this department.</p>
+            <p class="text-xs font-medium text-amber-800">Please register officer</p>
             <div>
               <button 
                 type="button" 
@@ -836,6 +857,20 @@ export class DepartmentManagementComponent {
     }
   }
 
+  openAddOfficerFromEditModal() {
+    if (this.editingDeptId) {
+      const dept = this.departmentService.departments().find(d => d.id === this.editingDeptId);
+      if (dept) {
+        this.openQuickAddOfficerModal(dept);
+        return;
+      }
+    }
+    const unassigned = this.getUnassignedRegisteredOfficers();
+    if (unassigned.length === 0) {
+      this.toastMessage.set('Please register officer');
+    }
+  }
+
   openQuickAddOfficerModal(dept: Department) {
     this.selectedDeptForAddOfficer = dept;
     this.selectedOfficerIdsForAdd.clear();
@@ -856,6 +891,14 @@ export class DepartmentManagementComponent {
       await this.departmentService.assignMultipleOfficersToDepartment(deptId, officerIds);
       // Reload grievances so assignment status/redistribution synchronizes
       await this.grievanceService.loadGrievancesFromBackend();
+
+      // If Edit Department modal is open for this department, keep deptForm in sync
+      if (this.editingDeptId && this.editingDeptId === deptId) {
+        const updatedDept = this.departmentService.departments().find(d => d.id === deptId);
+        if (updatedDept && updatedDept.assignedOfficers) {
+          this.deptForm.assignedOfficers = [...updatedDept.assignedOfficers];
+        }
+      }
 
       this.toastMessage.set(`Successfully assigned ${officerIds.length} officer(s) to ${deptName}.`);
       this.isQuickAddOfficerModalOpen.set(false);

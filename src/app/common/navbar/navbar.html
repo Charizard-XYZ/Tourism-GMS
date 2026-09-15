@@ -67,6 +67,14 @@
             <app-icon name="file-check" size="w-4 h-4"></app-icon>
             <span>Assigned Cases</span>
           </a>
+          <a 
+            routerLink="/officer/history" 
+            routerLinkActive="bg-slate-800 text-[#A0C8C3] font-semibold"
+            class="px-3 py-2 rounded-lg text-xs xl:text-sm text-slate-200 hover:text-white hover:bg-slate-800 transition shrink-0 inline-flex items-center space-x-1.5"
+          >
+            <app-icon name="history" size="w-4 h-4"></app-icon>
+            <span>History</span>
+          </a>
         </ng-container>
 
         <!-- Admin Links -->
@@ -192,6 +200,10 @@
       <a routerLink="/officer/grievances" (click)="toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
         <app-icon name="file-check" size="w-4 h-4"></app-icon>
         <span>Assigned Cases</span>
+      </a>
+      <a routerLink="/officer/history" (click)="toggleMobileMenu()" class="px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 flex items-center space-x-2">
+        <app-icon name="history" size="w-4 h-4"></app-icon>
+        <span>History</span>
       </a>
     </ng-container>
 

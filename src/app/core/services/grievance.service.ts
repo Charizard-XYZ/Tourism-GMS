@@ -193,7 +193,13 @@ export class GrievanceService {
   });
 
   getGrievanceById(id: string): Grievance | undefined {
-    return this.grievances().find(g => g.id === id || g.trackingCode === id || g.grievanceCode === id);
+    const trimmed = (id || '').trim().toLowerCase();
+    if (!trimmed) return undefined;
+    return this.grievances().find(g => 
+      (g.id && g.id.toLowerCase() === trimmed) || 
+      (g.trackingCode && g.trackingCode.toLowerCase() === trimmed) || 
+      (g.grievanceCode && g.grievanceCode.toLowerCase() === trimmed)
+    );
   }
 
   getCommentsForGrievance(grievanceId: string): GrievanceComment[] {
@@ -269,6 +275,34 @@ export class GrievanceService {
     }));
 
     await this.loadGrievancesFromBackend();
+  }
+
+  /**
+   * Upload Inspection Proof Document to Backend
+   */
+  async uploadProofFile(grievanceId: string, file: File): Promise<{ name: string; url: string; size: string; type: string }> {
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const res = await firstValueFrom(this.http.post<{
+      success: boolean;
+      message: string;
+      attachment: { name: string; url: string; size: string; type: string }
+    }>(`${this.apiUrl}/grievances/${grievanceId}/proof`, {
+      fileName: file.name,
+      fileType: file.type,
+      fileBase64: base64
+    }));
+
+    if (!res || !res.success || !res.attachment) {
+      throw new Error(res?.message || 'Failed to upload proof document to server.');
+    }
+
+    return res.attachment;
   }
 
   /**

@@ -43,9 +43,16 @@ const corsOptions: cors.CorsOptions = {
   optionsSuccessStatus: 200
 };
 
+import path from 'path';
+
 app.use(cors(corsOptions));
 
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+
+// Static file serving for uploaded proof documents
+const uploadsDir = path.join(process.cwd(), 'uploads');
+app.use('/uploads', express.static(uploadsDir));
 
 // Health Check Endpoint
 app.get('/api/health', (req: Request, res: Response) => {

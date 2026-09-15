@@ -11,6 +11,7 @@ import { GrievanceDetailComponent } from './pages/tourist/grievance-detail.compo
 import { OfficerDashboardComponent } from './pages/officer/officer-dashboard.component';
 import { AssignedGrievancesComponent } from './pages/officer/assigned-grievances.component';
 import { GrievanceProcessingComponent } from './pages/officer/grievance-processing.component';
+import { OfficerHistoryComponent } from './pages/officer/officer-history.component';
 
 import { AdminDashboardComponent } from './pages/admin/admin-dashboard.component';
 import { DepartmentManagementComponent } from './pages/admin/department-management.component';
@@ -45,6 +46,7 @@ export const routes: Routes = [
   { path: 'officer/dashboard', component: OfficerDashboardComponent, canActivate: [officerGuard] },
   { path: 'officer/grievances', component: AssignedGrievancesComponent, canActivate: [officerGuard] },
   { path: 'officer/process/:id', component: GrievanceProcessingComponent, canActivate: [officerGuard] },
+  { path: 'officer/history', component: OfficerHistoryComponent, canActivate: [officerGuard] },
   { path: 'officer/profile', component: ProfileComponent, canActivate: [officerGuard] },
 
   // Admin Portal Routes

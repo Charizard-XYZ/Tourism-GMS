@@ -140,13 +140,24 @@ describe('GrievanceProcessingComponent - Proof Auto-Upload Workflow', () => {
     expect(uploadProofButton).toBeUndefined();
   });
 
-  it('3. confirms initial state clearly displays "No file selected"', () => {
-    const compiled = fixture.nativeElement as HTMLElement;
+  it('3. confirms proof section is hidden when in_progress and displays "No file selected" when resolved', () => {
+    component.selectedStatus = 'in_progress';
+    fixture.detectChanges();
+    let compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.textContent).not.toContain('No file selected');
+
+    const selectEl = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    selectEl.value = 'resolved';
+    selectEl.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    compiled = fixture.nativeElement as HTMLElement;
     expect(component.selectedFile).toBeNull();
     expect(compiled.textContent).toContain('No file selected');
   });
 
-  it('4. displays "Selected: filename.pdf" when a valid PDF is selected', () => {
+  it('4. displays "Selected: filename.pdf" when a valid PDF is selected under resolved status', () => {
+    component.selectedStatus = 'resolved';
     const file = new File(['%PDF-1.4 content'], 'inspection-report.pdf', { type: 'application/pdf' });
     const event = {
       target: {
@@ -302,6 +313,8 @@ describe('GrievanceProcessingComponent - Proof Auto-Upload Workflow', () => {
   });
 
   it('12. retains and displays existing attached resolution files', () => {
+    component.selectedStatus = 'resolved';
+    fixture.componentRef.changeDetectorRef.markForCheck();
     component.resolutionFiles = [
       { name: 'prior-inspection.pdf', url: 'blob:prior-inspection', size: '1.2 MB' }
     ];

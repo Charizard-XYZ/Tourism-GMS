@@ -1,4 +1,6 @@
 import { Router, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { db } from '../config/firebase-admin';
 import { authenticateFirebaseToken, AuthenticatedRequest } from '../middleware/auth.middleware';
 import { authorizeRoles } from '../middleware/role.middleware';
@@ -643,6 +645,122 @@ router.delete('/:id', authenticateFirebaseToken, authorizeRoles('tourist'), asyn
     res.status(200).json({ success: true, message: 'Grievance deleted successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: 'Error deleting grievance.' });
+  }
+});
+
+/**
+ * POST /api/grievances/:id/proof
+ * Secure Officer Inspection Proof Upload
+ * Authenticated officer uploads real PDF / image proof document.
+ * Validates file type (.pdf, .jpg, .jpeg, .png, .webp) and max 10MB size.
+ * Stores only reference URL and metadata; does NOT store raw binary in Firestore.
+ */
+router.post('/:id/proof', authenticateFirebaseToken, authorizeRoles('officer'), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const id = req.params['id'] as string;
+    const { uid, email } = req.user!;
+    const { fileName, fileType, fileBase64 } = req.body;
+
+    if (!fileName || !fileBase64) {
+      res.status(400).json({ success: false, message: 'File name and file content are required.' });
+      return;
+    }
+
+    // 1. Verify grievance exists and is assigned to the authenticated officer
+    const docRef = db.collection('grievances').doc(id);
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      res.status(404).json({ success: false, message: 'Grievance not found.' });
+      return;
+    }
+
+    const gData = doc.data()!;
+    if (gData['status'] === 'closed' || gData['status'] === 'cancelled') {
+      res.status(400).json({ success: false, message: 'Cannot upload proof for closed or cancelled grievances.' });
+      return;
+    }
+
+    const assignedId = gData['assignedOfficerId'];
+    const isAssigned = assignedId === uid || (email && assignedId === email);
+    if (!isAssigned) {
+      res.status(403).json({ success: false, message: 'Forbidden: Only the assigned officer can upload resolution proof for this grievance.' });
+      return;
+    }
+
+    // 2. Validate file format and extension
+    const allowedExts = /\.(pdf|jpg|jpeg|png|webp)$/i;
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    const extMatch = fileName.match(allowedExts);
+    if (!extMatch) {
+      res.status(400).json({
+        success: false,
+        message: 'Invalid file format. Allowed types: PDF (.pdf), JPEG (.jpg, .jpeg), PNG (.png), and WebP (.webp).'
+      });
+      return;
+    }
+
+    const effectiveType = fileType || (fileName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+    if (!allowedTypes.includes(effectiveType)) {
+      res.status(400).json({
+        success: false,
+        message: `Unsupported MIME type "${effectiveType}". Allowed: PDF or images.`
+      });
+      return;
+    }
+
+    // 3. Decode base64 and validate file size (max 10MB)
+    const base64Data = fileBase64.replace(/^data:[^;]+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    const maxSizeBytes = 10 * 1024 * 1024;
+    if (buffer.length > maxSizeBytes) {
+      res.status(400).json({
+        success: false,
+        message: `File size exceeds 10 MB limit (${(buffer.length / (1024 * 1024)).toFixed(2)} MB).`
+      });
+      return;
+    }
+
+    // 4. Save file to disk under uploads/proofs/:grievanceId/:timestamp_filename
+    const sanitizedName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filenameOnDisk = `${Date.now()}_${sanitizedName}`;
+    const proofsDir = path.join(process.cwd(), 'uploads', 'proofs', id);
+    if (!fs.existsSync(proofsDir)) {
+      fs.mkdirSync(proofsDir, { recursive: true });
+    }
+
+    const targetFilePath = path.join(proofsDir, filenameOnDisk);
+    fs.writeFileSync(targetFilePath, buffer);
+
+    // Format file size string (e.g. "2.4 MB")
+    const formatSize = (bytes: number): string => {
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    };
+
+    // Construct download URL relative to host
+    const host = req.get('host') || 'localhost:5000';
+    const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+    const fileUrl = `${protocol}://${host}/uploads/proofs/${id}/${filenameOnDisk}`;
+    const storagePath = `uploads/proofs/${id}/${filenameOnDisk}`;
+
+    const attachment = {
+      name: fileName,
+      url: fileUrl,
+      size: formatSize(buffer.length),
+      type: effectiveType,
+      storagePath
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Proof document uploaded successfully.',
+      attachment
+    });
+  } catch (err: any) {
+    console.error('Error in proof upload endpoint:', err);
+    res.status(500).json({ success: false, message: 'Failed to upload proof document.' });
   }
 });
 

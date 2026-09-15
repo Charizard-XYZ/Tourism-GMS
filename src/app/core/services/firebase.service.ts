@@ -24,5 +24,7 @@ export class FirebaseService {
     this.auth = getAuth(this.app);
     this.db = getFirestore(this.app);
     this.storage = getStorage(this.app);
+    this.storage.maxUploadRetryTime = 10000;
+    this.storage.maxOperationRetryTime = 10000;
   }
 }

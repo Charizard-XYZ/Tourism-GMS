@@ -38,25 +38,25 @@ import { IconComponent } from '../../common/components/icon.component';
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
           <div class="flex items-center justify-between">
-            <p class="text-xs font-bold text-slate-500 uppercase">Assigned Cases</p>
+            <p class="text-xs font-bold text-slate-500 uppercase">Active / Assigned</p>
             <app-icon name="file-text" size="w-4 h-4" class="text-slate-400"></app-icon>
           </div>
           <p class="text-3xl font-extrabold text-slate-900">{{ assignedCount() }}</p>
-          <p class="text-[11px] text-slate-400">Total in officer queue</p>
+          <p class="text-[11px] text-slate-400">Newly assigned cases</p>
         </div>
 
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
           <div class="flex items-center justify-between">
-            <p class="text-xs font-bold text-amber-600 uppercase">Action Required</p>
+            <p class="text-xs font-bold text-amber-600 uppercase">Processing (In Inquiry)</p>
             <app-icon name="alert-circle" size="w-4 h-4" class="text-amber-500"></app-icon>
           </div>
-          <p class="text-3xl font-extrabold text-amber-600">{{ pendingCount() }}</p>
-          <p class="text-[11px] text-slate-400">Awaiting status update</p>
+          <p class="text-3xl font-extrabold text-amber-600">{{ processingCount() }}</p>
+          <p class="text-[11px] text-slate-400">Under active investigation</p>
         </div>
 
         <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1">
           <div class="flex items-center justify-between">
-            <p class="text-xs font-bold text-emerald-600 uppercase">Cases Resolved</p>
+            <p class="text-xs font-bold text-emerald-600 uppercase">Resolved</p>
             <app-icon name="check-circle" size="w-4 h-4" class="text-emerald-500"></app-icon>
           </div>
           <p class="text-3xl font-extrabold text-emerald-600">{{ resolvedCount() }}</p>
@@ -78,30 +78,36 @@ import { IconComponent } from '../../common/components/icon.component';
         <div class="p-6 border-b border-slate-100 flex justify-between items-center">
           <div>
             <h2 class="text-lg font-bold text-slate-900">Your Assigned Workqueue</h2>
-            <p class="text-xs text-slate-500">Select a grievance to update status, add internal notes, or submit resolution</p>
+            <p class="text-xs text-slate-500">Live active cases requiring departmental action (resolved and closed cases are preserved in History)</p>
           </div>
+          <a routerLink="/officer/history" class="text-xs font-bold text-teal-700 hover:text-teal-900 inline-flex items-center space-x-1">
+            <span>View Closed History</span>
+            <app-icon name="arrow-right" size="w-3.5 h-3.5"></app-icon>
+          </a>
         </div>
 
-        <div class="divide-y divide-slate-100">
-          <div *ngFor="let g of grievanceService.roleGrievances()" class="p-5 hover:bg-slate-50 transition flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div class="space-y-1.5 max-w-2xl">
-              <div class="flex items-center space-x-2">
-                <span class="font-mono text-xs font-bold text-slate-500">{{ g.trackingCode }}</span>
+        <div class="divide-y divide-slate-100 font-medium">
+          <div *ngFor="let g of grievanceService.roleGrievances()" class="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50 transition">
+            <div class="space-y-1 max-w-xl">
+              <div class="flex items-center space-x-3">
+                <span class="font-mono font-bold text-xs text-slate-500">{{ g.trackingCode }}</span>
                 <app-status-badge [status]="g.status"></app-status-badge>
+                <span *ngIf="g.isEscalated" class="px-2 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-bold uppercase rounded">Escalated</span>
               </div>
-              <h3 class="font-bold text-base text-slate-900">
-                <a [routerLink]="['/officer/process', g.id]">{{ g.title }}</a>
-              </h3>
-              <p class="text-xs text-slate-500 line-clamp-1">Tourist: {{ g.touristName || 'Tourist' }} ({{ g.touristPhone || g.touristEmail || 'No contact' }})</p>
-              <div class="flex items-center space-x-4 text-[11px] text-slate-400 pt-1">
-                <span>Location: {{ g.location }}</span>
-                <span>Filed: {{ g.createdAt | date:'dd/MM/yyyy' }}</span>
+              <h3 class="font-bold text-slate-900">{{ g.title }}</h3>
+              <p class="text-xs text-slate-500 line-clamp-1">{{ g.description }}</p>
+              <div class="flex items-center space-x-3 text-[11px] text-slate-400 pt-1">
+                <span>{{ g.location }}</span>
+                <span>•</span>
+                <span>Filed {{ g.createdAt | date:'dd/MM/yyyy' }}</span>
+                <span>•</span>
+                <span>Tourist: <strong class="text-slate-700">{{ g.touristName || 'Tourist' }}</strong></span>
               </div>
             </div>
 
-            <div class="shrink-0">
-              <a [routerLink]="['/officer/process', g.id]" class="px-4 py-2 bg-amber-500 text-slate-950 rounded-xl text-xs font-bold hover:bg-amber-400 shadow-sm flex items-center space-x-1">
-                <span>Process Case</span>
+            <div class="flex items-center space-x-2 shrink-0">
+              <a [routerLink]="['/officer/process', g.id]" class="px-4 py-2 bg-amber-400 text-slate-950 rounded-xl font-bold text-xs hover:bg-amber-300 transition shadow-sm flex items-center space-x-1.5">
+                <span>Update Status</span>
                 <app-icon name="arrow-right" size="w-3.5 h-3.5"></app-icon>
               </a>
             </div>
@@ -125,17 +131,16 @@ export class OfficerDashboardComponent implements OnInit {
   }
 
   assignedCount(): number {
-    return this.grievanceService.allOfficerGrievances().length;
+    return this.grievanceService.allOfficerGrievances().filter(g => g.status === 'assigned' || g.status === 'submitted').length;
   }
 
-  pendingCount(): number {
-    return this.grievanceService.roleGrievances().filter(g => g.status === 'assigned' || g.status === 'in_progress' || g.status === 'submitted').length;
+  processingCount(): number {
+    return this.grievanceService.allOfficerGrievances().filter(g => g.status === 'in_progress' || g.status === 'reopened').length;
   }
 
   resolvedCount(): number {
     return this.grievanceService.allOfficerGrievances().filter(g => g.status === 'resolved').length;
   }
-
   closedCount(): number {
     return this.grievanceService.allOfficerGrievances().filter(g => g.status === 'closed').length;
   }
